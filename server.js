@@ -70,13 +70,13 @@ if (isProduction) app.set('trust proxy', 1);
 // Só um domínio pode acessar o painel; os outros servem apenas /go/ e /t/ (links gerados)
 const PANEL_DOMAIN = (process.env.PANEL_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').split(/[/:]/)[0];
 function isPanelRoute(path, method) {
-  if (path.startsWith('/go/') || path.startsWith('/t/')) return false;
+  if (path.startsWith('/go/') || path.startsWith('/r/') || path.startsWith('/t/')) return false;
   if (method === 'GET' && path.match(/^\/api\/config\/[^/]+$/)) return false;
   return true;
 }
 // Em domínios que não são o do painel: não redirecionar para o painel; mostrar página em manutenção.
 // Assim quem acessar só o domínio (ex.: https://iniictranfi.sbs/) não vê nada útil — só /go/ e /t/ funcionam.
-const MAINTENANCE_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Em manutenção</title><style>body{font-family:system-ui,sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:2rem;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}h1{font-size:1.5rem;}</style></head><body><div><h1>Em manutenção</h1><p>Volte mais tarde.</p></div></body></html>';
+const MAINTENANCE_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Página indisponível</title><style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#94a3b8;margin:0;padding:2rem;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}h1{font-size:1.25rem;color:#e2e8f0;}</style></head><body><div><h1>Página indisponível</h1><p>Este endereço não está em uso no momento.</p></div></body></html>';
 app.use((req, res, next) => {
   if (!PANEL_DOMAIN) return next();
   const host = (req.hostname || (req.get('host') || '').split(':')[0] || '').toLowerCase();
@@ -92,7 +92,7 @@ const sessionOpts = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  name: 'cloaker.sid',
+  name: 'sid',
   cookie: {
     secure: isProduction,
     httpOnly: true,
@@ -107,7 +107,7 @@ app.use(express.static('public'));
 // Autenticação: exige sessão para / e /api/* (exceto login, setup, config, go, t)
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
-  if (req.path === '/login' || req.path.startsWith('/go/') || req.path.startsWith('/t/')) return next();
+  if (req.path === '/login' || req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/t/')) return next();
   if (req.path === '/api/login' || req.path === '/api/logout' || req.path === '/api/setup' || req.path === '/api/config/') return next();
   if (req.path.startsWith('/api/') && req.method === 'GET' && req.path === '/api/config/' + (req.params && req.params.siteId ? req.params.siteId : '')) return next();
   if (req.path.startsWith('/api/')) {
@@ -126,7 +126,7 @@ async function requireAdmin(req, res, next) {
 
 app.use((req, res, next) => {
   if (req.path === '/login' && req.method === 'GET') return next();
-  if (req.path.startsWith('/go/') || req.path.startsWith('/t/')) return next();
+  if (req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/t/')) return next();
   if (req.path.match(/^\/api\/config\//) && req.method === 'GET') return next();
   if (req.path === '/' && req.method === 'GET' && (!req.session || !req.session.userId)) return res.redirect('/login');
   if (req.path === '/api/login' || req.path === '/api/setup' || req.path === '/api/setup/check' || req.path === '/api/setup/promote-first-admin' || req.path === '/api/signup') return next();
@@ -262,7 +262,7 @@ app.get('/api/settings/check-propagation', async (req, res) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const resp = await fetch(fetchUrl, { method: 'GET', redirect: 'follow', signal: controller.signal, headers: { 'User-Agent': 'CloakerPro-PropagationCheck/1.0' } });
+      const resp = await fetch(fetchUrl, { method: 'GET', redirect: 'follow', signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
       clearTimeout(timeout);
       details.reachable = resp.ok || resp.status === 302 || resp.status === 301;
     } catch (e) {
@@ -727,8 +727,26 @@ if (process.env.BACKUP_WEBHOOK_URL) {
   }, BACKUP_INTERVAL_MS);
 }
 
-// API: Buscar configurações do site (para o script)
+// Rate limit para /api/config (proteção contra crawlers)
+const configRateLimit = new Map();
+const CONFIG_RATE_LIMIT_WINDOW = 60000; // 1 min
+const CONFIG_RATE_LIMIT_MAX = 60; // req/min por IP
+function checkConfigRateLimit(ip) {
+  const now = Date.now();
+  let entry = configRateLimit.get(ip);
+  if (!entry) { entry = { count: 0, resetAt: now + CONFIG_RATE_LIMIT_WINDOW }; configRateLimit.set(ip, entry); }
+  if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + CONFIG_RATE_LIMIT_WINDOW; }
+  entry.count++;
+  if (entry.count > CONFIG_RATE_LIMIT_MAX) return false;
+  return true;
+}
+
+// API: Buscar configurações do site (para o script) – protegido contra scraping
 app.get('/api/config/:siteId', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+  const ua = req.headers['user-agent'] || '';
+  if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
+  if (!checkConfigRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
   const site = await db.get('SELECT * FROM sites WHERE site_id = ? AND is_active = 1', [req.params.siteId]);
   if (!site) {
     return res.json({
@@ -1145,7 +1163,7 @@ async function getGeoByIP(ip) {
   const out = { country: null, city: null, region: null, isp: null };
   if (!ip || isPrivateIP(ip)) return out;
   const normalized = ip.replace(/^::ffff:/, '');
-  const headers = { 'User-Agent': 'CloakerPro/1.0' };
+  const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' };
 
   try {
     const res = await fetch(`https://ipapi.co/${normalized}/json/`, { signal: AbortSignal.timeout(5000), headers });
@@ -1238,14 +1256,18 @@ async function sendCustomPage(res, site) {
   return true;
 }
 
-// ========== LINK PARA ADS: /go/:code ==========
-// Você cola seu link no painel → o sistema gera um novo link → use esse link nos anúncios.
-// Quem clica passa aqui: checamos (desktop, bot, emulador, país por IP) e redirecionamos.
-app.get('/go/:code', async (req, res) => {
+// Delay anti-detecção (50–150ms) antes de redirect – evita padrão de resposta instantânea
+function redirectWithDelay(res, url, status = 302) {
+  const delay = 50 + Math.floor(Math.random() * 100);
+  setTimeout(() => res.redirect(status, url), delay);
+}
+
+// Handler compartilhado para /go/ e /r/ (rota alternativa para diversificar URLs)
+async function handleLinkRedirect(req, res) {
   const code = (req.params.code || '').toLowerCase();
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   if (!site || !site.target_url) {
-    return res.redirect(302, 'https://www.google.com/');
+    return redirectWithDelay(res, 'https://www.google.com/');
   }
 
   // Parâmetro de rastreamento (Meta Ads): se o site exige ref, só permite quem vier com ref=TOKEN
@@ -1259,7 +1281,7 @@ app.get('/go/:code', async (req, res) => {
       const blockUrl = site.redirect_url || 'https://www.google.com/';
       if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
       if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
-      return res.redirect(302, blockUrl);
+      return redirectWithDelay(res, blockUrl);
     }
   }
 
@@ -1291,7 +1313,14 @@ app.get('/go/:code', async (req, res) => {
   }
   function isBot() {
     const u = userAgent.toLowerCase();
-    const bots = ['bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebot', 'slurp', 'duckduckbot', 'bingbot', 'yandex', 'curl', 'wget', 'python-requests', 'python/', 'java/', 'headless', 'headlesschrome', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs', 'lighthouse', 'gtmetrix', 'screaming frog'];
+    const bots = [
+      'bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk',
+      'whatsapp', 'instagram', 'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou',
+      'curl', 'wget', 'python-requests', 'python/', 'java/', 'go-http-client', 'php/',
+      'headless', 'headlesschrome', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs',
+      'lighthouse', 'gtmetrix', 'screaming frog', 'semrush', 'ahrefsbot', 'dotbot', 'rogerbot', 'proximic',
+      'mediapartners', 'adsbot', 'ia_archiver', 'archive.org', 'x-purpose'
+    ];
     return bots.some(b => u.includes(b)) || !!req.headers['x-purpose'];
   }
   function isEmulator() {
@@ -1330,15 +1359,17 @@ app.get('/go/:code', async (req, res) => {
     const blockUrl = site.redirect_url || 'https://www.google.com/';
     if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
     if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
-    return res.redirect(302, blockUrl);
+    return redirectWithDelay(res, blockUrl);
   }
 
   // Redireciona para a oferta com a mesma query string (UTMs, fbclid, etc.) para a landing receber
   let dest = site.target_url;
   const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
   if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
-  return res.redirect(302, dest);
-});
+  return redirectWithDelay(res, dest);
+}
+
+app.get(['/go/:code', '/r/:code'], handleLinkRedirect);
 
 // Servir script dinâmico por site (opcional – modo antigo)
 app.get('/t/:siteId.js', (req, res) => {

@@ -2377,7 +2377,7 @@
       return qs ? path + '?' + qs : path;
     }
 
-    /** Apenas o domínio gerado: base + /go/code (sem query string) */
+    /** Domínio gerado: base + /go/code (também aceita /r/ como alternativa) */
     function buildLinkBase(site, baseUrl) {
       if (!site || !site.link_code) return '';
       const base = (baseUrl || getBaseUrl()).replace(/\/$/, '');

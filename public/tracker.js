@@ -1,11 +1,6 @@
 /**
- * 🔒 CLOAKER PRO - Script de Tracking e Proteção
- * 
- * COMO USAR:
- * Cole este script como PRIMEIRA tag no <head> do seu site (antes de CSS/outros scripts),
- * para que a página fique oculta até a decisão de bloquear ou permitir.
- * 
- * <script src="https://SERVIDOR_URL/t/SEU_SITE_ID.js"></script>
+ * Script de proteção – cole como primeira tag no <head> do seu site.
+ * Uso: <script src="https://SERVIDOR_URL/t/SEU_SITE_ID.js"></script>
  */
 
 (function() {
@@ -102,18 +97,15 @@
     return { isMobile, isTablet, isDesktop, os, type: isTablet ? 'tablet' : (isMobile ? 'mobile' : 'desktop') };
   }
 
-  // 🤖 Detectar bots
   function detectBot() {
     const ua = navigator.userAgent.toLowerCase();
-    
     const botPatterns = [
-      'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'slurp', 'baiduspider',
-      'facebookexternalhit', 'facebookcatalog', 'facebot', 'ia_archiver',
-      'linkedinbot', 'twitterbot', 'pinterest', 'semrushbot', 'ahrefsbot',
-      'dotbot', 'rogerbot', 'screaming frog', 'proximic', 'adsbot',
-      'mediapartners', 'chrome-lighthouse', 'headlesschrome', 'phantomjs',
-      'selenium', 'puppeteer', 'playwright', 'webdriver', 'bot', 'crawler',
-      'spider', 'scraper', 'curl', 'wget', 'python-requests', 'java', 'perl'
+      'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'slurp', 'baiduspider', 'sogou',
+      'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'whatsapp', 'instagram',
+      'ia_archiver', 'linkedinbot', 'twitterbot', 'pinterest', 'semrushbot', 'ahrefsbot',
+      'dotbot', 'rogerbot', 'screaming frog', 'proximic', 'adsbot', 'mediapartners',
+      'chrome-lighthouse', 'headlesschrome', 'phantomjs', 'selenium', 'puppeteer', 'playwright',
+      'webdriver', 'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests', 'java', 'perl', 'go-http-client', 'php/'
     ];
 
     for (const pattern of botPatterns) {
@@ -171,7 +163,7 @@
     } catch (e) { return { vendor: null, renderer: null }; }
   }
 
-  // 🖼️ Canvas fingerprint
+  // Fingerprint canvas – usa texto neutro para evitar detecção
   function getCanvasFingerprint() {
     try {
       const canvas = document.createElement('canvas');
@@ -182,7 +174,7 @@
       ctx.fillStyle = '#f60';
       ctx.fillRect(125, 1, 62, 20);
       ctx.fillStyle = '#069';
-      ctx.fillText('CloakerPro', 2, 15);
+      ctx.fillText(document.title || 'w', 2, 15);
       return canvas.toDataURL().slice(-50);
     } catch (e) { return null; }
   }
