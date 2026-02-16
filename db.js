@@ -176,6 +176,7 @@ async function initPg() {
       )
     `).catch(() => {});
     try { await client.query('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
+    try { await client.query('ALTER TABLE users ADD COLUMN cloaker_path TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer SMALLINT DEFAULT 0'); } catch (e) {}
     const metaCount = await client.query('SELECT COUNT(*) as c FROM meta_reviewer_ips');
     if (metaCount.rows[0] && metaCount.rows[0].c === 0) {
@@ -349,6 +350,7 @@ async function initSqlite() {
   db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT DEFAULT 'user', status TEXT DEFAULT 'active', cloaker_base_url TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
   try { db.run("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'"); } catch (e) {}
   try { db.run('ALTER TABLE users ADD COLUMN cloaker_base_url TEXT'); } catch (e) {}
+  try { db.run("ALTER TABLE users ADD COLUMN cloaker_path TEXT DEFAULT 'go'"); } catch (e) {}
   db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
   try { db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('cloaker_base_url', '')"); } catch (e) {}
   db.run(`CREATE TABLE IF NOT EXISTS allowed_domains (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, domain TEXT NOT NULL, description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);

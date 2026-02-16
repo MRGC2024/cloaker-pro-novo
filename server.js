@@ -70,7 +70,7 @@ if (isProduction) app.set('trust proxy', 1);
 // Só um domínio pode acessar o painel; os outros servem apenas /go/ e /t/ (links gerados)
 const PANEL_DOMAIN = (process.env.PANEL_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').split(/[/:]/)[0];
 function isPanelRoute(path, method) {
-  if (path.startsWith('/go/') || path.startsWith('/r/') || path.startsWith('/t/')) return false;
+  if (path.startsWith('/go/') || path.startsWith('/r/') || path.startsWith('/l/') || path.startsWith('/v/') || path.startsWith('/t/')) return false;
   if (method === 'GET' && path.match(/^\/api\/config\/[^/]+$/)) return false;
   return true;
 }
@@ -107,7 +107,7 @@ app.use(express.static('public'));
 // Autenticação: exige sessão para / e /api/* (exceto login, setup, config, go, t)
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
-  if (req.path === '/login' || req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/t/')) return next();
+  if (req.path === '/login' || req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/l/') || req.path.startsWith('/v/') || req.path.startsWith('/t/')) return next();
   if (req.path === '/api/login' || req.path === '/api/logout' || req.path === '/api/setup' || req.path === '/api/config/') return next();
   if (req.path.startsWith('/api/') && req.method === 'GET' && req.path === '/api/config/' + (req.params && req.params.siteId ? req.params.siteId : '')) return next();
   if (req.path.startsWith('/api/')) {
@@ -126,7 +126,7 @@ async function requireAdmin(req, res, next) {
 
 app.use((req, res, next) => {
   if (req.path === '/login' && req.method === 'GET') return next();
-  if (req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/t/')) return next();
+  if (req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/l/') || req.path.startsWith('/v/') || req.path.startsWith('/t/')) return next();
   if (req.path.match(/^\/api\/config\//) && req.method === 'GET') return next();
   if (req.path === '/' && req.method === 'GET' && (!req.session || !req.session.userId)) return res.redirect('/login');
   if (req.path === '/api/login' || req.path === '/api/setup' || req.path === '/api/setup/check' || req.path === '/api/setup/promote-first-admin' || req.path === '/api/signup') return next();
@@ -210,15 +210,22 @@ app.get('/api/setup/promote-first-admin', async (req, res) => {
 // API: Configurações (domínio do cloaker – por usuário: cada user tem seu próprio domínio)
 app.get('/api/settings', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const user = await db.get('SELECT cloaker_base_url FROM users WHERE id = ?', [req.session.userId]);
-  res.json({ cloaker_base_url: (user && user.cloaker_base_url) ? user.cloaker_base_url : '' });
+  const user = await db.get('SELECT cloaker_base_url, cloaker_path FROM users WHERE id = ?', [req.session.userId]);
+  const path = (user && user.cloaker_path) ? String(user.cloaker_path).toLowerCase() : 'go';
+  const validPath = ['go', 'r', 'l', 'v'].includes(path) ? path : 'go';
+  res.json({
+    cloaker_base_url: (user && user.cloaker_base_url) ? user.cloaker_base_url : '',
+    cloaker_path: validPath
+  });
 });
 
 app.put('/api/settings', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const { cloaker_base_url } = req.body || {};
+  const { cloaker_base_url, cloaker_path } = req.body || {};
   const val = (cloaker_base_url != null ? String(cloaker_base_url).trim() : '') || '';
-  await db.run('UPDATE users SET cloaker_base_url = ? WHERE id = ?', [val, req.session.userId]);
+  const path = (cloaker_path != null ? String(cloaker_path).toLowerCase() : 'go').replace(/[^a-z]/g, '') || 'go';
+  const validPath = ['go', 'r', 'l', 'v'].includes(path) ? path : 'go';
+  await db.run('UPDATE users SET cloaker_base_url = ?, cloaker_path = ? WHERE id = ?', [val, validPath, req.session.userId]);
   res.json({ success: true });
 });
 
@@ -1751,7 +1758,7 @@ async function handleLinkRedirect(req, res) {
   return redirectWithDelay(res, dest);
 }
 
-app.get(['/go/:code', '/r/:code'], handleLinkRedirect);
+app.get(['/go/:code', '/r/:code', '/l/:code', '/v/:code'], handleLinkRedirect);
 
 // Servir script dinâmico por site (opcional – modo antigo)
 app.get('/t/:siteId.js', (req, res) => {

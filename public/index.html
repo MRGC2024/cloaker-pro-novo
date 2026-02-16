@@ -996,9 +996,40 @@
           <span id="passwordMsg" style="margin-left: 15px; font-size: 13px;"></span>
         </div>
       </div>
-      <div class="card" id="backupCard" style="display: none;">
-        <div class="card-header"><h3 class="card-title"><i class="ri-database-2-line"></i> Backup do banco (admin)</h3></div>
+      <div class="card glass-card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-link"></i> Meu domínio do Cloaker</h3>
+        </div>
         <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Configure a URL base dos seus links e o prefixo usado ao gerar novos links. Links já criados continuam funcionando em qualquer prefixo (/go/, /r/, /l/, /v/).</p>
+          <div class="form-group">
+            <label class="form-label">URL base (ex: https://rediralfirst.club)</label>
+            <input type="text" class="form-input" id="cloakerBaseUrl" placeholder="https://seudominio.com">
+            <small style="color: var(--text-secondary); font-size: 12px;">Use a URL do domínio configurado no DNS (sem barra no final).</small>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prefixo dos links gerados</label>
+            <select class="form-select" id="cloakerPath" style="max-width: 200px;">
+              <option value="go">/go/ (padrão)</option>
+              <option value="r">/r/</option>
+              <option value="l">/l/</option>
+              <option value="v">/v/</option>
+            </select>
+            <small style="color: var(--text-secondary); font-size: 12px;">Novos links usarão este prefixo. O prefixo /go/ é mais comum; use /r/, /l/ ou /v/ para variar.</small>
+          </div>
+          <button class="btn btn-primary" onclick="saveCloakerSettings()"><i class="ri-save-line"></i> Salvar</button>
+          <button type="button" class="btn btn-secondary" style="margin-left: 10px;" id="checkPropagationBtn" onclick="checkPropagation()"><i class="ri-search-line"></i> Testar propagação</button>
+          <span id="cloakerSettingsMsg" style="margin-left: 15px; font-size: 13px;"></span>
+          <div id="propagationResult" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border);">
+            <div id="propagationMessage"></div>
+            <div id="propagationDetails" style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="dnsHelpCard">
+        <div class="card-header"><h3 class="card-title"><i class="ri-information-line"></i> Instruções de configuração DNS</h3></div>
+        <div class="card-body">
+          <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px; margin: 0;">
             <li><strong>No Railway (obrigatório):</strong> Projeto → seu serviço → <strong>Networking</strong> → <strong>+ Custom Domain</strong> → adicione o domínio (ex: <code>cloaker.seudominio.com</code> ou <code>iniiciopropo.sbs</code>). Sem isso, o domínio não chega ao seu app.</li>
             <li><strong>Tenha um domínio</strong> (ex: meusite.com.br). Você pode usar um subdomínio (ex: cloaker.meusite.com.br ou go.meusite.com.br).</li>
             <li><strong>Acesse o painel do seu provedor de DNS</strong> (onde o domínio está registrado: Registro.br, Cloudflare, GoDaddy, HostGator, etc.).</li>
@@ -1011,7 +1042,7 @@
             <li><strong>Aguarde a propagação do DNS</strong> (pode levar de alguns minutos a 48 horas). Você pode testar com <code>nslookup cloaker.seudominio.com</code> no terminal.</li>
             <li><strong>Use HTTPS:</strong> se seu provedor oferecer SSL (ex: Cloudflare “Flexible” ou “Full”), ative. A URL final deve ser <code>https://cloaker.seudominio.com</code>.</li>
             <li><strong>No painel, em Configurações</strong>, preencha o campo acima com a URL completa, por exemplo: <code>https://cloaker.seudominio.com</code> (sem barra no final). Clique em <strong>Salvar</strong>.</li>
-            <li>Pronto. Ao gerar links em <strong>Meus Sites</strong> ou <strong>Link para Ads</strong>, os links sairão como <code>https://cloaker.seudominio.com/go/XXXXX</code>.</li>
+            <li>Pronto. Ao gerar links em <strong>Meus Sites</strong> ou <strong>Link para Ads</strong>, os links usarão o prefixo escolhido acima (ex: <code>https://cloaker.seudominio.com/r/XXXXX</code> ou <code>/l/XXXXX</code>).</li>
           </ol>
           <p style="color: var(--text-secondary); font-size: 13px;">Cadastre em <strong>Domínios</strong>, use o destino CNAME no DNS e escolha o domínio ao gerar o link em Meus Sites.</p>
         </div>
@@ -1472,6 +1503,7 @@
     let sites = [];
     let currentUser = null;
     let baseUrlOrOrigin = window.location.origin;
+    let cloakerPath = 'go';
 
     const COUNTRY_LIST = [
       { code: 'BR', name: 'Brasil' }, { code: 'AR', name: 'Argentina' }, { code: 'BO', name: 'Bolívia' }, { code: 'CL', name: 'Chile' },
@@ -2410,13 +2442,46 @@
 
     async function loadSettings() {
       try {
-        const res = await fetch('/api/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
+        const [meRes, setRes] = await Promise.all([
+          fetch('/api/me', { credentials: 'include' }),
+          fetch('/api/settings', { credentials: 'include' })
+        ]);
+        if (meRes && meRes.ok) {
+          const data = await meRes.json();
           const el = document.getElementById('newUsername');
           if (el) el.value = data.username || '';
         }
+        if (setRes && setRes.ok) {
+          const s = await setRes.json();
+          baseUrlOrOrigin = (s.cloaker_base_url || '').trim() || window.location.origin;
+          cloakerPath = (s.cloaker_path && ['go','r','l','v'].includes(s.cloaker_path)) ? s.cloaker_path : 'go';
+          const urlEl = document.getElementById('cloakerBaseUrl');
+          if (urlEl) urlEl.value = s.cloaker_base_url || '';
+          const pathEl = document.getElementById('cloakerPath');
+          if (pathEl) pathEl.value = cloakerPath;
+        }
       } catch (e) {}
+    }
+
+    async function saveCloakerSettings() {
+      const url = (document.getElementById('cloakerBaseUrl').value || '').trim();
+      const path = (document.getElementById('cloakerPath').value || 'go').toLowerCase();
+      const validPath = ['go','r','l','v'].includes(path) ? path : 'go';
+      const msg = document.getElementById('cloakerSettingsMsg');
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ cloaker_base_url: url, cloaker_path: validPath })
+        });
+        if (!res.ok) throw new Error('Erro ao salvar');
+        baseUrlOrOrigin = url || window.location.origin;
+        cloakerPath = validPath;
+        if (msg) { msg.textContent = 'Salvo!'; msg.style.color = 'var(--success)'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+      } catch (e) {
+        if (msg) { msg.textContent = e.message || 'Erro ao salvar'; msg.style.color = 'var(--danger)'; }
+      }
     }
 
     async function updateUsername() {
@@ -2708,11 +2773,12 @@
       return qs ? path + '?' + qs : path;
     }
 
-    /** Domínio gerado: base + /go/code (também aceita /r/ como alternativa) */
+    /** Domínio gerado: base + /PREFIX/code (go, r, l ou v – configurável) */
     function buildLinkBase(site, baseUrl) {
       if (!site || !site.link_code) return '';
       const base = (baseUrl || getBaseUrl()).replace(/\/$/, '');
-      return base + '/go/' + site.link_code;
+      const prefix = (cloakerPath && ['go','r','l','v'].includes(cloakerPath)) ? cloakerPath : 'go';
+      return base + '/' + prefix + '/' + site.link_code;
     }
 
     /** Apenas os parâmetros: ref=...&utm_... (sem "?", string vazia se não houver) */
@@ -3004,7 +3070,11 @@
           }
         }
         const setRes = await apiGet('/api/settings');
-        if (setRes && setRes.ok) { const s = await setRes.json(); baseUrlOrOrigin = (s.cloaker_base_url || '').trim() || window.location.origin; }
+        if (setRes && setRes.ok) {
+          const s = await setRes.json();
+          baseUrlOrOrigin = (s.cloaker_base_url || '').trim() || window.location.origin;
+          cloakerPath = (s.cloaker_path && ['go','r','l','v'].includes(s.cloaker_path)) ? s.cloaker_path : 'go';
+        }
       } catch (e) {}
       fillCountrySelects();
       loadSites();
