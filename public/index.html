@@ -705,8 +705,10 @@
       <li class="nav-item"><a class="nav-link" data-section="visitors"><i class="ri-user-line"></i> Visitantes</a></li>
       <li class="nav-item"><a class="nav-link" data-section="reports"><i class="ri-file-list-3-line"></i> Permitidos e Bloqueados</a></li>
       <li class="nav-item"><a class="nav-link" data-section="script"><i class="ri-link"></i> Link para Ads</a></li>
+      <li class="nav-item"><a class="nav-link" data-section="analytics"><i class="ri-bar-chart-box-line"></i> Análise</a></li>
       <li class="nav-item"><a class="nav-link" data-section="settings"><i class="ri-settings-3-line"></i> Configurações</a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-section="users"><i class="ri-team-line"></i> Usuários</a></li>
+      <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" data-section="metaips"><i class="ri-shield-keyhole-line"></i> IPs Meta</a></li>
       <li class="nav-item"><a class="nav-link" data-section="domains"><i class="ri-global-line"></i> Domínios</a></li>
       <li class="nav-item"><a class="nav-link" data-section="pages"><i class="ri-file-code-line"></i> Páginas</a></li>
     </ul>
@@ -809,7 +811,7 @@
             <button class="filter-btn" data-filter="bots">Bots</button>
             <button class="filter-btn" data-filter="mobile">Mobile</button>
           </div>
-          <button class="btn btn-secondary" onclick="exportData('csv')"><i class="ri-download-line"></i> Exportar</button>
+          <button class="btn btn-secondary" onclick="openExportModal()"><i class="ri-download-line"></i> Exportar</button>
         </div>
       </div>
       <div class="card"><div class="card-body">
@@ -1055,6 +1057,73 @@
       </div>
     </section>
 
+    <!-- Análise (dados para melhorar o cloaker) -->
+    <section id="analytics" class="section">
+      <div class="header">
+        <h2>Análise de Dados</h2>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Dados coletados para identificar padrões do Meta e melhorar o cloaker.</p>
+        <div class="header-actions">
+          <select class="form-select site-selector" id="analyticsSiteFilter" onchange="loadAnalytics()">
+            <option value="all">Todos os Sites</option>
+          </select>
+          <div class="period-selector" id="analyticsPeriodSelector">
+            <button class="period-btn active" data-period="7d">7 dias</button>
+            <button class="period-btn" data-period="15d">15 dias</button>
+            <button class="period-btn" data-period="30d">30 dias</button>
+          </div>
+          <button class="btn btn-primary" onclick="loadAnalytics()"><i class="ri-refresh-line"></i> Atualizar</button>
+        </div>
+      </div>
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-user-unfollow-line"></i> User-Agents Bloqueados (top 15)</h3></div>
+          <div class="card-body"><div class="table-container"><table><thead><tr><th>User-Agent</th><th>Qtd</th></tr></thead><tbody id="analyticsUA"></tbody></table></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-robot-line"></i> Bots Detectados (top 10)</h3></div>
+          <div class="card-body"><div class="table-container"><table><thead><tr><th>User-Agent</th><th>Qtd</th></tr></thead><tbody id="analyticsBots"></tbody></table></div></div>
+        </div>
+      </div>
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-forbid-line"></i> Motivos de Bloqueio</h3></div>
+          <div class="card-body"><div class="table-container"><table><thead><tr><th>Motivo</th><th>Qtd</th></tr></thead><tbody id="analyticsReasons"></tbody></table></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Referrers (top 10)</h3></div>
+          <div class="card-body"><div class="table-container"><table><thead><tr><th>Referrer</th><th>Qtd</th></tr></thead><tbody id="analyticsReferrers"></tbody></table></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="ri-shield-keyhole-line"></i> Possíveis Revisores do Meta (IPs na lista)</h3></div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Acessos de IPs cadastrados como revisores. Use para identificar quando o Meta está verificando.</p>
+          <div class="table-container"><table><thead><tr><th>IP</th><th>User-Agent</th><th>Referrer</th><th>Motivo</th><th>Data</th></tr></thead><tbody id="analyticsReviewers"></tbody></table></div>
+          <p id="analyticsReviewersEmpty" style="display:none; color: var(--text-secondary);">Nenhum acesso de IP suspeito no período.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- IPs do Meta (admin) -->
+    <section id="metaips" class="section">
+      <div class="header">
+        <h2>IPs de Revisão (Meta/Facebook)</h2>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Quando um IP desta lista acessa, você pode deixá-lo ver a landing (passar na revisão). Ative em Configurações.</p>
+      </div>
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+          <div class="info-item"><span class="info-label">Permitir IPs de revisão (mostrar landing em vez de bloquear)</span><label class="switch"><input type="checkbox" id="allowMetaReviewers" onchange="saveAllowMetaReviewers()"><span class="slider"></span></label></div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 10px;">Se ativado, IPs cadastrados abaixo verão a página de oferta (landing) em vez de serem redirecionados. Útil para passar na análise do Meta.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Lista de IPs/CIDRs</h3><button class="btn btn-primary btn-sm" onclick="document.getElementById('metaIpModal').classList.add('active')"><i class="ri-add-line"></i> Adicionar</button></div>
+        <div class="card-body">
+          <div class="table-container"><table><thead><tr><th>IP ou CIDR</th><th>Descrição</th><th>Ações</th></tr></thead><tbody id="metaIpsTable"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Domínios (admin) -->
     <section id="domains" class="section">
       <div class="header">
@@ -1117,6 +1186,50 @@
           <button class="btn btn-primary" onclick="savePage()"><i class="ri-save-line"></i> Salvar</button>
           <button class="btn btn-secondary" onclick="closePageModal()">Cancelar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Exportar -->
+  <div class="modal" id="exportModal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header"><h3>Exportar Dados</h3><button class="modal-close" onclick="document.getElementById('exportModal').classList.remove('active')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Período</label>
+          <select class="form-select" id="exportPeriod"><option value="7d">7 dias</option><option value="15d">15 dias</option><option value="30d" selected>30 dias</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site</label>
+          <select class="form-select" id="exportSite"><option value="all">Todos</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Filtro</label>
+          <select class="form-select" id="exportFilter"><option value="all">Todos</option><option value="blocked">Bloqueados</option><option value="allowed">Permitidos</option><option value="bots">Bots</option><option value="suspected_reviewer">Suspeitos (revisores)</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Formato</label>
+          <select class="form-select" id="exportFormat"><option value="csv">CSV (Excel)</option><option value="json">JSON</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="doExport()"><i class="ri-download-line"></i> Baixar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Adicionar IP Meta -->
+  <div class="modal" id="metaIpModal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header"><h3>Adicionar IP/CIDR</h3><button class="modal-close" onclick="document.getElementById('metaIpModal').classList.remove('active')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">IP ou CIDR (ex: 31.13.24.0/21)</label>
+          <input type="text" class="form-input" id="newMetaIp" placeholder="31.13.24.0/21">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição (opcional)</label>
+          <input type="text" class="form-input" id="newMetaIpDesc" placeholder="Meta/Facebook">
+        </div>
+        <button class="btn btn-primary" onclick="addMetaIp()"><i class="ri-save-line"></i> Adicionar</button>
       </div>
     </div>
   </div>
@@ -1450,8 +1563,10 @@
         if (section === 'domains') loadDomains();
         if (section === 'pages') loadPages();
         if (section === 'script') loadScriptSection();
+        if (section === 'analytics') loadAnalytics();
         if (section === 'settings') loadSettings();
         if (section === 'users') loadUsers();
+        if (section === 'metaips') loadMetaIPs();
       });
     });
 
@@ -1492,7 +1607,7 @@
 
     function updateSiteSelectors() {
       if (!Array.isArray(sites)) sites = [];
-      const selectors = ['dashboardSiteFilter', 'visitorsSiteFilter', 'reportsSiteFilter', 'scriptSiteSelector'];
+      const selectors = ['dashboardSiteFilter', 'visitorsSiteFilter', 'reportsSiteFilter', 'scriptSiteSelector', 'analyticsSiteFilter', 'exportSite'];
       selectors.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -2068,7 +2183,95 @@
       alert('Copiado!');
     }
 
-    function exportData(format) { window.open(`/api/export?format=${format}`, '_blank'); }
+    function openExportModal() {
+      const sel = document.getElementById('exportSite');
+      if (sel) { sel.innerHTML = '<option value="all">Todos</option>' + (sites || []).map(s => `<option value="${s.site_id}">${s.name}</option>`).join(''); }
+      document.getElementById('exportModal').classList.add('active');
+    }
+    function doExport() {
+      const period = document.getElementById('exportPeriod').value || '30d';
+      const site = document.getElementById('exportSite').value || 'all';
+      const filter = document.getElementById('exportFilter').value || 'all';
+      const format = document.getElementById('exportFormat').value || 'csv';
+      window.open(`/api/export?format=${format}&period=${period}&site=${site}&filter=${filter}`, '_blank');
+      document.getElementById('exportModal').classList.remove('active');
+    }
+
+    let analyticsPeriod = '7d';
+    async function loadAnalytics() {
+      const periodEl = document.querySelector('#analyticsPeriodSelector .period-btn.active');
+      if (periodEl) analyticsPeriod = periodEl.dataset.period || '7d';
+      const siteId = document.getElementById('analyticsSiteFilter') ? document.getElementById('analyticsSiteFilter').value : 'all';
+      ['analyticsUA','analyticsBots','analyticsReasons','analyticsReferrers'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<tr><td colspan="2" class="loading"><div class="spinner"></div></td></tr>';
+      });
+      const revT = document.getElementById('analyticsReviewers');
+      if (revT) revT.innerHTML = '<tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>';
+      try {
+        const res = await apiGet(`/api/analytics?period=${analyticsPeriod}&site=${siteId}`);
+        if (!res) return;
+        const d = await res.json();
+        const ua = d.byUserAgentBlocked || [];
+        document.getElementById('analyticsUA').innerHTML = ua.length ? ua.slice(0,15).map(r => `<tr><td><code style="font-size:11px;word-break:break-all" title="${(r.ua||'').replace(/"/g,'')}">${(r.ua||'').substring(0,80)}${(r.ua||'').length>80?'…':''}</code></td><td>${r.count}</td></tr>`).join('') : '<tr><td colspan="2">Nenhum</td></tr>';
+        const bots = d.topBots || [];
+        document.getElementById('analyticsBots').innerHTML = bots.length ? bots.slice(0,10).map(r => `<tr><td><code style="font-size:11px;word-break:break-all" title="${(r.ua||'').replace(/"/g,'')}">${(r.ua||'').substring(0,60)}${(r.ua||'').length>60?'…':''}</code></td><td>${r.count}</td></tr>`).join('') : '<tr><td colspan="2">Nenhum</td></tr>';
+        const reasons = d.byBlockReason || [];
+        document.getElementById('analyticsReasons').innerHTML = reasons.length ? reasons.map(r => `<tr><td>${r.reason||'-'}</td><td>${r.count}</td></tr>`).join('') : '<tr><td colspan="2">Nenhum</td></tr>';
+        const refs = d.byReferrer || [];
+        document.getElementById('analyticsReferrers').innerHTML = refs.length ? refs.slice(0,10).map(r => `<tr><td title="${(r.ref||'').replace(/"/g,'')}">${(r.ref||'').substring(0,50)}${(r.ref||'').length>50?'…':''}</td><td>${r.count}</td></tr>`).join('') : '<tr><td colspan="2">Nenhum</td></tr>';
+        const rev = d.suspectedReviewers || [];
+        const revEl = document.getElementById('analyticsReviewers');
+        const revEmpty = document.getElementById('analyticsReviewersEmpty');
+        if (revEl) revEl.innerHTML = rev.length ? rev.map(r => `<tr><td><code>${r.ip||'-'}</code></td><td title="${(r.user_agent||'').replace(/"/g,'')}">${(r.user_agent||'').substring(0,40)}…</td><td title="${(r.referrer||'').replace(/"/g,'')}">${(r.referrer||'').substring(0,30)}…</td><td>${r.block_reason||'-'}</td><td>${formatDateBR(r.created_at)}</td></tr>`).join('') : '<tr><td colspan="5">Nenhum acesso de IP suspeito no período.</td></tr>';
+        if (revEmpty) revEmpty.style.display = rev.length ? 'none' : 'block';
+      } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('analyticsPeriodSelector')?.addEventListener('click', e => {
+      const btn = e.target.closest('.period-btn');
+      if (btn) { document.querySelectorAll('#analyticsPeriodSelector .period-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); loadAnalytics(); }
+    });
+
+    async function loadMetaIPs() {
+      const tbody = document.getElementById('metaIpsTable');
+      if (!tbody) return;
+      try {
+        const res = await apiGet('/api/meta-ips');
+        const allowRes = await apiGet('/api/settings/allow-meta-reviewers');
+        if (allowRes && allowRes.ok) { const a = await allowRes.json(); document.getElementById('allowMetaReviewers').checked = !!a.allow_meta_reviewers; }
+        if (!res || !res.ok) { tbody.innerHTML = '<tr><td colspan="3">Erro ao carregar (apenas admin)</td></tr>'; return; }
+        const list = await res.json();
+        if (!Array.isArray(list)) { tbody.innerHTML = '<tr><td colspan="3">Nenhum</td></tr>'; return; }
+        tbody.innerHTML = list.length ? list.map(r => `<tr><td><code>${r.ip_or_cidr||''}</code></td><td>${r.description||'-'}</td><td><button class="btn btn-secondary btn-sm" onclick="deleteMetaIp(${r.id})"><i class="ri-delete-bin-line"></i></button></td></tr>`).join('') : '<tr><td colspan="3">Nenhum IP cadastrado. Clique em Adicionar.</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="3">Acesso negado ou erro</td></tr>'; }
+    }
+    async function saveAllowMetaReviewers() {
+      const checked = document.getElementById('allowMetaReviewers').checked;
+      try {
+        await fetch('/api/settings/allow-meta-reviewers', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ allow_meta_reviewers: checked }) });
+      } catch (e) { alert('Erro ao salvar'); }
+    }
+    async function addMetaIp() {
+      const ip = document.getElementById('newMetaIp').value.trim();
+      const desc = document.getElementById('newMetaIpDesc').value.trim();
+      if (!ip) { alert('Informe o IP ou CIDR'); return; }
+      try {
+        const res = await fetch('/api/meta-ips', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ip_or_cidr: ip, description: desc || null }) });
+        const data = await res.json();
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('newMetaIp').value = ''; document.getElementById('newMetaIpDesc').value = '';
+        document.getElementById('metaIpModal').classList.remove('active');
+        loadMetaIPs();
+      } catch (e) { alert('Erro ao adicionar'); }
+    }
+    async function deleteMetaIp(id) {
+      if (!confirm('Remover este IP/CIDR?')) return;
+      try {
+        await fetch(`/api/meta-ips/${id}`, { method: 'DELETE', credentials: 'include' });
+        loadMetaIPs();
+      } catch (e) { alert('Erro ao remover'); }
+    }
 
     async function logout() {
       try {
@@ -2664,6 +2867,8 @@
           if (currentUser && currentUser.role === 'admin') {
             var nu = document.getElementById('navUsers');
             if (nu) nu.style.display = 'block';
+            var nmi = document.getElementById('navMetaIPs');
+            if (nmi) nmi.style.display = 'block';
             var bc = document.getElementById('backupCard');
             if (bc) bc.style.display = 'block';
           }
@@ -2685,6 +2890,8 @@
     document.getElementById('userModal').addEventListener('click', e => { if (e.target.id === 'userModal') document.getElementById('userModal').classList.remove('active'); });
     document.getElementById('changePasswordModal').addEventListener('click', e => { if (e.target.id === 'changePasswordModal') closeChangePasswordModal(); });
     document.getElementById('domainModal').addEventListener('click', e => { if (e.target.id === 'domainModal') document.getElementById('domainModal').classList.remove('active'); });
+    document.getElementById('exportModal')?.addEventListener('click', e => { if (e.target.id === 'exportModal') document.getElementById('exportModal').classList.remove('active'); });
+    document.getElementById('metaIpModal')?.addEventListener('click', e => { if (e.target.id === 'metaIpModal') document.getElementById('metaIpModal').classList.remove('active'); });
   </script>
 </body>
 </html>

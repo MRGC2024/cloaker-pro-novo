@@ -1130,25 +1130,176 @@ app.delete('/api/visitors/all', async (req, res) => {
   res.json({ success: true });
 });
 
-// API: Exportar dados (apenas visitantes dos sites do usuário)
+// API: Exportar dados com filtros (data, site, apenas bloqueados, etc.)
 app.get('/api/export', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const visitors = await db.all('SELECT v.* FROM visitors v INNER JOIN sites s ON s.site_id = v.site_id AND s.user_id = ? ORDER BY v.created_at DESC', [req.session.userId]);
+  const userId = req.session.userId;
   const format = req.query.format || 'json';
-  
+  const siteId = req.query.site || null;
+  const filter = req.query.filter || 'all'; // all, blocked, allowed, bots, suspected_reviewer
+  const period = req.query.period || '30d';
+
+  const { start, end } = getBrasiliaDateRange(period);
+  let sql = 'SELECT v.* FROM visitors v INNER JOIN sites s ON s.site_id = v.site_id AND s.user_id = ? WHERE v.created_at >= ? AND v.created_at < ?';
+  const params = [userId, start, end];
+  if (siteId && siteId !== 'all') {
+    sql += ' AND v.site_id = ?';
+    params.push(siteId);
+  }
+  if (filter === 'blocked') { sql += ' AND v.was_blocked = 1'; }
+  else if (filter === 'allowed') { sql += ' AND v.was_blocked = 0'; }
+  else if (filter === 'bots') { sql += ' AND v.is_bot = 1'; }
+  else if (filter === 'suspected_reviewer') { sql += ' AND v.is_suspected_reviewer = 1'; }
+  sql += ' ORDER BY v.created_at DESC';
+
+  const visitors = await db.all(sql, params);
+
   if (format === 'csv') {
     if (visitors.length === 0) return res.send('');
     const headers = Object.keys(visitors[0]).join(',');
     const rows = visitors.map(v => Object.values(v).map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(','));
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=visitors.csv');
-    res.send([headers, ...rows].join('\n'));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=visitors-${period}.csv`);
+    res.send('\ufeff' + [headers, ...rows].join('\n')); // BOM para Excel
   } else {
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename=visitors.json');
+    res.setHeader('Content-Disposition', `attachment; filename=visitors-${period}.json`);
     res.json(visitors);
   }
 });
+
+// API: Analytics para dashboard de análise (User-Agents bloqueados, motivos, IPs, etc.)
+app.get('/api/analytics', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const userId = req.session.userId;
+  const period = req.query.period || '7d';
+  const siteId = req.query.site || null;
+  const { start, end } = getBrasiliaDateRange(period);
+  const siteFilter = siteId && siteId !== 'all' ? ' AND v.site_id = ?' : '';
+  const params = siteId && siteId !== 'all' ? [start, end, userId, siteId] : [start, end, userId];
+  const baseWhere = `v.created_at >= ? AND v.created_at < ? AND v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?)${siteFilter}`;
+
+  const hourExpr = db.usePg ? "to_char(date_trunc('hour', v.created_at), 'YYYY-MM-DD HH24:00')" : "strftime('%Y-%m-%d %H:00', v.created_at)";
+
+  const [
+    byUserAgentBlocked,
+    byBlockReason,
+    byIp,
+    byReferrer,
+    timeline,
+    suspectedReviewers,
+    topBots
+  ] = await Promise.all([
+    db.all(`SELECT v.user_agent as ua, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.user_agent IS NOT NULL GROUP BY v.user_agent ORDER BY c DESC LIMIT 30`, params),
+    db.all(`SELECT v.block_reason as reason, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.block_reason IS NOT NULL GROUP BY v.block_reason ORDER BY c DESC`, params),
+    db.all(`SELECT v.ip as ip, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.ip != 'unknown' GROUP BY v.ip ORDER BY c DESC LIMIT 20`, params),
+    db.all(`SELECT v.referrer as ref, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.referrer IS NOT NULL AND v.referrer != '' GROUP BY v.referrer ORDER BY c DESC LIMIT 15`, params),
+    db.all(`SELECT ${hourExpr} as h, COUNT(*) as total, SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked, SUM(CASE WHEN v.is_suspected_reviewer = 1 THEN 1 ELSE 0 END) as reviewers FROM visitors v WHERE ${baseWhere} GROUP BY h ORDER BY h`, params),
+    db.all(`SELECT v.ip, v.user_agent, v.referrer, v.block_reason, v.created_at FROM visitors v WHERE ${baseWhere} AND v.is_suspected_reviewer = 1 ORDER BY v.created_at DESC LIMIT 50`, params),
+    db.all(`SELECT v.user_agent as ua, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.is_bot = 1 GROUP BY v.user_agent ORDER BY c DESC LIMIT 20`, params)
+  ]);
+
+  res.json({
+    byUserAgentBlocked: (byUserAgentBlocked || []).map(r => ({ ua: r.ua, count: r.c })),
+    byBlockReason: (byBlockReason || []).map(r => ({ reason: r.reason, count: r.c })),
+    byIp: (byIp || []).map(r => ({ ip: r.ip, count: r.c })),
+    byReferrer: (byReferrer || []).map(r => ({ ref: r.ref, count: r.c })),
+    timeline: timeline || [],
+    suspectedReviewers: suspectedReviewers || [],
+    topBots: (topBots || []).map(r => ({ ua: r.ua, count: r.c }))
+  });
+});
+
+// API: IPs de revisão do Meta (admin)
+app.get('/api/meta-ips', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const list = await db.all('SELECT * FROM meta_reviewer_ips ORDER BY ip_or_cidr');
+  res.json(list);
+});
+
+app.post('/api/meta-ips', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const { ip_or_cidr, description } = req.body || {};
+  const val = (ip_or_cidr || '').trim();
+  if (!val) return res.status(400).json({ error: 'IP ou CIDR obrigatório' });
+  try {
+    await db.run('INSERT INTO meta_reviewer_ips (ip_or_cidr, description) VALUES (?, ?)', [val, (description || '').trim() || null]);
+    await loadMetaReviewerIPs();
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: 'IP/CIDR já cadastrado' });
+  }
+});
+
+app.delete('/api/meta-ips/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  await db.run('DELETE FROM meta_reviewer_ips WHERE id = ?', [req.params.id]);
+  await loadMetaReviewerIPs();
+  res.json({ success: true });
+});
+
+// API: allow_meta_reviewers (admin)
+app.get('/api/settings/allow-meta-reviewers', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const row = await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'");
+  res.json({ allow_meta_reviewers: row?.value === '1' });
+});
+
+app.put('/api/settings/allow-meta-reviewers', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const val = req.body?.allow_meta_reviewers ? '1' : '0';
+  if (db.usePg) {
+    await db.run("INSERT INTO settings (key, value) VALUES ('allow_meta_reviewers', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [val]);
+  } else {
+    await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('allow_meta_reviewers', ?)", [val]);
+  }
+  res.json({ success: true });
+});
+
+// Helper: verifica se IP está em CIDR (ex: 31.13.24.0/21)
+function ipInCidr(ip, cidr) {
+  if (!ip || !cidr) return false;
+  const parts = cidr.split('/');
+  const cidrIp = parts[0];
+  const bits = parseInt(parts[1], 10) || 32;
+  if (ip === cidrIp) return true;
+  const ipToNum = (a) => {
+    const n = a.split('.').map(Number);
+    return (n[0] << 24) | (n[1] << 16) | (n[2] << 8) | n[3];
+  };
+  if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) return false;
+  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+  return (ipToNum(ip) & mask) === (ipToNum(cidrIp) & mask);
+}
+
+// Cache de IPs de revisão (Meta/AWS/GCP) – admin pode adicionar
+let metaReviewerIPsCache = [];
+async function loadMetaReviewerIPs() {
+  try {
+    const rows = await db.all('SELECT ip_or_cidr FROM meta_reviewer_ips');
+    metaReviewerIPsCache = (rows || []).map(r => r.ip_or_cidr).filter(Boolean);
+  } catch (e) {
+    metaReviewerIPsCache = [];
+  }
+}
+function isSuspectedReviewerIP(ip) {
+  if (!ip || ip === 'unknown' || ip.startsWith('::')) return false;
+  const norm = ip.replace(/^::ffff:/, '');
+  return metaReviewerIPsCache.some(entry => {
+    if (entry.includes('/')) return ipInCidr(norm, entry);
+    return norm === entry;
+  });
+}
 
 // Helper: IP público (não localhost/VPN interna)
 function isPrivateIP(ip) {
@@ -1276,8 +1427,8 @@ async function handleLinkRedirect(req, res) {
     if (refParam !== site.required_ref_token) {
       const blockReasonRef = 'Acesso sem parâmetro de rastreamento (não veio do Ads)';
       const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-      await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, datetime('now'))`,
-        [site.site_id, (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim() || 'unknown', req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), fullUrl, null, null, null, null, null, null, null, blockReasonRef]);
+      await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, was_blocked, block_reason, is_bot, request_path, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 0, ?, datetime('now'))`,
+        [site.site_id, (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim() || 'unknown', req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), fullUrl, null, blockReasonRef, req.path]);
       const blockUrl = site.redirect_url || 'https://www.google.com/';
       if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
       if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
@@ -1300,6 +1451,18 @@ async function handleLinkRedirect(req, res) {
 
   const geo = await getGeoByIP(ip);
   const country = geo.country;
+  const suspectedReviewer = isSuspectedReviewerIP(ip);
+
+  // Se IP é de revisão do Meta e allow_meta_reviewers=1: mostrar landing para passar na análise
+  const allowMetaReviewers = (await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'"))?.value === '1';
+  if (suspectedReviewer && allowMetaReviewers && site.target_url) {
+    let dest = site.target_url;
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
+    if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
+    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now'))`,
+      [site.site_id, ip, userAgent, referer, fullUrl, country || null, req.path]);
+    return redirectWithDelay(res, dest);
+  }
 
   const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
   const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
@@ -1352,8 +1515,9 @@ async function handleLinkRedirect(req, res) {
   const fbclid = (req.query.fbclid || '').trim() || null;
   const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
 
-  await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-    [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBot() ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams]);
+  const suspectedRev = suspectedReviewer ? 1 : 0;
+  await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBot() ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev]);
 
   if (wasBlocked) {
     const blockUrl = site.redirect_url || 'https://www.google.com/';
@@ -1384,7 +1548,9 @@ app.get('/', (req, res) => {
 });
 
 // Iniciar servidor
-db.initDb().then(() => {
+db.initDb().then(async () => {
+  await loadMetaReviewerIPs();
+  setInterval(loadMetaReviewerIPs, 5 * 60 * 1000); // recarrega a cada 5 min
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗

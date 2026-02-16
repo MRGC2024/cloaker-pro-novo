@@ -167,6 +167,23 @@ async function initPg() {
     if (r.rows.length === 0) {
       await client.query("INSERT INTO settings (key, value) VALUES ('cloaker_base_url', '') ON CONFLICT (key) DO NOTHING");
     }
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS meta_reviewer_ips (
+        id SERIAL PRIMARY KEY,
+        ip_or_cidr TEXT NOT NULL UNIQUE,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    try { await client.query('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
+    try { await client.query('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer SMALLINT DEFAULT 0'); } catch (e) {}
+    const metaCount = await client.query('SELECT COUNT(*) as c FROM meta_reviewer_ips');
+    if (metaCount.rows[0] && metaCount.rows[0].c === 0) {
+      const defaults = ['31.13.24.0/21', '31.13.64.0/18', '66.220.144.0/20', '69.171.224.0/19', '157.240.0.0/17', '173.252.64.0/18'];
+      for (const cidr of defaults) {
+        try { await client.query("INSERT INTO meta_reviewer_ips (ip_or_cidr, description) VALUES ($1, 'Meta/Facebook')", [cidr]); } catch (e) {}
+      }
+    }
   } finally {
     client.release();
   }
@@ -333,6 +350,20 @@ async function initSqlite() {
   }
   try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_site_created ON visitors(site_id, created_at)'); } catch (e) {}
   try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_created ON visitors(created_at)'); } catch (e) {}
+  try { db.run('CREATE TABLE IF NOT EXISTS meta_reviewer_ips (id INTEGER PRIMARY KEY AUTOINCREMENT, ip_or_cidr TEXT UNIQUE NOT NULL, description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer INTEGER DEFAULT 0'); } catch (e) {}
+  try {
+    const st = db.prepare('SELECT COUNT(*) as c FROM meta_reviewer_ips');
+    const cnt = st.step() ? st.getAsObject() : { c: 0 };
+    st.free();
+    if (cnt && cnt.c === 0) {
+      const defaults = ['31.13.24.0/21', '31.13.64.0/18', '66.220.144.0/20', '69.171.224.0/19', '157.240.0.0/17', '173.252.64.0/18'];
+      const ins = db.prepare('INSERT OR IGNORE INTO meta_reviewer_ips (ip_or_cidr, description) VALUES (?, ?)');
+      defaults.forEach(cidr => { ins.run([cidr, 'Meta/Facebook']); });
+      ins.free();
+    }
+  } catch (e) {}
 
   const DB_PATH_FOR_SAVE = DB_PATH;
   const saveDb = () => {
