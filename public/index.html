@@ -1209,17 +1209,17 @@
       <div class="card" style="border-left: 4px solid var(--primary);">
         <div class="card-body">
           <h4 style="margin-bottom: 10px;"><i class="ri-dns-line"></i> Configuração DNS</h4>
-          <p style="color: var(--text-secondary); margin-bottom: 14px;">Cada domínio cadastrado no Railway tem um <strong>Valor CNAME próprio</strong> (diferente do outro). Na tabela abaixo, use a coluna <strong>Valor CNAME</strong> da linha do domínio e configure no seu provedor de DNS (Cloudflare, Registro.br, etc.) — Tipo: CNAME, Nome: <code>@</code>, Valor: o que aparece na coluna. Não precisa ir ao painel do Railway para pegar esses dados.</p>
-          <p style="color: var(--text-secondary); font-size: 12px;">Se o domínio ainda não tiver Valor CNAME (cadastrado antes da sincronia com Railway), use o valor genérico: <code id="cnameTargetPlaceholder" style="font-size: 11px;">carregando...</code> <button type="button" class="btn btn-sm btn-secondary" onclick="copyCnameTarget()" style="margin-left:6px"><i class="ri-file-copy-line"></i> Copiar</button></p>
+          <p style="color: var(--text-secondary); margin-bottom: 14px;">O Railway exige <strong>dois registros</strong> para cada domínio: <strong>CNAME</strong> e <strong>TXT</strong> (verificação). Na tabela abaixo aparecem ambos. Configure os dois no seu provedor de DNS (Cloudflare, Registro.br, etc.). Clique em <strong>Sincronizar com Railway</strong> para puxar os valores atualizados do painel.</p>
+          <p style="color: var(--text-secondary); font-size: 12px;">CNAME: Nome <code>@</code>, Valor: o que aparece na coluna. TXT: Nome <code>_railway-verify</code>, Valor: o token da coluna. <button type="button" class="btn btn-sm btn-primary" onclick="syncRailwayDomains()" style="margin-left:6px"><i class="ri-refresh-line"></i> Sincronizar com Railway</button> <span id="syncRailwayMsg" style="font-size: 12px; margin-left: 8px;"></span></p>
         </div>
       </div>
       <div class="card">
         <div class="card-body">
-          <p style="color: var(--text-secondary); margin-bottom: 15px;">Lista de domínios. Para cada um, use o <strong>Valor CNAME</strong> da coluna abaixo no seu provedor de DNS (cada domínio pode ter um valor diferente).</p>
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Lista de domínios. Configure <strong>CNAME</strong> e <strong>TXT</strong> no seu provedor de DNS.</p>
           <div class="table-container">
             <table>
-              <thead><tr><th>Descrição</th><th>Domínio</th><th>Tipo</th><th>Nome</th><th>Valor CNAME</th><th>Propagação</th><th>Ações</th></tr></thead>
-              <tbody id="domainsTable"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
+              <thead><tr><th>Descrição</th><th>Domínio</th><th>CNAME (Valor)</th><th>TXT Verificação</th><th>Propagação</th><th>Ações</th></tr></thead>
+              <tbody id="domainsTable"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
             </table>
           </div>
           <p id="domainsEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhum domínio cadastrado. Clique em "Cadastrar domínio" para adicionar.</p>
@@ -2957,15 +2957,18 @@
         const target = cnameTargetCache || 'seu-app.up.railway.app';
         tbody.innerHTML = list.map(d => {
         var cnameVal = d.railway_cname_target || target;
-        if (!cnameVal) cnameVal = '(recadastre o domínio para obter o valor do Railway)';
+        if (!cnameVal) cnameVal = '(sincronize com Railway)';
+        var txtVal = d.railway_txt_verify || '(sincronize com Railway)';
         var cnameEsc = (cnameVal || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        var txtEsc = (txtVal || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         var cnameJs = (d.railway_cname_target || target || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        var copyBtn = (d.railway_cname_target || target) ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainCname(' + d.id + ')" title="Copiar Valor CNAME"><i class="ri-file-copy-line"></i></button>' : '';
+        var copyCnameBtn = (d.railway_cname_target || target) ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainCname(' + d.id + ')" title="Copiar CNAME"><i class="ri-file-copy-line"></i></button>' : '';
+        var copyTxtBtn = d.railway_txt_verify ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainTxt(' + d.id + ')" title="Copiar TXT"><i class="ri-file-copy-line"></i></button>' : '';
         var descEsc = (d.description || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code>CNAME</code></td><td><code>@</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px">' + cnameEsc + '</code> ' + copyBtn + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar se o DNS já propagou"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
+        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
       }).join('');
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar</td></tr>';
       }
     }
 
@@ -2991,9 +2994,33 @@
     function copyDomainCname(rowId) {
       const el = document.getElementById('cnameVal-' + rowId);
       const t = (el && el.textContent) ? el.textContent.trim() : '';
-      if (!t) return;
-      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(() => alert('Valor CNAME copiado.')).catch(() => fallbackCopy(t)); }
+      if (!t || t === '(sincronize com Railway)') return;
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(() => alert('CNAME copiado.')).catch(() => fallbackCopy(t)); }
       else fallbackCopy(t);
+    }
+    function copyDomainTxt(rowId) {
+      const el = document.getElementById('txtVal-' + rowId);
+      const t = (el && el.textContent) ? el.textContent.trim() : '';
+      if (!t || t === '(sincronize com Railway)') return;
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(() => alert('TXT de verificação copiado.')).catch(() => fallbackCopy(t)); }
+      else fallbackCopy(t);
+    }
+    async function syncRailwayDomains() {
+      const msg = document.getElementById('syncRailwayMsg');
+      if (msg) msg.textContent = 'Sincronizando...';
+      try {
+        const res = await fetch('/api/domains/sync-railway', { method: 'POST', credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          if (msg) msg.textContent = data.updated !== undefined ? 'Atualizado: ' + data.updated + ' domínio(s).' : 'Sincronizado.';
+          loadDomains();
+        } else {
+          if (msg) msg.textContent = data.error || 'Erro.';
+        }
+        setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+      } catch (e) {
+        if (msg) msg.textContent = 'Erro de conexão';
+      }
     }
     async function checkDomainDns(domain, rowId, targetOptional) {
       const span = document.getElementById('dnsResult-' + rowId);

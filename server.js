@@ -591,11 +591,58 @@ function removeCustomDomainFromRailway(domain) {
   });
 }
 
+// Busca domínios no Railway com registros DNS (para sincronizar CNAME + TXT)
+async function fetchRailwayDomainsWithRecords() {
+  const token = process.env.RAILWAY_API_TOKEN || process.env.RAILWAY_TOKEN;
+  const serviceId = process.env.RAILWAY_SERVICE_ID;
+  const projectId = process.env.RAILWAY_PROJECT_ID;
+  const environmentId = process.env.RAILWAY_ENVIRONMENT_ID;
+  if (!token || !serviceId || !projectId || !environmentId) return { ok: false, domains: [], error: 'Variáveis Railway não configuradas.' };
+  const body = JSON.stringify({
+    query: `query DomainsWithRecords($e: String!, $p: String!, $s: String!) {
+      domains(environmentId: $e, projectId: $p, serviceId: $s) {
+        customDomains {
+          id domain
+          status { dnsRecords { recordType hostlabel requiredValue zone } }
+        }
+      }
+    }`,
+    variables: { e: environmentId, p: projectId, s: serviceId }
+  });
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'backboard.railway.app',
+      path: '/graphql/v2',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Content-Length': Buffer.byteLength(body, 'utf8') }
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.errors && json.errors.length) return resolve({ ok: false, domains: [], error: json.errors[0].message });
+          const dd = json.data && json.data.domains;
+          let custom = (dd && (dd.customDomains || dd.custom_domains)) || [];
+          if (Array.isArray(custom) && custom.length && custom[0] && custom[0].node) custom = custom.map(e => e.node || e);
+          resolve({ ok: true, domains: custom });
+        } catch (e) {
+          resolve({ ok: false, domains: [], error: e.message });
+        }
+      });
+    });
+    req.on('error', e => resolve({ ok: false, domains: [], error: e.message }));
+    req.setTimeout(12000, () => { req.destroy(); resolve({ ok: false, domains: [], error: 'Timeout' }); });
+    req.write(body);
+    req.end();
+  });
+}
+
 // API: Domínios do usuário logado – listar, criar, excluir. Qualquer usuário gerencia seus domínios.
 app.get('/api/domains', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
-  const list = await db.all('SELECT id, domain, description, created_at, railway_cname_target FROM allowed_domains WHERE user_id = ? OR user_id IS NULL ORDER BY domain ASC', [userId]);
+  const list = await db.all('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE user_id = ? OR user_id IS NULL ORDER BY domain ASC', [userId]);
   const cnameTarget = getCnameTarget(req);
   res.json({ domains: list, cnameTarget });
 });
@@ -608,23 +655,33 @@ app.post('/api/domains', async (req, res) => {
   if (!d) return res.status(400).json({ error: 'Informe o domínio' });
   try {
     await db.run('INSERT INTO allowed_domains (user_id, domain, description) VALUES (?, ?, ?)', [userId, d, (description || '').trim() || null]);
-    let row = await db.get('SELECT id, domain, description, created_at, railway_cname_target FROM allowed_domains WHERE user_id = ? AND domain = ? ORDER BY id DESC LIMIT 1', [userId, d]);
+    let row = await db.get('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE user_id = ? AND domain = ? ORDER BY id DESC LIMIT 1', [userId, d]);
     const payload = row || { id: 0, domain: d, description: (description || '').trim() || null, created_at: new Date().toISOString(), railway_cname_target: null };
     const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
     const isAdmin = user && user.role === 'admin';
     if (isAdmin) {
       const railway = await addCustomDomainToRailway(d);
-      if (railway.ok) {
+        if (railway.ok) {
         let cnameValue = null;
+        let txtVerify = null;
         const dnsRecords = railway.data && railway.data.status && railway.data.status.dnsRecords;
         if (Array.isArray(dnsRecords) && dnsRecords.length) {
-          const cnameRecord = dnsRecords.find(r => (r.recordType || r.record_type || '').toUpperCase() === 'CNAME') || dnsRecords[0];
-          const val = cnameRecord && (cnameRecord.requiredValue || cnameRecord.required_value);
-          cnameValue = (typeof val === 'string' && val.trim()) ? val.trim() : null;
+          for (const r of dnsRecords) {
+            const rt = (r.recordType || r.record_type || '').toUpperCase();
+            const val = (r.requiredValue || r.required_value || '').trim();
+            if (rt === 'CNAME' && val) cnameValue = val;
+            if (rt === 'TXT' && val) txtVerify = val;
+          }
+          if (!cnameValue) {
+            const cnameRecord = dnsRecords.find(r => (r.recordType || r.record_type || '').toUpperCase() === 'CNAME') || dnsRecords[0];
+            const val = cnameRecord && (cnameRecord.requiredValue || cnameRecord.required_value);
+            cnameValue = (typeof val === 'string' && val.trim()) ? val.trim() : null;
+          }
         }
-        if (cnameValue && payload.id) {
-          await db.run('UPDATE allowed_domains SET railway_cname_target = ? WHERE id = ?', [cnameValue, payload.id]);
+        if (payload.id) {
+          await db.run('UPDATE allowed_domains SET railway_cname_target = ?, railway_txt_verify = ? WHERE id = ?', [cnameValue || null, txtVerify || null, payload.id]);
           payload.railway_cname_target = cnameValue;
+          payload.railway_txt_verify = txtVerify;
         }
         payload.nextStep = 'Domínio cadastrado no painel e no Railway. As configurações DNS deste domínio aparecem na tabela abaixo — use o Valor CNAME na coluna do domínio no seu provedor de DNS. Você pode verificar propagação com o botão "Verificar".';
         payload.railwaySynced = true;
@@ -648,35 +705,77 @@ app.post('/api/domains', async (req, res) => {
   }
 });
 
-// Verificar se o DNS do domínio já propagou (CNAME aponta para o target esperado).
+// Verificar se o DNS do domínio já propagou (CNAME) ou se o domínio responde (útil com Cloudflare proxy).
 app.get('/api/domains/check-dns', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const domain = (req.query.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
   if (!domain) return res.status(400).json({ error: 'Informe o parâmetro domain' });
   const expectedTarget = (req.query.target || '').trim() || getCnameTarget(req);
-  if (!expectedTarget) return res.status(400).json({ error: 'Destino CNAME não definido' });
+  let propagated = false;
+  let resolved = null;
+  let message = '';
   try {
     const cname = await dns.resolve(domain, 'CNAME').catch(() => []);
-    const resolved = Array.isArray(cname) && cname.length ? cname[0].replace(/\.$/, '') : null;
-    const propagated = !!resolved && resolved.toLowerCase() === expectedTarget.toLowerCase();
-    return res.json({
-      domain,
-      expectedTarget,
-      resolved: resolved || null,
-      propagated,
-      message: propagated
-        ? 'DNS propagado. O domínio está apontando corretamente para o servidor.'
-        : (resolved ? `O domínio aponta para ${resolved}. O esperado é ${expectedTarget}.` : 'Ainda não encontramos registro CNAME para este domínio. Pode levar alguns minutos até 48h.')
-    });
+    resolved = Array.isArray(cname) && cname.length ? String(cname[0]).replace(/\.$/, '') : null;
+    propagated = !!resolved && resolved.toLowerCase() === (expectedTarget || '').toLowerCase();
+    if (propagated) {
+      message = 'DNS propagado. O domínio está apontando corretamente para o servidor.';
+    } else if (resolved) {
+      message = `O domínio aponta para ${resolved}. O esperado é ${expectedTarget}.`;
+    } else {
+      message = 'Ainda não encontramos registro CNAME para este domínio.';
+    }
   } catch (e) {
-    return res.json({
-      domain,
-      expectedTarget,
-      resolved: null,
-      propagated: false,
-      message: e.code === 'ENODATA' ? 'Nenhum registro CNAME encontrado para este domínio. Configure no seu provedor de DNS.' : (e.message || 'Erro ao consultar DNS.')
-    });
+    if (e.code === 'ENODATA') message = 'Nenhum registro CNAME encontrado.';
+    else message = e.message || 'Erro ao consultar DNS.';
   }
+  // Fallback: se o domínio responde HTTP/HTTPS, considera OK (útil com Cloudflare proxy, ALIAS, etc.)
+  if (!propagated) {
+    try {
+      const fetchUrl = 'https://' + domain;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      const resp = await fetch(fetchUrl, { method: 'GET', redirect: 'follow', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36' } });
+      clearTimeout(t);
+      if (resp.ok || resp.status === 301 || resp.status === 302) {
+        propagated = true;
+        message = 'Domínio acessível e respondendo. Tudo certo (CNAME pode variar com proxy).';
+      }
+    } catch (_) {}
+  }
+  if (!propagated && !message) message = 'Pode levar alguns minutos até 48h para propagar. Verifique os registros no seu provedor de DNS.';
+  return res.json({ domain, expectedTarget, resolved, propagated, message });
+});
+
+// Sincronizar registros DNS (CNAME + TXT) do Railway para domínios existentes
+app.post('/api/domains/sync-railway', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const result = await fetchRailwayDomainsWithRecords();
+  if (!result.ok) return res.status(400).json({ error: result.error || 'Erro ao consultar Railway.' });
+  let updated = 0;
+  for (const rd of result.domains || []) {
+    const domainName = (rd.domain || rd.name || '').toLowerCase().trim();
+    if (!domainName) continue;
+    let cnameVal = null;
+    let txtVal = null;
+    const records = rd.status && rd.status.dnsRecords;
+    if (Array.isArray(records)) {
+      for (const r of records) {
+        const rt = (r.recordType || r.record_type || '').toUpperCase();
+        const val = (r.requiredValue || r.required_value || '').trim();
+        if (rt === 'CNAME' && val) cnameVal = val;
+        if (rt === 'TXT' && val) txtVal = val;
+      }
+    }
+    const row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ?', [domainName]);
+    if (row && (cnameVal || txtVal)) {
+      await db.run('UPDATE allowed_domains SET railway_cname_target = COALESCE(?, railway_cname_target), railway_txt_verify = COALESCE(?, railway_txt_verify) WHERE id = ?', [cnameVal, txtVal, row.id]);
+      updated++;
+    }
+  }
+  res.json({ success: true, updated, total: (result.domains || []).length });
 });
 
 app.delete('/api/domains/:id', async (req, res) => {
