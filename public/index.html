@@ -709,6 +709,7 @@
       <li class="nav-item"><a class="nav-link" data-section="settings"><i class="ri-settings-3-line"></i> Configurações</a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-section="users"><i class="ri-team-line"></i> Usuários</a></li>
       <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" data-section="metaips"><i class="ri-shield-keyhole-line"></i> IPs Meta</a></li>
+      <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" data-section="autoimprove"><i class="ri-magic-line"></i> Melhorias Automáticas</a></li>
       <li class="nav-item"><a class="nav-link" data-section="domains"><i class="ri-global-line"></i> Domínios</a></li>
       <li class="nav-item"><a class="nav-link" data-section="pages"><i class="ri-file-code-line"></i> Páginas</a></li>
     </ul>
@@ -1123,6 +1124,50 @@
         </div>
       </div>
     </section>
+
+    <!-- Melhorias Automáticas (admin) -->
+    <section id="autoimprove" class="section">
+      <div class="header">
+        <h2>Melhorias Automáticas</h2>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">O sistema analisa os dados coletados e aprende automaticamente para melhorar o cloaker.</p>
+      </div>
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+          <div class="info-item"><span class="info-label">Auto-aplicar novos bots aprendidos</span><label class="switch"><input type="checkbox" id="autoApplyLearnedBots" onchange="saveAutoImproveSettings()"><span class="slider"></span></label></div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Quando um User-Agent aparece 5+ vezes em bloqueios (de 3+ IPs diferentes), adiciona automaticamente à lista de bots. Se desativado, gera apenas sugestões para você aprovar.</p>
+          <div class="info-item" style="margin-top: 16px;"><span class="info-label">Rate limit por IP</span><span class="info-value" id="rateLimitStatus">Ativo</span></div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Bloqueia temporariamente IPs com excesso de requisições (25+ em 5 min). Desative com <code>RATE_LIMIT_ENABLED=0</code> nas variáveis do Railway.</p>
+          <button class="btn btn-secondary" style="margin-top: 16px;" onclick="runAutoJob()"><i class="ri-play-line"></i> Executar análise agora</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header"><h3 class="card-title">Sugestões pendentes</h3></div>
+        <div class="card-body">
+          <div class="table-container"><table><thead><tr><th>Tipo</th><th>Detalhes</th><th>Data</th><th>Ações</th></tr></thead><tbody id="suggestionsTable"></tbody></table></div>
+          <p id="suggestionsEmpty" style="display:none; color: var(--text-secondary);">Nenhuma sugestão pendente.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Padrões de bot aprendidos</h3><button class="btn btn-primary btn-sm" onclick="document.getElementById('learnedBotModal').classList.add('active')"><i class="ri-add-line"></i> Adicionar</button></div>
+        <div class="card-body">
+          <div class="table-container"><table><thead><tr><th>Padrão</th><th>Bloqueios</th><th>Ações</th></tr></thead><tbody id="learnedBotsTable"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal Adicionar padrão bot -->
+    <div class="modal" id="learnedBotModal">
+      <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header"><h3>Adicionar padrão de bot</h3><button class="modal-close" onclick="document.getElementById('learnedBotModal').classList.remove('active')">&times;</button></div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Padrão (substring do User-Agent, ex: MyBot)</label>
+            <input type="text" class="form-input" id="newLearnedBotPattern" placeholder="MyBot">
+          </div>
+          <button class="btn btn-primary" onclick="addLearnedBot()"><i class="ri-save-line"></i> Adicionar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Domínios (admin) -->
     <section id="domains" class="section">
@@ -1567,6 +1612,7 @@
         if (section === 'settings') loadSettings();
         if (section === 'users') loadUsers();
         if (section === 'metaips') loadMetaIPs();
+        if (section === 'autoimprove') loadAutoImprove();
       });
     });
 
@@ -2273,6 +2319,88 @@
       } catch (e) { alert('Erro ao remover'); }
     }
 
+    async function loadAutoImprove() {
+      try {
+        const [setRes, suggRes, learnedRes] = await Promise.all([
+          apiGet('/api/auto-improvements/settings'),
+          apiGet('/api/suggestions'),
+          apiGet('/api/learned-bots')
+        ]);
+        if (setRes && setRes.ok) {
+          const s = await setRes.json();
+          document.getElementById('autoApplyLearnedBots').checked = !!s.auto_apply_learned_bots;
+          document.getElementById('rateLimitStatus').textContent = s.rate_limit_enabled ? 'Ativo' : 'Desativado';
+        }
+        if (suggRes && suggRes.ok) {
+          const list = await suggRes.json();
+          const tbody = document.getElementById('suggestionsTable');
+          const empty = document.getElementById('suggestionsEmpty');
+          if (list && list.length) {
+            tbody.innerHTML = list.map(s => {
+              const d = typeof s.data === 'string' ? JSON.parse(s.data || '{}') : (s.data || {});
+              let detail = '';
+              if (s.type === 'new_bot') detail = `<code title="${(d.pattern||'').replace(/"/g,'')}">${(d.pattern||'').substring(0,60)}…</code> · ${d.count||0} bloqueios · ${d.uniqueIps||0} IPs`;
+              else if (s.type === 'new_reviewer_ip') detail = `IP: ${d.ip} · ${d.reason||''}`;
+              else if (s.type === 'country_suggest') detail = `${d.country}: ${d.blockCount} bloqueios · ${d.suggestion||''}`;
+              return `<tr><td>${s.type}</td><td>${detail}</td><td>${formatDateBR(s.created_at)}</td><td><button class="btn btn-primary btn-sm" onclick="applySuggestion(${s.id})"><i class="ri-check-line"></i></button> <button class="btn btn-secondary btn-sm" onclick="rejectSuggestion(${s.id})"><i class="ri-close-line"></i></button></td></tr>`;
+            }).join('');
+            empty.style.display = 'none';
+          } else {
+            tbody.innerHTML = '';
+            if (empty) empty.style.display = 'block';
+          }
+        }
+        if (learnedRes && learnedRes.ok) {
+          const list = await learnedRes.json();
+          const tbody = document.getElementById('learnedBotsTable');
+          tbody.innerHTML = list && list.length ? list.map(r => `<tr><td><code title="${(r.pattern||'').replace(/"/g,'')}">${(r.pattern||'').substring(0,80)}${(r.pattern||'').length>80?'…':''}</code></td><td>${r.hit_count||0}</td><td><button class="btn btn-secondary btn-sm" onclick="deleteLearnedBot(${r.id})"><i class="ri-delete-bin-line"></i></button></td></tr>`).join('') : '<tr><td colspan="3">Nenhum padrão aprendido.</td></tr>';
+        }
+      } catch (e) { console.error(e); }
+    }
+    async function saveAutoImproveSettings() {
+      const checked = document.getElementById('autoApplyLearnedBots').checked;
+      try {
+        await fetch('/api/auto-improvements/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ auto_apply_learned_bots: checked }) });
+      } catch (e) { alert('Erro ao salvar'); }
+    }
+    async function runAutoJob() {
+      try {
+        await fetch('/api/auto-improvements/run-now', { method: 'POST', credentials: 'include' });
+        loadAutoImprove();
+      } catch (e) { alert('Erro ao executar'); }
+    }
+    async function applySuggestion(id) {
+      try {
+        await fetch(`/api/suggestions/${id}/apply`, { method: 'POST', credentials: 'include' });
+        loadAutoImprove();
+      } catch (e) { alert('Erro ao aplicar'); }
+    }
+    async function rejectSuggestion(id) {
+      try {
+        await fetch(`/api/suggestions/${id}/reject`, { method: 'POST', credentials: 'include' });
+        loadAutoImprove();
+      } catch (e) { alert('Erro ao rejeitar'); }
+    }
+    async function addLearnedBot() {
+      const p = document.getElementById('newLearnedBotPattern').value.trim();
+      if (!p) { alert('Informe o padrão'); return; }
+      try {
+        const res = await fetch('/api/learned-bots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ pattern: p }) });
+        const d = await res.json();
+        if (d.error) { alert(d.error); return; }
+        document.getElementById('newLearnedBotPattern').value = '';
+        document.getElementById('learnedBotModal').classList.remove('active');
+        loadAutoImprove();
+      } catch (e) { alert('Erro ao adicionar'); }
+    }
+    async function deleteLearnedBot(id) {
+      if (!confirm('Remover este padrão?')) return;
+      try {
+        await fetch(`/api/learned-bots/${id}`, { method: 'DELETE', credentials: 'include' });
+        loadAutoImprove();
+      } catch (e) { alert('Erro ao remover'); }
+    }
+
     async function logout() {
       try {
         await fetch('/api/logout', { method: 'POST', credentials: 'include' });
@@ -2869,6 +2997,8 @@
             if (nu) nu.style.display = 'block';
             var nmi = document.getElementById('navMetaIPs');
             if (nmi) nmi.style.display = 'block';
+            var nai = document.getElementById('navAutoImprove');
+            if (nai) nai.style.display = 'block';
             var bc = document.getElementById('backupCard');
             if (bc) bc.style.display = 'block';
           }
@@ -2892,6 +3022,7 @@
     document.getElementById('domainModal').addEventListener('click', e => { if (e.target.id === 'domainModal') document.getElementById('domainModal').classList.remove('active'); });
     document.getElementById('exportModal')?.addEventListener('click', e => { if (e.target.id === 'exportModal') document.getElementById('exportModal').classList.remove('active'); });
     document.getElementById('metaIpModal')?.addEventListener('click', e => { if (e.target.id === 'metaIpModal') document.getElementById('metaIpModal').classList.remove('active'); });
+    document.getElementById('learnedBotModal')?.addEventListener('click', e => { if (e.target.id === 'learnedBotModal') document.getElementById('learnedBotModal').classList.remove('active'); });
   </script>
 </body>
 </html>

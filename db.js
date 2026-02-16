@@ -184,6 +184,23 @@ async function initPg() {
         try { await client.query("INSERT INTO meta_reviewer_ips (ip_or_cidr, description) VALUES ($1, 'Meta/Facebook')", [cidr]); } catch (e) {}
       }
     }
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS learned_bot_patterns (
+        id SERIAL PRIMARY KEY,
+        pattern TEXT NOT NULL UNIQUE,
+        hit_count INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS suggested_improvements (
+        id SERIAL PRIMARY KEY,
+        type TEXT NOT NULL,
+        data TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
   } finally {
     client.release();
   }
@@ -364,6 +381,8 @@ async function initSqlite() {
       ins.free();
     }
   } catch (e) {}
+  try { db.run('CREATE TABLE IF NOT EXISTS learned_bot_patterns (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern TEXT UNIQUE NOT NULL, hit_count INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
+  try { db.run('CREATE TABLE IF NOT EXISTS suggested_improvements (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, data TEXT, status TEXT DEFAULT \'pending\', created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
 
   const DB_PATH_FOR_SAVE = DB_PATH;
   const saveDb = () => {

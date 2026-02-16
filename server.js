@@ -1244,6 +1244,171 @@ app.delete('/api/meta-ips/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// Job de análise automática – roda a cada 6h, aprende padrões e gera sugestões
+async function runAutoImprovementJob() {
+  try {
+    const autoApplyBots = (await db.get("SELECT value FROM settings WHERE key = 'auto_apply_learned_bots'"))?.value === '1';
+    const { start } = getBrasiliaDateRange('7d');
+
+    const blocked = await db.all(`SELECT ip, user_agent, referrer, country FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND user_agent IS NOT NULL AND user_agent != ''`, [start]);
+
+    const uaCount = new Map();
+    const uaIps = new Map();
+    for (const v of blocked || []) {
+      const ua = (v.user_agent || '').trim();
+      if (!ua || ua.length < 4) continue;
+      const key = ua.length > 120 ? ua.substring(0, 120) : ua;
+      uaCount.set(key, (uaCount.get(key) || 0) + 1);
+      if (!uaIps.has(key)) uaIps.set(key, new Set());
+      uaIps.get(key).add(v.ip);
+    }
+
+    let addedBots = 0;
+    for (const [pattern, count] of uaCount) {
+      if (count < 5 || addedBots >= 10) continue;
+      const ips = uaIps.get(pattern);
+      if (!ips || ips.size < 3) continue;
+      const exists = await db.get('SELECT 1 FROM learned_bot_patterns WHERE pattern = ?', [pattern]);
+      if (exists) continue;
+      if (autoApplyBots) {
+        try {
+          if (db.usePg) await db.run('INSERT INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [pattern, count]);
+          else await db.run('INSERT OR IGNORE INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?)', [pattern, count]);
+          await loadLearnedBotPatterns();
+          addedBots++;
+        } catch (e) {}
+      } else {
+        const dataObj = { pattern, count, uniqueIps: ips.size };
+        const dataStr = JSON.stringify(dataObj);
+        await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_bot', ?, 'pending')", [dataStr]);
+        addedBots++;
+      }
+    }
+
+    const fbReferrer = (await db.all(`SELECT DISTINCT ip FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND (referrer LIKE '%facebook.com%' OR referrer LIKE '%fb.com%' OR referrer LIKE '%fb.me%') AND ip IS NOT NULL AND ip != 'unknown' LIMIT 20`, [start])) || [];
+    const metaList = await db.all('SELECT ip_or_cidr FROM meta_reviewer_ips');
+    const metaSet = new Set((metaList || []).map(r => r.ip_or_cidr));
+    for (const row of fbReferrer) {
+      const ip = row.ip;
+      if (!ip || metaSet.has(ip)) continue;
+      const dataStr = JSON.stringify({ ip, reason: 'Bloqueado com referrer Facebook' });
+      await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_reviewer_ip', ?, 'pending')", [dataStr]);
+    }
+
+    const countryBlocks = await db.all(`SELECT country, COUNT(*) as c FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND country IS NOT NULL GROUP BY country ORDER BY c DESC LIMIT 5`, [start]);
+    for (const row of countryBlocks || []) {
+      if (!row.country || row.c < 10) continue;
+      const dataStr = JSON.stringify({ country: row.country, blockCount: row.c, suggestion: 'País com muitos bloqueios – considere adicionar à whitelist se for tráfego desejado' });
+      await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('country_suggest', ?, 'pending')", [dataStr]);
+    }
+  } catch (e) {
+    console.error('[AutoImprovement] Erro:', e.message);
+  }
+}
+
+// API: Listar sugestões (admin)
+app.get('/api/suggestions', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const list = await db.all("SELECT * FROM suggested_improvements WHERE status = 'pending' ORDER BY created_at DESC LIMIT 50");
+  res.json(list || []);
+});
+
+app.post('/api/suggestions/:id/apply', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const row = await db.get('SELECT * FROM suggested_improvements WHERE id = ? AND status = ?', [req.params.id, 'pending']);
+  if (!row) return res.status(404).json({ error: 'Sugestão não encontrada' });
+  const data = typeof row.data === 'string' ? JSON.parse(row.data || '{}') : (row.data || {});
+  if (row.type === 'new_bot' && data.pattern) {
+    try {
+      if (db.usePg) await db.run('INSERT INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [data.pattern, data.count || 0]);
+      else await db.run('INSERT OR IGNORE INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?)', [data.pattern, data.count || 0]);
+      await loadLearnedBotPatterns();
+    } catch (e) {}
+  }
+  if (row.type === 'new_reviewer_ip' && data.ip) {
+    try {
+      if (db.usePg) await db.run('INSERT INTO meta_reviewer_ips (ip_or_cidr, description) VALUES (?, ?) ON CONFLICT (ip_or_cidr) DO NOTHING', [data.ip, 'Sugerido automaticamente']);
+      else await db.run('INSERT OR IGNORE INTO meta_reviewer_ips (ip_or_cidr, description) VALUES (?, ?)', [data.ip, 'Sugerido automaticamente']);
+      await loadMetaReviewerIPs();
+    } catch (e) {}
+  }
+  await db.run('UPDATE suggested_improvements SET status = ? WHERE id = ?', ['applied', req.params.id]);
+  res.json({ success: true });
+});
+
+app.post('/api/suggestions/:id/reject', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  await db.run('UPDATE suggested_improvements SET status = ? WHERE id = ?', ['rejected', req.params.id]);
+  res.json({ success: true });
+});
+
+// API: Padrões aprendidos (admin)
+app.get('/api/learned-bots', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const list = await db.all('SELECT * FROM learned_bot_patterns ORDER BY hit_count DESC');
+  res.json(list || []);
+});
+
+app.delete('/api/learned-bots/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  await db.run('DELETE FROM learned_bot_patterns WHERE id = ?', [req.params.id]);
+  await loadLearnedBotPatterns();
+  res.json({ success: true });
+});
+
+app.post('/api/learned-bots', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const { pattern } = req.body || {};
+  const p = (pattern || '').trim();
+  if (!p || p.length < 2) return res.status(400).json({ error: 'Padrão obrigatório (mín. 2 caracteres)' });
+  try {
+    await db.run('INSERT INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?)', [p, 0]);
+    await loadLearnedBotPatterns();
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: 'Padrão já existe' });
+  }
+});
+
+// API: Configurações de auto-melhorias (admin)
+app.get('/api/auto-improvements/settings', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const autoBots = (await db.get("SELECT value FROM settings WHERE key = 'auto_apply_learned_bots'"))?.value === '1';
+  res.json({ auto_apply_learned_bots: autoBots, rate_limit_enabled: process.env.RATE_LIMIT_ENABLED !== '0' });
+});
+
+app.put('/api/auto-improvements/settings', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const val = req.body?.auto_apply_learned_bots ? '1' : '0';
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES ('auto_apply_learned_bots', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('auto_apply_learned_bots', ?)", [val]);
+  res.json({ success: true });
+});
+
+app.post('/api/auto-improvements/run-now', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  await runAutoImprovementJob();
+  res.json({ success: true, message: 'Análise executada' });
+});
+
 // API: allow_meta_reviewers (admin)
 app.get('/api/settings/allow-meta-reviewers', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -1291,6 +1456,48 @@ async function loadMetaReviewerIPs() {
   } catch (e) {
     metaReviewerIPsCache = [];
   }
+}
+
+// Padrões de bot aprendidos automaticamente
+let learnedBotPatternsCache = [];
+async function loadLearnedBotPatterns() {
+  try {
+    const rows = await db.all('SELECT pattern FROM learned_bot_patterns');
+    learnedBotPatternsCache = (rows || []).map(r => r.pattern).filter(Boolean);
+  } catch (e) {
+    learnedBotPatternsCache = [];
+  }
+}
+function isLearnedBot(ua) {
+  if (!ua) return false;
+  const u = ua.toLowerCase();
+  return learnedBotPatternsCache.some(p => u.includes((p || '').toLowerCase()));
+}
+
+// Rate limit por IP – bloqueio temporário (excesso de requisições)
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;   // 5 min
+const RATE_LIMIT_MAX_REQUESTS = 25;            // máx requisições por janela
+const RATE_LIMIT_BLOCK_MS = 5 * 60 * 1000;    // bloqueia por 5 min
+const ipRequestCount = new Map();              // ip -> { count, firstAt }
+const ipBlockedUntil = new Map();              // ip -> timestamp até desbloquear
+
+function checkRateLimit(ip) {
+  const enabled = (process.env.RATE_LIMIT_ENABLED !== '0');
+  if (!enabled || !ip || ip === 'unknown') return { blocked: false };
+  const now = Date.now();
+  if (ipBlockedUntil.has(ip) && ipBlockedUntil.get(ip) > now) {
+    return { blocked: true, reason: 'Muitas requisições (IP bloqueado temporariamente)' };
+  }
+  if (ipBlockedUntil.get(ip) <= now) ipBlockedUntil.delete(ip);
+  let entry = ipRequestCount.get(ip);
+  if (!entry) { entry = { count: 0, firstAt: now }; ipRequestCount.set(ip, entry); }
+  if (now - entry.firstAt > RATE_LIMIT_WINDOW_MS) { entry.count = 0; entry.firstAt = now; }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+    ipBlockedUntil.set(ip, now + RATE_LIMIT_BLOCK_MS);
+    return { blocked: true, reason: 'Excesso de requisições – tente novamente em alguns minutos' };
+  }
+  return { blocked: false };
 }
 function isSuspectedReviewerIP(ip) {
   if (!ip || ip === 'unknown' || ip.startsWith('::')) return false;
@@ -1442,6 +1649,16 @@ async function handleLinkRedirect(req, res) {
   if (ip === '::1') ip = '127.0.0.1';
   if (!ip) ip = 'unknown';
 
+  // Rate limit: bloqueio temporário por excesso de requisições
+  const rateCheck = checkRateLimit(ip);
+  if (rateCheck.blocked) {
+    const pageUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, was_blocked, block_reason, request_path, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, datetime('now'))`,
+      [site.site_id, ip, req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), pageUrl, rateCheck.reason, req.path]);
+    const blockUrl = site.redirect_url || 'https://www.google.com/';
+    return redirectWithDelay(res, blockUrl);
+  }
+
   const userAgent = req.headers['user-agent'] || '';
   const referer = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
   const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
@@ -1476,6 +1693,7 @@ async function handleLinkRedirect(req, res) {
   }
   function isBot() {
     const u = userAgent.toLowerCase();
+    if (isLearnedBot(userAgent)) return true;
     const bots = [
       'bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk',
       'whatsapp', 'instagram', 'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou',
@@ -1550,7 +1768,11 @@ app.get('/', (req, res) => {
 // Iniciar servidor
 db.initDb().then(async () => {
   await loadMetaReviewerIPs();
-  setInterval(loadMetaReviewerIPs, 5 * 60 * 1000); // recarrega a cada 5 min
+  await loadLearnedBotPatterns();
+  setInterval(loadMetaReviewerIPs, 5 * 60 * 1000);
+  setInterval(loadLearnedBotPatterns, 10 * 60 * 1000);
+  runAutoImprovementJob();
+  setInterval(runAutoImprovementJob, 6 * 60 * 60 * 1000); // a cada 6h
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
