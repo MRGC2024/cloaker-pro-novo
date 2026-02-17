@@ -1350,17 +1350,87 @@ app.delete('/api/meta-ips/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Job de análise automática – roda a cada 6h, aprende padrões e gera sugestões
+// Padrões que NUNCA devem ser aprendidos (bloqueiam usuários reais: apps, browsers legítimos)
+const FORBIDDEN_BOT_PATTERNS = ['instagram', 'whatsapp', 'fb_iab', 'fbav', 'fbnv', 'chrome/', 'safari/', 'firefox', 'mobile', 'android ', 'ios ', 'applewebkit', 'mozilla/', 'edge/', 'opera', 'samsung', 'huawei', 'xiaomi', 'motorola', 'lg ', 'doogee', 'blade'];
+function isForbiddenPattern(p) {
+  if (!p || p.length < 3) return true;
+  const lower = (p + '').toLowerCase();
+  return FORBIDDEN_BOT_PATTERNS.some(f => lower.includes(f) || f.includes(lower));
+}
+function looksLikeRealAdsUser(v) {
+  const ua = (v.user_agent || '').toLowerCase();
+  const utmSrc = ((v.utm_source || '') + '').toUpperCase();
+  const device = ((v.device_type || '') + '').toLowerCase();
+  const ref = ((v.referrer || '') + '').toLowerCase();
+  const fromMeta = ['FB', 'FACEBOOK', 'INSTAGRAM'].includes(utmSrc) || ref.includes('facebook') || ref.includes('instagram') || ref.includes('fb.') || (v.facebook_params && String(v.facebook_params) !== 'null');
+  const mobile = device === 'mobile' || /mobile|android|iphone|ipad/i.test(ua);
+  return fromMeta && mobile && (ref.includes('facebook') || ref.includes('instagram') || (v.utm_medium || '').trim());
+}
+function extractBotPattern(ua) {
+  const known = ['bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebot', 'headless', 'selenium', 'puppeteer', 'phantom', 'curl', 'wget', 'python-requests'];
+  const u = (ua || '').toLowerCase();
+  for (const k of known) {
+    if (u.includes(k)) return k;
+  }
+  if (u.includes('bot')) {
+    const m = u.match(/([a-z0-9_-]+bot[a-z0-9_-]*)/i);
+    if (m) return m[1];
+  }
+  return u.length > 80 ? u.substring(0, 60) : u;
+}
+
+// Job de análise automática – roda a cada 6h, corrige falsos positivos e aprende
 async function runAutoImprovementJob() {
   try {
-    const autoApplyBots = (await db.get("SELECT value FROM settings WHERE key = 'auto_apply_learned_bots'"))?.value === '1';
+    const autoRow = await db.get("SELECT value FROM settings WHERE key = 'auto_apply_learned_bots'");
+    const autoApplyBots = autoRow ? autoRow.value === '1' : true; // default true = full auto
     const { start } = getBrasiliaDateRange('7d');
 
-    const blocked = await db.all(`SELECT ip, user_agent, referrer, country FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND user_agent IS NOT NULL AND user_agent != ''`, [start]);
+    // FASE 0: Remover padrões proibidos que já existem (instagram, chrome, etc)
+    const allLearned = await db.all('SELECT id, pattern FROM learned_bot_patterns');
+    for (const row of allLearned || []) {
+      if (isForbiddenPattern(row.pattern)) {
+        try {
+          await db.run('DELETE FROM learned_bot_patterns WHERE id = ?', [row.id]);
+          await loadLearnedBotPatterns();
+          console.log('[AutoImprovement] Padrão proibido removido:', (row.pattern + '').substring(0, 40));
+        } catch (e) {}
+      }
+    }
 
+    // FASE 1: Remover padrões que causaram falsos positivos (bloquearam usuário real do Ads)
+    const falsePositives = await db.all(
+      `SELECT id, user_agent, utm_source, utm_medium, device_type, referrer, facebook_params FROM visitors 
+       WHERE was_blocked = 1 AND block_reason = 'Bot detectado' AND created_at >= ? AND user_agent IS NOT NULL AND user_agent != ''`,
+      [start]
+    );
+    const patternsToRemove = new Set();
+    for (const v of falsePositives || []) {
+      if (!looksLikeRealAdsUser(v)) continue;
+      const ua = (v.user_agent || '').toLowerCase();
+      for (const p of learnedBotPatternsCache) {
+        if (!p || !ua.includes((p + '').toLowerCase())) continue;
+        patternsToRemove.add(p);
+      }
+    }
+    for (const p of patternsToRemove) {
+      try {
+        await db.run('DELETE FROM learned_bot_patterns WHERE pattern = ?', [p]);
+        await loadLearnedBotPatterns();
+        console.log('[AutoImprovement] Padrão removido (falso positivo):', (p + '').substring(0, 50));
+      } catch (e) {}
+    }
+
+    // FASE 2: Aprender apenas de tráfego que parece bot real (excluir Ads)
+    const blocked = await db.all(
+      `SELECT ip, user_agent, referrer, country, utm_source, utm_medium, device_type, facebook_params 
+       FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND user_agent IS NOT NULL AND user_agent != ''`,
+      [start]
+    );
     const uaCount = new Map();
     const uaIps = new Map();
     for (const v of blocked || []) {
+      if (looksLikeRealAdsUser(v)) continue;
       const ua = (v.user_agent || '').trim();
       if (!ua || ua.length < 4) continue;
       const key = ua.length > 120 ? ua.substring(0, 120) : ua;
@@ -1368,12 +1438,13 @@ async function runAutoImprovementJob() {
       if (!uaIps.has(key)) uaIps.set(key, new Set());
       uaIps.get(key).add(v.ip);
     }
-
     let addedBots = 0;
-    for (const [pattern, count] of uaCount) {
+    for (const [fullUa, count] of uaCount) {
       if (count < 5 || addedBots >= 10) continue;
-      const ips = uaIps.get(pattern);
+      const ips = uaIps.get(fullUa);
       if (!ips || ips.size < 3) continue;
+      const pattern = extractBotPattern(fullUa);
+      if (!pattern || pattern.length < 4 || isForbiddenPattern(pattern)) continue;
       const exists = await db.get('SELECT 1 FROM learned_bot_patterns WHERE pattern = ?', [pattern]);
       if (exists) continue;
       if (autoApplyBots) {
@@ -1382,13 +1453,29 @@ async function runAutoImprovementJob() {
           else await db.run('INSERT OR IGNORE INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?)', [pattern, count]);
           await loadLearnedBotPatterns();
           addedBots++;
+          console.log('[AutoImprovement] Novo padrão:', (pattern + '').substring(0, 60));
         } catch (e) {}
       } else {
-        const dataObj = { pattern, count, uniqueIps: ips.size };
-        const dataStr = JSON.stringify(dataObj);
-        await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_bot', ?, 'pending')", [dataStr]);
+        await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_bot', ?, 'pending')", [JSON.stringify({ pattern, count, uniqueIps: ips.size })]);
         addedBots++;
       }
+    }
+
+    // FASE 3: Auto-aplicar sugestões pendentes new_bot (full auto)
+    const suggestions = await db.all("SELECT * FROM suggested_improvements WHERE status = 'pending' AND type = 'new_bot' ORDER BY created_at DESC LIMIT 20");
+    for (const row of suggestions || []) {
+      const data = typeof row.data === 'string' ? JSON.parse(row.data || '{}') : (row.data || {});
+      const pattern = (data.pattern || '').trim();
+      if (!pattern || isForbiddenPattern(pattern)) {
+        await db.run('UPDATE suggested_improvements SET status = ? WHERE id = ?', ['rejected', row.id]);
+        continue;
+      }
+      try {
+        if (db.usePg) await db.run('INSERT INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [pattern, data.count || 0]);
+        else await db.run('INSERT OR IGNORE INTO learned_bot_patterns (pattern, hit_count) VALUES (?, ?)', [pattern, data.count || 0]);
+        await loadLearnedBotPatterns();
+        await db.run('UPDATE suggested_improvements SET status = ? WHERE id = ?', ['applied', row.id]);
+      } catch (e) {}
     }
 
     const fbReferrer = (await db.all(`SELECT DISTINCT ip FROM visitors WHERE was_blocked = 1 AND created_at >= ? AND (referrer LIKE '%facebook.com%' OR referrer LIKE '%fb.com%' OR referrer LIKE '%fb.me%') AND ip IS NOT NULL AND ip != 'unknown' LIMIT 20`, [start])) || [];
@@ -1797,12 +1884,14 @@ async function handleLinkRedirect(req, res) {
   function isFromFacebook() {
     return referer.includes('facebook.com') || referer.includes('fb.com') || fullUrl.toLowerCase().includes('fbclid=');
   }
+  // Padrões de CRAWLERS/BOTS (não incluir "instagram" nem "whatsapp" – são apps legítimos de usuários reais)
+  // Instagram/WhatsApp crawlers usam facebookexternalhit ou instagrambot. In-app browser tem "Instagram X.X" ou "WhatsApp".
   function isBot() {
     const u = userAgent.toLowerCase();
     if (isLearnedBot(userAgent)) return true;
     const bots = [
-      'bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk',
-      'whatsapp', 'instagram', 'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou',
+      'bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
+      'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou', 'whatsappbot',
       'curl', 'wget', 'python-requests', 'python/', 'java/', 'go-http-client', 'php/',
       'headless', 'headlesschrome', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs',
       'lighthouse', 'gtmetrix', 'screaming frog', 'semrush', 'ahrefsbot', 'dotbot', 'rogerbot', 'proximic',
@@ -1816,8 +1905,19 @@ async function handleLinkRedirect(req, res) {
       (ua.device && (ua.device.model === 'unknown' || ua.device.model === 'Emulator'));
   }
 
+  // Exceção: tráfego com UTMs do Meta Ads + mobile + país permitido = provável cliente real, não bloquear como bot
+  const utmSrc = (req.query.utm_source || '').trim().toUpperCase();
+  const utmMed = (req.query.utm_medium || '').trim();
+  const hasFbclid = !!(req.query.fbclid || '').trim();
+  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
+  const fromMetaAds = (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid || refFromMeta) && (utmMed || hasFbclid);
+  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
+  const likelyRealFromAds = deviceType === 'mobile' && fromMetaAds && countryOk;
+
   let blockReason = null;
-  if (site.block_bots && isBot()) blockReason = 'Bot detectado';
+  if (site.block_bots && isBot()) {
+    if (!likelyRealFromAds) blockReason = 'Bot detectado';
+  }
   else if (isEmulator()) blockReason = 'Emulador detectado (apenas celular real permitido)';
   else if (site.block_desktop && isDesktop()) blockReason = 'Desktop detectado';
   else if (site.block_facebook_library && isFromFacebook() && isDesktop()) blockReason = 'Biblioteca Facebook';
@@ -1878,7 +1978,7 @@ db.initDb().then(async () => {
   setInterval(loadMetaReviewerIPs, 5 * 60 * 1000);
   setInterval(loadLearnedBotPatterns, 10 * 60 * 1000);
   runAutoImprovementJob();
-  setInterval(runAutoImprovementJob, 6 * 60 * 60 * 1000); // a cada 6h
+  setInterval(runAutoImprovementJob, 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
