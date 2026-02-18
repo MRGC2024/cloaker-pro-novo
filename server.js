@@ -2056,25 +2056,32 @@ async function runFallbackHealthCheck() {
       }
 
       if (found) {
+        await setFallbackFailCount(site.site_id, 0);
         const prevOverride = override || primary;
+        const isNewSwitch = prevOverride !== found;
         await db.run('UPDATE sites SET fallback_override_url = ? WHERE site_id = ?', [found, site.site_id]);
-        const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
-        const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
-        await sendTelegramMessage(
-          `⚠️ <b>Site offline – Fallback ativado</b>\n\n` +
-          `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
-          `❌ URL que caiu: <code>${prevOverride.replace(/</g, '&lt;')}</code>\n` +
-          `✅ Novo link em uso: <code>${found.replace(/</g, '&lt;')}</code>\n` +
-          (base ? `Link do painel: ${linkSuffix}\n` : '') +
-          `\nO sistema trocou automaticamente para a URL de contingência.`
-        );
-      } else if (!override && failCount === FALLBACK_CONFIRM_FAILURES) {
-        await sendTelegramMessage(
-          `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
-          `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
-          `URL offline: <code>${currentUrl.replace(/</g, '&lt;')}</code>\n` +
-          `\nConfigure URLs de contingência no painel para troca automática.`
-        );
+        if (isNewSwitch) {
+          const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
+          const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
+          await sendTelegramMessage(
+            `⚠️ <b>Site offline – Fallback ativado</b>\n\n` +
+            `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+            `❌ URL que caiu: <code>${prevOverride.replace(/</g, '&lt;')}</code>\n` +
+            `✅ Novo link em uso: <code>${found.replace(/</g, '&lt;')}</code>\n` +
+            (base ? `Link do painel: ${linkSuffix}\n` : '') +
+            `\nO sistema trocou automaticamente para a URL de contingência. Não enviará novo aviso até o site voltar ou trocar de contingência.`
+          );
+        }
+      } else {
+        await setFallbackFailCount(site.site_id, 0);
+        if (!override && failCount === FALLBACK_CONFIRM_FAILURES) {
+          await sendTelegramMessage(
+            `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
+            `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+            `URL offline: <code>${currentUrl.replace(/</g, '&lt;')}</code>\n` +
+            `\nConfigure URLs de contingência no painel. Não enviará novo aviso por 5 minutos.`
+          );
+        }
       }
     }
   } catch (e) {
