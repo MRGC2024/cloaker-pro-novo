@@ -2053,22 +2053,6 @@ async function runFallbackHealthCheck() {
 
       if (ok) {
         await setFallbackFailCount(site.site_id, 0);
-        if (override) {
-          const primaryOk = await checkUrlReachable(primary);
-          if (primaryOk) {
-            await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
-            await clearFallbackAlertCooldown(site.site_id);
-            const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
-            const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
-            await sendTelegramMessage(
-              `✅ <b>Site recuperado</b>\n\n` +
-              `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
-              `URL principal voltou: <code>${primary.replace(/</g, '&lt;')}</code>\n` +
-              (base ? `Link: ${linkSuffix}\n` : '') +
-              `\nO sistema voltou a usar a URL principal automaticamente.`
-            );
-          }
-        }
         continue;
       }
 
