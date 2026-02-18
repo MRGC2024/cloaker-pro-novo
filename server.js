@@ -14,6 +14,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
+const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim();
 
 // Sessão em PostgreSQL quando DATABASE_URL existe (múltiplas réplicas compartilham o mesmo login)
 let sessionStore = undefined;
@@ -1039,7 +1041,7 @@ app.post('/api/sites', async (req, res) => {
 // API: Atualizar site (apenas se o site pertencer ao usuário)
 app.put('/api/sites/:siteId', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const existing = await db.get('SELECT link_code, user_id, required_ref_token FROM sites WHERE site_id = ?', [req.params.siteId]);
+  const existing = await db.get('SELECT link_code, user_id, required_ref_token, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
   if (!existing) return res.status(404).json({ error: 'Site não encontrado' });
   if (existing.user_id != null && Number(existing.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado a este site' });
   const data = req.body;
@@ -1053,15 +1055,19 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const defaultParams = (data.default_link_params || '').trim() || null;
     const lpId = blockBehavior === 'page' && data.landing_page_id ? parseInt(data.landing_page_id, 10) : null;
     const selDomain = (data.selected_domain || '').trim() || null;
-    await db.run(`
+    const newTarget = (data.target_url || '').trim() || null;
+    const targetChanged = ((existing.target_url || '').trim() || null) !== newTarget;
+    const clearFallback = targetChanged ? ', fallback_override_url = NULL' : '';
+    const sql = `
       UPDATE sites SET
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
-        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?
+        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?${clearFallback}
       WHERE site_id = ?
-    `, [
-      data.name, data.domain, linkCode, (data.target_url || '').trim() || null, data.redirect_url, blockBehavior, defaultParams,
+    `;
+    await db.run(sql, [
+      data.name, data.domain, linkCode, newTarget, data.redirect_url, blockBehavior, defaultParams,
       data.block_desktop ? 1 : 0, data.block_facebook_library ? 1 : 0, data.block_bots ? 1 : 0,
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       data.allowed_countries || '', data.blocked_countries || '', data.is_active ? 1 : 0, refToken,
@@ -1130,12 +1136,45 @@ app.delete('/api/sites/:siteId', async (req, res) => {
   if (!site) return res.status(404).json({ error: 'Site não encontrado' });
   if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
   try {
+    await db.run('DELETE FROM site_fallbacks WHERE site_id = ?', [req.params.siteId]);
     await db.run('DELETE FROM visitors WHERE site_id = ?', [req.params.siteId]);
     await db.run('DELETE FROM sites WHERE site_id = ?', [req.params.siteId]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// API: Fallbacks de contingência (URLs reserva quando o site principal cai)
+app.get('/api/sites/:siteId/fallbacks', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
+  const rows = await db.all('SELECT id, fallback_url, sort_order FROM site_fallbacks WHERE site_id = ? ORDER BY sort_order ASC, id ASC', [req.params.siteId]);
+  res.json(rows);
+});
+app.post('/api/sites/:siteId/fallbacks', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
+  const { fallback_url, sort_order } = req.body || {};
+  const url = (fallback_url || '').trim();
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });
+  const order = parseInt(sort_order, 10);
+  const so = isNaN(order) ? 0 : order;
+  await db.run('INSERT INTO site_fallbacks (site_id, fallback_url, sort_order) VALUES (?, ?, ?)', [req.params.siteId, url, so]);
+  const row = await db.get('SELECT id, fallback_url, sort_order FROM site_fallbacks WHERE site_id = ? ORDER BY id DESC LIMIT 1', [req.params.siteId]);
+  res.status(201).json(row);
+});
+app.delete('/api/sites/:siteId/fallbacks/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
+  await db.run('DELETE FROM site_fallbacks WHERE site_id = ? AND id = ?', [req.params.siteId, req.params.id]);
+  res.json({ success: true });
 });
 
 // API: Listar visitantes (apenas dos sites do usuário)
@@ -1813,11 +1852,143 @@ function redirectWithDelay(res, url, status = 302) {
   setTimeout(() => res.redirect(status, url), delay);
 }
 
+// ---------- Fallback de site (verificação a cada minuto + Telegram) ----------
+const FALLBACK_CHECK_MS = 60 * 1000;
+const URL_CHECK_TIMEOUT_MS = 8000;
+
+async function checkUrlReachable(url) {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim();
+  if (!u.startsWith('http://') && !u.startsWith('https://')) return false;
+  try {
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
+    const res = await fetch(u, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlokbotHealthCheck/1.0)' }
+    });
+    clearTimeout(to);
+    return res.ok || (res.status >= 200 && res.status < 400);
+  } catch (e) {
+    try {
+      const controller = new AbortController();
+      const to = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
+      const res = await fetch(u, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlokbotHealthCheck/1.0)' }
+      });
+      clearTimeout(to);
+      return res.ok || (res.status >= 200 && res.status < 400);
+    } catch (e2) {
+      return false;
+    }
+  }
+}
+
+async function sendTelegramMessage(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  try {
+    const u = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    await fetch(u, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true })
+    });
+  } catch (e) {
+    console.error('Telegram send error:', e.message);
+  }
+}
+
+async function runFallbackHealthCheck() {
+  try {
+    const sites = await db.all(`
+      SELECT site_id, name, link_code, target_url, fallback_override_url, selected_domain
+      FROM sites
+      WHERE is_active = 1 AND (target_url IS NOT NULL AND target_url != '')
+    `);
+    for (const site of sites) {
+      const primary = (site.target_url || '').trim();
+      const override = (site.fallback_override_url || '').trim();
+      const currentUrl = override || primary;
+      if (!currentUrl) continue;
+
+      const ok = await checkUrlReachable(currentUrl);
+
+      if (ok) {
+        if (override) {
+          await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
+          const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
+          const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
+          await sendTelegramMessage(
+            `✅ <b>Site recuperado</b>\n\n` +
+            `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+            `URL principal voltou: <code>${primary.replace(/</g, '&lt;')}</code>\n` +
+            (base ? `Link: ${linkSuffix}\n` : '') +
+            `\nO sistema voltou a usar a URL principal automaticamente.`
+          );
+        }
+        continue;
+      }
+
+      const fallbacks = await db.all(
+        'SELECT fallback_url FROM site_fallbacks WHERE site_id = ? ORDER BY sort_order ASC, id ASC',
+        [site.site_id]
+      );
+      let found = null;
+      for (const fb of fallbacks) {
+        const furl = (fb.fallback_url || '').trim();
+        if (!furl) continue;
+        if (await checkUrlReachable(furl)) {
+          found = furl;
+          break;
+        }
+      }
+
+      if (found) {
+        const prevOverride = override || primary;
+        await db.run('UPDATE sites SET fallback_override_url = ? WHERE site_id = ?', [found, site.site_id]);
+        const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
+        const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
+        await sendTelegramMessage(
+          `⚠️ <b>Site offline – Fallback ativado</b>\n\n` +
+          `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+          `❌ URL que caiu: <code>${prevOverride.replace(/</g, '&lt;')}</code>\n` +
+          `✅ Novo link em uso: <code>${found.replace(/</g, '&lt;')}</code>\n` +
+          (base ? `Link do painel: ${linkSuffix}\n` : '') +
+          `\nO sistema trocou automaticamente para a URL de contingência.`
+        );
+      } else if (!override) {
+        await sendTelegramMessage(
+          `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
+          `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+          `URL offline: <code>${currentUrl.replace(/</g, '&lt;')}</code>\n` +
+          `\nConfigure URLs de contingência no painel para troca automática.`
+        );
+      }
+    }
+  } catch (e) {
+    console.error('Fallback health check error:', e.message);
+  }
+}
+
+// URL efetiva: fallback_override_url (quando site caiu) ou target_url
+function getEffectiveTargetUrl(site) {
+  if (!site) return null;
+  const override = (site.fallback_override_url || '').trim();
+  const primary = (site.target_url || '').trim();
+  return override || primary || null;
+}
+
 // Handler compartilhado para /go/ e /r/ (rota alternativa para diversificar URLs)
 async function handleLinkRedirect(req, res) {
   const code = (req.params.code || '').toLowerCase();
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  if (!site || !site.target_url) {
+  const destUrl = getEffectiveTargetUrl(site);
+  if (!site || !destUrl) {
     return redirectWithDelay(res, 'https://www.google.com/');
   }
 
@@ -1865,8 +2036,8 @@ async function handleLinkRedirect(req, res) {
 
   // Se IP é de revisão do Meta e allow_meta_reviewers=1: mostrar landing para passar na análise
   const allowMetaReviewers = (await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'"))?.value === '1';
-  if (suspectedReviewer && allowMetaReviewers && site.target_url) {
-    let dest = site.target_url;
+  if (suspectedReviewer && allowMetaReviewers && destUrl) {
+    let dest = destUrl;
     const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
     if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
     await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now'))`,
@@ -1951,7 +2122,7 @@ async function handleLinkRedirect(req, res) {
   }
 
   // Redireciona para a oferta com a mesma query string (UTMs, fbclid, etc.) para a landing receber
-  let dest = site.target_url;
+  let dest = destUrl;
   const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
   if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
   return redirectWithDelay(res, dest);
@@ -1979,6 +2150,8 @@ db.initDb().then(async () => {
   setInterval(loadLearnedBotPatterns, 10 * 60 * 1000);
   runAutoImprovementJob();
   setInterval(runAutoImprovementJob, 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
+  runFallbackHealthCheck();
+  setInterval(runFallbackHealthCheck, FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗

@@ -11,6 +11,20 @@ Sistema completo de cloaking com painel de controle para monitorar **múltiplos 
 - 📈 **Gráficos** de visitas, países, navegadores
 - 📥 **Exportação** de dados (JSON/CSV)
 - ⚙️ **Configurações** individuais por site
+- 🔄 **Fallback automático** – Se a URL da landing cair, o sistema troca para uma URL de contingência em segundos
+- 📱 **Notificações Telegram** – Avisos quando um site fica offline ou volta a funcionar
+
+## 🔄 Fallback de Site (URLs de contingência)
+
+O sistema verifica a cada **1 minuto** se as URLs das suas landings estão ativas. Se detectar offline:
+
+1. Troca automaticamente para a primeira URL de contingência cadastrada que responder
+2. Envia notificação no **Telegram** (link que caiu + link novo em uso)
+3. Quando a URL principal voltar, retorna ao uso normal e avisa no Telegram
+
+**Configuração Telegram:** defina no ambiente (ex: Railway Variables):
+- `TELEGRAM_BOT_TOKEN` – Token do Bot (crie em @BotFather)
+- `TELEGRAM_CHAT_ID` – ID do chat/ grupo para receber os avisos
 
 ## 🚀 Instalação
 

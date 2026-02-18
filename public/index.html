@@ -1449,6 +1449,21 @@
           <label class="form-label">URL do seu site (landing page)</label>
           <input type="url" class="form-input" id="siteTargetUrl" placeholder="https://meusite.com/landing" required>
           <small style="color: var(--text-secondary); font-size: 12px;">Link real da sua página. Quem for permitido vai para esse link.</small>
+          <div id="siteFallbackStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(63,185,80,0.15); border-radius:8px; font-size:13px; color:var(--success);">
+            <i class="ri-checkbox-circle-line"></i> <span id="siteFallbackStatusText"></span>
+          </div>
+          <div id="siteFallbackOverrideStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(210,153,34,0.15); border-radius:8px; font-size:13px; color:var(--warning);">
+            <i class="ri-alert-line"></i> Usando URL de contingência: <code id="siteFallbackOverrideUrl" style="font-size:12px; word-break:break-all;"></code>
+          </div>
+        </div>
+        <div id="siteFallbacksSection" style="display:none; margin-top:16px; padding:16px; background:var(--bg-secondary); border-radius:10px;">
+          <h4 style="margin:0 0 12px; font-size:15px;"><i class="ri-refresh-line"></i> URLs de contingência (fallback)</h4>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Se a URL principal ficar offline, o sistema troca automaticamente para a primeira URL de contingência que responder. Verificação a cada minuto.</p>
+          <div id="siteFallbacksList" style="margin-bottom: 12px;"></div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <input type="url" class="form-input" id="siteFallbackUrlInput" placeholder="https://backup.meusite.com/landing" style="flex:1; min-width:200px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addFallbackUrl()"><i class="ri-add-line"></i> Adicionar</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Domínio (opcional)</label>
@@ -1763,7 +1778,7 @@
         <div class="site-card">
           <div class="site-card-header">
             <div>
-              <div class="site-card-title">${s.name}</div>
+              <div class="site-card-title">${s.name} ${s.fallback_override_url ? '<span class="badge badge-warning" style="font-size:10px;margin-left:6px;" title="Usando URL de contingência">Fallback ativo</span>' : ''}</div>
               <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -1830,6 +1845,9 @@
       document.getElementById('siteRefTokenBox').style.display = 'none';
       document.getElementById('siteDefaultLinkParams').value = '';
       regenerateRefOnSave = false;
+      document.getElementById('siteFallbacksSection').style.display = 'none';
+      document.getElementById('siteFallbackStatus').style.display = 'none';
+      document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -1840,7 +1858,7 @@
       if (selPage) selPage.innerHTML = '<option value="">— Selecione —</option>' + (pagesList || []).map(p => '<option value="' + p.id + '">' + (p.name || 'Página ' + p.id) + '</option>').join('');
     }
 
-    function editSite(siteId) {
+    async function editSite(siteId) {
       const site = sites.find(s => s.site_id === siteId);
       if (!site) return;
       document.getElementById('siteModalTitle').textContent = 'Editar Site';
@@ -1848,6 +1866,12 @@
       document.getElementById('siteName').value = site.name;
       document.getElementById('siteDomain').value = site.domain || '';
       document.getElementById('siteTargetUrl').value = site.target_url || '';
+      document.getElementById('siteFallbacksSection').style.display = 'block';
+      document.getElementById('siteFallbackStatus').style.display = 'none';
+      document.getElementById('siteFallbackOverrideStatus').style.display = site.fallback_override_url ? 'block' : 'none';
+      if (site.fallback_override_url) document.getElementById('siteFallbackOverrideUrl').textContent = site.fallback_override_url;
+      document.getElementById('siteFallbackUrlInput').value = '';
+      await loadSiteFallbacks(siteId);
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
       const behavior = site.block_behavior || 'redirect';
       const isEmbed = behavior === 'embed';
@@ -1946,6 +1970,54 @@
     }
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
+
+    async function loadSiteFallbacks(siteId) {
+      const listEl = document.getElementById('siteFallbacksList');
+      if (!listEl) return;
+      try {
+        const res = await apiGet(`/api/sites/${siteId}/fallbacks`);
+        if (!res || !res.ok) { listEl.innerHTML = ''; return; }
+        const arr = await res.json();
+        if (!Array.isArray(arr) || arr.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL de contingência cadastrada.</div>';
+          return;
+        }
+        listEl.innerHTML = arr.map(f => `
+          <div class="fallback-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;">
+            <span style="flex:1;font-size:13px;word-break:break-all;">${(f.fallback_url || '').replace(/</g, '&lt;')}</span>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeFallbackUrl('${siteId}','${f.id}')" title="Remover"><i class="ri-delete-bin-line"></i></button>
+          </div>
+        `).join('');
+      } catch (e) {
+        listEl.innerHTML = '<div style="color:var(--danger);font-size:13px;">Erro ao carregar fallbacks</div>';
+      }
+    }
+
+    async function addFallbackUrl() {
+      const siteId = document.getElementById('editSiteId').value;
+      const input = document.getElementById('siteFallbackUrlInput');
+      const url = (input && input.value || '').trim();
+      if (!siteId || !url) { alert('Digite uma URL válida'); return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) { alert('A URL deve começar com http:// ou https://'); return; }
+      try {
+        await fetch(`/api/sites/${siteId}/fallbacks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ fallback_url: url, sort_order: 0 })
+        });
+        input.value = '';
+        await loadSiteFallbacks(siteId);
+      } catch (e) { alert('Erro ao adicionar URL de contingência'); }
+    }
+
+    async function removeFallbackUrl(siteId, id) {
+      if (!confirm('Remover esta URL de contingência?')) return;
+      try {
+        await fetch(`/api/sites/${siteId}/fallbacks/${id}`, { method: 'DELETE', credentials: 'include' });
+        await loadSiteFallbacks(siteId);
+      } catch (e) { alert('Erro ao remover'); }
+    }
 
     // Stats
     async function refreshStats() {

@@ -148,6 +148,16 @@ async function initPg() {
     try { await client.query('ALTER TABLE allowed_domains ADD COLUMN railway_txt_verify TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN selected_domain TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN landing_page_id INTEGER'); } catch (e) {}
+    try { await client.query('ALTER TABLE sites ADD COLUMN fallback_override_url TEXT'); } catch (e) {}
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS site_fallbacks (
+        id SERIAL PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        fallback_url TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
     await client.query(`
       CREATE TABLE IF NOT EXISTS landing_pages (
         id SERIAL PRIMARY KEY,
@@ -271,6 +281,8 @@ async function initSqlite() {
   try { db.run('ALTER TABLE sites ADD COLUMN default_link_params TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN selected_domain TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN landing_page_id INTEGER'); } catch (e) {}
+  try { db.run('ALTER TABLE sites ADD COLUMN fallback_override_url TEXT'); } catch (e) {}
+  try { db.run('CREATE TABLE IF NOT EXISTS site_fallbacks (id INTEGER PRIMARY KEY AUTOINCREMENT, site_id TEXT NOT NULL, fallback_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS landing_pages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
