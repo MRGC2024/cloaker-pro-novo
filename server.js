@@ -1966,6 +1966,42 @@ async function getFallbackFailCount(siteId) {
   return counts[siteId] || 0;
 }
 
+const FALLBACK_ALERT_COOLDOWN_MS = 30 * 60 * 1000; // 30 min – não reenviar o mesmo tipo de aviso
+
+async function getFallbackAlertCooldowns() {
+  const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_alert_cooldown'");
+  if (!row || !row.value) return {};
+  try {
+    const o = JSON.parse(row.value);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function setFallbackAlertCooldown(siteId) {
+  const cooldowns = await getFallbackAlertCooldowns();
+  cooldowns[siteId] = Date.now();
+  const val = JSON.stringify(cooldowns);
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['fallback_alert_cooldown', val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['fallback_alert_cooldown', val]);
+}
+
+async function canSendFallbackAlert(siteId) {
+  const cooldowns = await getFallbackAlertCooldowns();
+  const last = cooldowns[siteId];
+  if (!last) return true;
+  return (Date.now() - last) >= FALLBACK_ALERT_COOLDOWN_MS;
+}
+
+async function clearFallbackAlertCooldown(siteId) {
+  const cooldowns = await getFallbackAlertCooldowns();
+  delete cooldowns[siteId];
+  const val = JSON.stringify(cooldowns);
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['fallback_alert_cooldown', val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['fallback_alert_cooldown', val]);
+}
+
 async function getTelegramConfig() {
   const tokenRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_bot_token'");
   const chatRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_chat_id'");
@@ -2021,6 +2057,7 @@ async function runFallbackHealthCheck() {
           const primaryOk = await checkUrlReachable(primary);
           if (primaryOk) {
             await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
+            await clearFallbackAlertCooldown(site.site_id);
             const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
             const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
             await sendTelegramMessage(
@@ -2060,7 +2097,8 @@ async function runFallbackHealthCheck() {
         const prevOverride = override || primary;
         const isNewSwitch = prevOverride !== found;
         await db.run('UPDATE sites SET fallback_override_url = ? WHERE site_id = ?', [found, site.site_id]);
-        if (isNewSwitch) {
+        if (isNewSwitch && (await canSendFallbackAlert(site.site_id))) {
+          await setFallbackAlertCooldown(site.site_id);
           const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
           const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
           await sendTelegramMessage(
@@ -2069,17 +2107,18 @@ async function runFallbackHealthCheck() {
             `❌ URL que caiu: <code>${prevOverride.replace(/</g, '&lt;')}</code>\n` +
             `✅ Novo link em uso: <code>${found.replace(/</g, '&lt;')}</code>\n` +
             (base ? `Link do painel: ${linkSuffix}\n` : '') +
-            `\nO sistema trocou automaticamente para a URL de contingência. Não enviará novo aviso até o site voltar ou trocar de contingência.`
+            `\nO sistema trocou automaticamente. Não enviará novo aviso por 30 min (mesmo site).`
           );
         }
       } else {
         await setFallbackFailCount(site.site_id, 0);
-        if (!override && failCount === FALLBACK_CONFIRM_FAILURES) {
+        if (!override && failCount === FALLBACK_CONFIRM_FAILURES && (await canSendFallbackAlert(site.site_id))) {
+          await setFallbackAlertCooldown(site.site_id);
           await sendTelegramMessage(
             `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
             `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
             `URL offline: <code>${currentUrl.replace(/</g, '&lt;')}</code>\n` +
-            `\nConfigure URLs de contingência no painel. Não enviará novo aviso por 5 minutos.`
+            `\nConfigure URLs de contingência no painel. Próximo aviso só em 30 min (mesmo site).`
           );
         }
       }
