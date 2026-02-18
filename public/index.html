@@ -811,6 +811,15 @@
         </div>
         <div class="card-body">
           <div id="fallbackStatusSummary" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 14px;"></div>
+          <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 10px;">
+            <h4 style="margin: 0 0 10px; font-size: 14px;"><i class="ri-link"></i> Definir mesma URL para todos os sites</h4>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Altera a URL principal de todos os seus sites de uma vez e limpa contingência.</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <input type="url" class="form-input" id="bulkPrimaryUrlInput" placeholder="https://nova-url.com/landing" style="flex: 1; min-width: 260px;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetPrimaryUrl()"><i class="ri-links-line"></i> Aplicar em todos</button>
+            </div>
+            <span id="bulkPrimaryUrlMsg" style="margin-left: 10px; font-size: 13px;"></span>
+          </div>
           <div class="table-container">
             <table>
               <thead>
@@ -832,8 +841,13 @@
           <h3 class="card-title"><i class="ri-list-check"></i> URLs em standby (para substituição)</h3>
         </div>
         <div class="card-body">
-          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">Quando um site cair, o sistema usa estas URLs em ordem. Configure em <strong>Configurações → Fallback e Telegram</strong>.</p>
-          <div id="fallbackStandbyList"></div>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">Quando um site cair, o sistema usa estas URLs em ordem. Adicione ou remova abaixo (admin).</p>
+          <div id="fallbackStandbyList" style="margin-bottom: 12px;"></div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <input type="url" class="form-input" id="fallbackStandbyUrlInput" placeholder="https://backup.landing.com" style="flex: 1; min-width: 200px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addFallbackFromStatusPage()"><i class="ri-add-line"></i> Adicionar standby</button>
+          </div>
+          <span id="fallbackStandbyMsg" style="margin-left: 10px; font-size: 13px;"></span>
         </div>
       </div>
     </section>
@@ -2073,15 +2087,9 @@
           const setRes = await apiGet('/api/admin/fallback-settings');
           if (setRes && setRes.ok) {
             const d = await setRes.json();
-            const urls = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
+            globalFallbacksCache = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
             standbyCard.style.display = 'block';
-            if (urls.length === 0) {
-              standbyList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL em standby. Configure em Configurações → Fallback e Telegram.</div>';
-            } else {
-              standbyList.innerHTML = '<ol style="margin:0;padding-left:20px;color:var(--text-primary);">' +
-                urls.map((u, i) => '<li style="margin-bottom:6px;"><code style="font-size:12px;word-break:break-all;">' + (u || '').replace(/</g, '&lt;') + '</code></li>').join('') +
-                '</ol>';
-            }
+            renderFallbackStandbyList();
           } else {
             standbyCard.style.display = 'none';
           }
@@ -2091,6 +2099,75 @@
       } catch (e) {
         tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
       }
+    }
+
+    function renderFallbackStandbyList() {
+      const standbyList = document.getElementById('fallbackStandbyList');
+      if (!standbyList) return;
+      if (globalFallbacksCache.length === 0) {
+        standbyList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL em standby. Adicione abaixo.</div>';
+        return;
+      }
+      standbyList.innerHTML = globalFallbacksCache.map((url, i) => `
+        <div class="fallback-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;">
+          <span style="flex:1;font-size:13px;word-break:break-all;">${(url || '').replace(/</g, '&lt;')}</span>
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeFallbackFromStatusPage(${i})" title="Remover"><i class="ri-delete-bin-line"></i></button>
+        </div>
+      `).join('');
+    }
+
+    async function addFallbackFromStatusPage() {
+      const input = document.getElementById('fallbackStandbyUrlInput');
+      const msg = document.getElementById('fallbackStandbyMsg');
+      const url = (input && input.value || '').trim();
+      if (!url) { if (msg) msg.textContent = 'Digite uma URL'; msg.style.color = 'var(--danger)'; return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
+      try {
+        globalFallbacksCache.push(url);
+        await fetch('/api/admin/fallback-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ global_fallbacks: globalFallbacksCache })
+        });
+        input.value = '';
+        renderFallbackStandbyList();
+        if (msg) { msg.textContent = 'Adicionado.'; msg.style.color = 'var(--success)'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+      } catch (e) { if (msg) { msg.textContent = 'Erro ao salvar'; msg.style.color = 'var(--danger)'; } }
+    }
+
+    async function removeFallbackFromStatusPage(idx) {
+      globalFallbacksCache.splice(idx, 1);
+      try {
+        await fetch('/api/admin/fallback-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ global_fallbacks: globalFallbacksCache })
+        });
+        renderFallbackStandbyList();
+      } catch (e) {}
+    }
+
+    async function bulkSetPrimaryUrl() {
+      const input = document.getElementById('bulkPrimaryUrlInput');
+      const msg = document.getElementById('bulkPrimaryUrlMsg');
+      const url = (input && input.value || '').trim();
+      if (!url) { if (msg) msg.textContent = 'Digite uma URL'; msg.style.color = 'var(--danger)'; return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
+      if (!confirm('Definir esta URL como URL principal de TODOS os seus sites? A contingência será limpa.')) return;
+      try {
+        const res = await fetch('/api/sites/bulk-primary-url', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ url })
+        });
+        if (!res.ok) throw new Error('Erro');
+        if (msg) { msg.textContent = 'Aplicado em todos os sites.'; msg.style.color = 'var(--success)'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+        loadFallbackStatus();
+        loadSites();
+      } catch (e) { if (msg) { msg.textContent = e.message || 'Erro ao aplicar'; msg.style.color = 'var(--danger)'; } }
     }
 
     let globalFallbacksCache = [];

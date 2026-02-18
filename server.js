@@ -1078,6 +1078,19 @@ app.put('/api/sites/:siteId', async (req, res) => {
   }
 });
 
+// API: Definir mesma URL principal para todos os sites do usuário (e limpar fallback)
+app.put('/api/sites/bulk-primary-url', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const url = (req.body?.url || '').trim();
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });
+  try {
+    await db.run('UPDATE sites SET target_url = ?, fallback_override_url = NULL WHERE user_id = ?', [url, req.session.userId]);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // API: Atualizar domínio selecionado do site
 app.put('/api/sites/:siteId/selected-domain', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -1198,7 +1211,7 @@ app.post('/api/admin/fallback-settings/test-telegram', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: '✅ <b>Teste do Cloaker Pro</b>\n\nO Telegram está funcionando! Você receberá avisos quando algum site ficar offline.',
+        text: TELEGRAM_PREFIX + '✅ <b>Teste do Cloaker Pro</b>\n\nO Telegram está funcionando! Você receberá avisos quando algum site ficar offline.\n\n— <i>Notificação enviada pelo Painel Cloaker</i>',
         parse_mode: 'HTML',
         disable_web_page_preview: true
       })
@@ -1966,7 +1979,8 @@ async function getFallbackFailCount(siteId) {
   return counts[siteId] || 0;
 }
 
-const FALLBACK_ALERT_COOLDOWN_MS = 30 * 60 * 1000; // 30 min – não reenviar o mesmo tipo de aviso
+const FALLBACK_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 h – não reenviar aviso de site off para o mesmo site
+const TELEGRAM_PREFIX = '🔔 <b>Painel Cloaker</b>\n\n';
 
 async function getFallbackAlertCooldowns() {
   const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_alert_cooldown'");
@@ -2013,12 +2027,13 @@ async function getTelegramConfig() {
 async function sendTelegramMessage(text) {
   const { token, chatId } = await getTelegramConfig();
   if (!token || !chatId) return;
+  const fullText = TELEGRAM_PREFIX + text + '\n\n— <i>Notificação enviada pelo Painel Cloaker</i>';
   try {
     const u = `https://api.telegram.org/bot${token}/sendMessage`;
     await fetch(u, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true })
+      body: JSON.stringify({ chat_id: chatId, text: fullText, parse_mode: 'HTML', disable_web_page_preview: true })
     });
   } catch (e) {
     console.error('Telegram send error:', e.message);
@@ -2091,7 +2106,7 @@ async function runFallbackHealthCheck() {
             `❌ URL que caiu: <code>${prevOverride.replace(/</g, '&lt;')}</code>\n` +
             `✅ Novo link em uso: <code>${found.replace(/</g, '&lt;')}</code>\n` +
             (base ? `Link do painel: ${linkSuffix}\n` : '') +
-            `\nO sistema trocou automaticamente. Não enviará novo aviso por 30 min (mesmo site).`
+            `\nO sistema trocou automaticamente. Não enviará novo aviso por 24 h (mesmo site).`
           );
         }
       } else {
@@ -2102,7 +2117,7 @@ async function runFallbackHealthCheck() {
             `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
             `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
             `URL offline: <code>${currentUrl.replace(/</g, '&lt;')}</code>\n` +
-            `\nConfigure URLs de contingência no painel. Próximo aviso só em 30 min (mesmo site).`
+            `\nConfigure URLs de contingência no painel. Próximo aviso só em 24 h (mesmo site).`
           );
         }
       }
