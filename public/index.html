@@ -1110,6 +1110,32 @@
           <span id="backupMsg" style="margin-left: 10px; font-size: 13px;"></span>
         </div>
       </div>
+      <div class="card" id="fallbackCard" style="display: none;">
+        <div class="card-header"><h3 class="card-title"><i class="ri-refresh-line"></i> Fallback e Telegram (admin)</h3></div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 20px;">Configure em um único lugar. Quando <strong>qualquer</strong> site ficar offline, o sistema troca automaticamente para a primeira URL de contingência que responder. Notificações enviadas no Telegram.</p>
+          <h4 style="margin: 20px 0 10px; font-size: 14px;">Telegram (notificações)</h4>
+          <div class="form-group">
+            <label class="form-label">Token do Bot</label>
+            <input type="password" class="form-input" id="telegramBotToken" placeholder="123456:ABC-DEF..." autocomplete="off">
+            <small style="color: var(--text-secondary); font-size: 12px;">Crie um bot em @BotFather e cole o token aqui.</small>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chat ID</label>
+            <input type="text" class="form-input" id="telegramChatId" placeholder="Ex: -1001234567890">
+            <small style="color: var(--text-secondary); font-size: 12px;">ID do chat ou grupo onde receber os avisos.</small>
+          </div>
+          <h4 style="margin: 25px 0 10px; font-size: 14px;">URLs de contingência (fallback global)</h4>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Uma lista única para todos os sites. Quando a URL principal de um site cair, o sistema testa estas URLs em ordem e usa a primeira que responder.</p>
+          <div id="globalFallbacksList" style="margin-bottom: 12px;"></div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <input type="url" class="form-input" id="globalFallbackUrlInput" placeholder="https://backup.landing.com" style="flex:1; min-width:200px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addGlobalFallback()"><i class="ri-add-line"></i> Adicionar</button>
+          </div>
+          <button type="button" class="btn btn-primary" style="margin-top: 20px;" onclick="saveFallbackSettings()"><i class="ri-save-line"></i> Salvar configurações</button>
+          <span id="fallbackSettingsMsg" style="margin-left: 15px; font-size: 13px;"></span>
+        </div>
+      </div>
     </section>
 
     <!-- Usuários (admin) -->
@@ -1449,20 +1475,8 @@
           <label class="form-label">URL do seu site (landing page)</label>
           <input type="url" class="form-input" id="siteTargetUrl" placeholder="https://meusite.com/landing" required>
           <small style="color: var(--text-secondary); font-size: 12px;">Link real da sua página. Quem for permitido vai para esse link.</small>
-          <div id="siteFallbackStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(63,185,80,0.15); border-radius:8px; font-size:13px; color:var(--success);">
-            <i class="ri-checkbox-circle-line"></i> <span id="siteFallbackStatusText"></span>
-          </div>
           <div id="siteFallbackOverrideStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(210,153,34,0.15); border-radius:8px; font-size:13px; color:var(--warning);">
             <i class="ri-alert-line"></i> Usando URL de contingência: <code id="siteFallbackOverrideUrl" style="font-size:12px; word-break:break-all;"></code>
-          </div>
-        </div>
-        <div id="siteFallbacksSection" style="display:none; margin-top:16px; padding:16px; background:var(--bg-secondary); border-radius:10px;">
-          <h4 style="margin:0 0 12px; font-size:15px;"><i class="ri-refresh-line"></i> URLs de contingência (fallback)</h4>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Se a URL principal ficar offline, o sistema troca automaticamente para a primeira URL de contingência que responder. Verificação a cada minuto.</p>
-          <div id="siteFallbacksList" style="margin-bottom: 12px;"></div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <input type="url" class="form-input" id="siteFallbackUrlInput" placeholder="https://backup.meusite.com/landing" style="flex:1; min-width:200px;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addFallbackUrl()"><i class="ri-add-line"></i> Adicionar</button>
           </div>
         </div>
         <div class="form-group">
@@ -1710,7 +1724,7 @@
         if (section === 'pages') loadPages();
         if (section === 'script') loadScriptSection();
         if (section === 'analytics') loadAnalytics();
-        if (section === 'settings') loadSettings();
+        if (section === 'settings') { loadSettings(); if (currentUser && currentUser.role === 'admin') loadFallbackSettings(); }
         if (section === 'users') loadUsers();
         if (section === 'metaips') loadMetaIPs();
         if (section === 'autoimprove') loadAutoImprove();
@@ -1845,8 +1859,6 @@
       document.getElementById('siteRefTokenBox').style.display = 'none';
       document.getElementById('siteDefaultLinkParams').value = '';
       regenerateRefOnSave = false;
-      document.getElementById('siteFallbacksSection').style.display = 'none';
-      document.getElementById('siteFallbackStatus').style.display = 'none';
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
       document.getElementById('siteModal').classList.add('active');
     }
@@ -1866,12 +1878,8 @@
       document.getElementById('siteName').value = site.name;
       document.getElementById('siteDomain').value = site.domain || '';
       document.getElementById('siteTargetUrl').value = site.target_url || '';
-      document.getElementById('siteFallbacksSection').style.display = 'block';
-      document.getElementById('siteFallbackStatus').style.display = 'none';
       document.getElementById('siteFallbackOverrideStatus').style.display = site.fallback_override_url ? 'block' : 'none';
       if (site.fallback_override_url) document.getElementById('siteFallbackOverrideUrl').textContent = site.fallback_override_url;
-      document.getElementById('siteFallbackUrlInput').value = '';
-      await loadSiteFallbacks(siteId);
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
       const behavior = site.block_behavior || 'redirect';
       const isEmbed = behavior === 'embed';
@@ -1971,52 +1979,64 @@
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
 
-    async function loadSiteFallbacks(siteId) {
-      const listEl = document.getElementById('siteFallbacksList');
-      if (!listEl) return;
-      try {
-        const res = await apiGet(`/api/sites/${siteId}/fallbacks`);
-        if (!res || !res.ok) { listEl.innerHTML = ''; return; }
-        const arr = await res.json();
-        if (!Array.isArray(arr) || arr.length === 0) {
-          listEl.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL de contingência cadastrada.</div>';
-          return;
-        }
-        listEl.innerHTML = arr.map(f => `
-          <div class="fallback-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;">
-            <span style="flex:1;font-size:13px;word-break:break-all;">${(f.fallback_url || '').replace(/</g, '&lt;')}</span>
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeFallbackUrl('${siteId}','${f.id}')" title="Remover"><i class="ri-delete-bin-line"></i></button>
-          </div>
-        `).join('');
-      } catch (e) {
-        listEl.innerHTML = '<div style="color:var(--danger);font-size:13px;">Erro ao carregar fallbacks</div>';
-      }
+    let globalFallbacksCache = [];
+    async function loadFallbackSettings() {
+      const res = await apiGet('/api/admin/fallback-settings');
+      if (!res || !res.ok) return;
+      const d = await res.json();
+      document.getElementById('telegramBotToken').value = d.telegram_bot_token || '';
+      document.getElementById('telegramChatId').value = d.telegram_chat_id || '';
+      globalFallbacksCache = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
+      renderGlobalFallbacksList();
     }
-
-    async function addFallbackUrl() {
-      const siteId = document.getElementById('editSiteId').value;
-      const input = document.getElementById('siteFallbackUrlInput');
+    function renderGlobalFallbacksList() {
+      const listEl = document.getElementById('globalFallbacksList');
+      if (!listEl) return;
+      if (globalFallbacksCache.length === 0) {
+        listEl.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL cadastrada. Adicione URLs de contingência abaixo.</div>';
+        return;
+      }
+      listEl.innerHTML = globalFallbacksCache.map((url, i) => `
+        <div class="fallback-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;">
+          <span style="flex:1;font-size:13px;word-break:break-all;">${(url || '').replace(/</g, '&lt;')}</span>
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeGlobalFallback(${i})" title="Remover"><i class="ri-delete-bin-line"></i></button>
+        </div>
+      `).join('');
+    }
+    function addGlobalFallback() {
+      const input = document.getElementById('globalFallbackUrlInput');
       const url = (input && input.value || '').trim();
-      if (!siteId || !url) { alert('Digite uma URL válida'); return; }
+      if (!url) { alert('Digite uma URL'); return; }
       if (!url.startsWith('http://') && !url.startsWith('https://')) { alert('A URL deve começar com http:// ou https://'); return; }
+      globalFallbacksCache.push(url);
+      input.value = '';
+      renderGlobalFallbacksList();
+    }
+    function removeGlobalFallback(idx) {
+      globalFallbacksCache.splice(idx, 1);
+      renderGlobalFallbacksList();
+    }
+    async function saveFallbackSettings() {
+      const msg = document.getElementById('fallbackSettingsMsg');
       try {
-        await fetch(`/api/sites/${siteId}/fallbacks`, {
-          method: 'POST',
+        const res = await fetch('/api/admin/fallback-settings', {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ fallback_url: url, sort_order: 0 })
+          body: JSON.stringify({
+            telegram_bot_token: document.getElementById('telegramBotToken').value || '',
+            telegram_chat_id: document.getElementById('telegramChatId').value || '',
+            global_fallbacks: globalFallbacksCache
+          })
         });
-        input.value = '';
-        await loadSiteFallbacks(siteId);
-      } catch (e) { alert('Erro ao adicionar URL de contingência'); }
-    }
-
-    async function removeFallbackUrl(siteId, id) {
-      if (!confirm('Remover esta URL de contingência?')) return;
-      try {
-        await fetch(`/api/sites/${siteId}/fallbacks/${id}`, { method: 'DELETE', credentials: 'include' });
-        await loadSiteFallbacks(siteId);
-      } catch (e) { alert('Erro ao remover'); }
+        if (!res.ok) throw new Error('Erro ao salvar');
+        msg.textContent = 'Salvo!';
+        msg.style.color = 'var(--success)';
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+      } catch (e) {
+        msg.textContent = e.message || 'Erro ao salvar';
+        msg.style.color = 'var(--danger)';
+      }
     }
 
     // Stats
@@ -3269,6 +3289,8 @@
             if (nai) nai.style.display = 'block';
             var bc = document.getElementById('backupCard');
             if (bc) bc.style.display = 'block';
+            var fc = document.getElementById('fallbackCard');
+            if (fc) fc.style.display = 'block';
           }
         }
         const setRes = await apiGet('/api/settings');

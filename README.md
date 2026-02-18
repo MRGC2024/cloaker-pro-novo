@@ -22,9 +22,9 @@ O sistema verifica a cada **1 minuto** se as URLs das suas landings estão ativa
 2. Envia notificação no **Telegram** (link que caiu + link novo em uso)
 3. Quando a URL principal voltar, retorna ao uso normal e avisa no Telegram
 
-**Configuração Telegram:** defina no ambiente (ex: Railway Variables):
-- `TELEGRAM_BOT_TOKEN` – Token do Bot (crie em @BotFather)
-- `TELEGRAM_CHAT_ID` – ID do chat/ grupo para receber os avisos
+**Configuração:** em **Configurações** → **Fallback e Telegram** (apenas admin):
+- **Telegram:** Token do Bot e Chat ID para receber os avisos
+- **URLs de contingência:** lista única usada por todos os sites quando a URL principal cair
 
 ## 🚀 Instalação
 

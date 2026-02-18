@@ -14,8 +14,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
-const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
-const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim();
 
 // Sessão em PostgreSQL quando DATABASE_URL existe (múltiplas réplicas compartilham o mesmo login)
 let sessionStore = undefined;
@@ -1145,35 +1143,44 @@ app.delete('/api/sites/:siteId', async (req, res) => {
   }
 });
 
-// API: Fallbacks de contingência (URLs reserva quando o site principal cai)
-app.get('/api/sites/:siteId/fallbacks', async (req, res) => {
+// API: Fallback e Telegram (admin) – configuração central
+app.get('/api/admin/fallback-settings', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
-  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
-  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
-  const rows = await db.all('SELECT id, fallback_url, sort_order FROM site_fallbacks WHERE site_id = ? ORDER BY sort_order ASC, id ASC', [req.params.siteId]);
-  res.json(rows);
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const t = await db.get("SELECT value FROM settings WHERE key = 'telegram_bot_token'");
+  const c = await db.get("SELECT value FROM settings WHERE key = 'telegram_chat_id'");
+  const f = await db.get("SELECT value FROM settings WHERE key = 'global_fallbacks'");
+  let fallbacks = [];
+  if (f && f.value) {
+    try {
+      const arr = JSON.parse(f.value);
+      fallbacks = Array.isArray(arr) ? arr : [];
+    } catch (e) {}
+  }
+  res.json({
+    telegram_bot_token: (t && t.value) ? t.value : '',
+    telegram_chat_id: (c && c.value) ? c.value : '',
+    global_fallbacks: fallbacks
+  });
 });
-app.post('/api/sites/:siteId/fallbacks', async (req, res) => {
+app.put('/api/admin/fallback-settings', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
-  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
-  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
-  const { fallback_url, sort_order } = req.body || {};
-  const url = (fallback_url || '').trim();
-  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });
-  const order = parseInt(sort_order, 10);
-  const so = isNaN(order) ? 0 : order;
-  await db.run('INSERT INTO site_fallbacks (site_id, fallback_url, sort_order) VALUES (?, ?, ?)', [req.params.siteId, url, so]);
-  const row = await db.get('SELECT id, fallback_url, sort_order FROM site_fallbacks WHERE site_id = ? ORDER BY id DESC LIMIT 1', [req.params.siteId]);
-  res.status(201).json(row);
-});
-app.delete('/api/sites/:siteId/fallbacks/:id', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
-  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
-  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
-  await db.run('DELETE FROM site_fallbacks WHERE site_id = ? AND id = ?', [req.params.siteId, req.params.id]);
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const { telegram_bot_token, telegram_chat_id, global_fallbacks } = req.body || {};
+  const upsert = async (key, val) => {
+    const v = val != null ? String(val).trim() : '';
+    if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [key, v]);
+    else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, v]);
+  };
+  if (telegram_bot_token !== undefined) await upsert('telegram_bot_token', telegram_bot_token);
+  if (telegram_chat_id !== undefined) await upsert('telegram_chat_id', telegram_chat_id);
+  if (global_fallbacks !== undefined) {
+    const arr = Array.isArray(global_fallbacks) ? global_fallbacks : [];
+    const valid = arr.filter(u => u && typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')));
+    await upsert('global_fallbacks', JSON.stringify(valid));
+  }
   res.json({ success: true });
 });
 
@@ -1889,17 +1896,37 @@ async function checkUrlReachable(url) {
   }
 }
 
+async function getTelegramConfig() {
+  const tokenRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_bot_token'");
+  const chatRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_chat_id'");
+  const token = (tokenRow?.value || process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const chatId = (chatRow?.value || process.env.TELEGRAM_CHAT_ID || '').trim();
+  return { token, chatId };
+}
+
 async function sendTelegramMessage(text) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const { token, chatId } = await getTelegramConfig();
+  if (!token || !chatId) return;
   try {
-    const u = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const u = `https://api.telegram.org/bot${token}/sendMessage`;
     await fetch(u, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true })
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true })
     });
   } catch (e) {
     console.error('Telegram send error:', e.message);
+  }
+}
+
+async function getGlobalFallbacks() {
+  const row = await db.get("SELECT value FROM settings WHERE key = 'global_fallbacks'");
+  if (!row || !row.value) return [];
+  try {
+    const arr = JSON.parse(row.value);
+    return Array.isArray(arr) ? arr.filter(u => u && typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))) : [];
+  } catch (e) {
+    return [];
   }
 }
 
@@ -1934,16 +1961,13 @@ async function runFallbackHealthCheck() {
         continue;
       }
 
-      const fallbacks = await db.all(
-        'SELECT fallback_url FROM site_fallbacks WHERE site_id = ? ORDER BY sort_order ASC, id ASC',
-        [site.site_id]
-      );
+      const fallbacks = await getGlobalFallbacks();
       let found = null;
-      for (const fb of fallbacks) {
-        const furl = (fb.fallback_url || '').trim();
-        if (!furl) continue;
-        if (await checkUrlReachable(furl)) {
-          found = furl;
+      for (const furl of fallbacks) {
+        const u = (furl || '').trim();
+        if (!u) continue;
+        if (await checkUrlReachable(u)) {
+          found = u;
           break;
         }
       }
