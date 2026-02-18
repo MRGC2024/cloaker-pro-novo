@@ -1128,7 +1128,7 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="testTelegram()"><i class="ri-send-plane-line"></i> Enviar teste</button>
           <span id="telegramTestMsg" style="margin-left: 10px; font-size: 13px;"></span>
           <h4 style="margin: 25px 0 10px; font-size: 14px;">URLs de contingência (fallback global)</h4>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Uma lista única para todos os sites. Quando a URL principal de um site cair, o sistema testa estas URLs em ordem e usa a primeira que responder.</p>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Uma lista única para todos os sites. O sistema só troca após 2 verificações seguidas (evita falsos positivos).</p>
           <div id="globalFallbacksList" style="margin-bottom: 12px;"></div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <input type="url" class="form-input" id="globalFallbackUrlInput" placeholder="https://backup.landing.com" style="flex:1; min-width:200px;">

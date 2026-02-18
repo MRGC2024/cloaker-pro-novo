@@ -1888,35 +1888,40 @@ function redirectWithDelay(res, url, status = 302) {
 
 // ---------- Fallback de site (verificação a cada minuto + Telegram) ----------
 const FALLBACK_CHECK_MS = 60 * 1000;
-const URL_CHECK_TIMEOUT_MS = 8000;
+const URL_CHECK_TIMEOUT_MS = 15000; // 15s – evita falso positivo em sites lentos
+const FALLBACK_CONFIRM_FAILURES = 2; // Só alerta/aprova fallback após 2 falhas seguidas
+const fallbackFailCount = new Map(); // site_id -> número de falhas consecutivas
 
 async function checkUrlReachable(url) {
   if (!url || typeof url !== 'string') return false;
   const u = url.trim();
   if (!u.startsWith('http://') && !u.startsWith('https://')) return false;
-  try {
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+  };
+  const doCheck = async () => {
     const controller = new AbortController();
     const to = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
     const res = await fetch(u, {
-      method: 'HEAD',
+      method: 'GET', // GET é mais confiável que HEAD (muitos sites bloqueiam HEAD)
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlokbotHealthCheck/1.0)' }
+      headers
     });
     clearTimeout(to);
-    return res.ok || (res.status >= 200 && res.status < 400);
+    return res.status >= 200 && res.status < 400;
+  };
+  try {
+    const ok = await doCheck();
+    if (ok) return true;
+    await new Promise(r => setTimeout(r, 3000)); // Aguarda 3s e tenta de novo
+    return await doCheck();
   } catch (e) {
     try {
-      const controller = new AbortController();
-      const to = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
-      const res = await fetch(u, {
-        method: 'GET',
-        redirect: 'follow',
-        signal: controller.signal,
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlokbotHealthCheck/1.0)' }
-      });
-      clearTimeout(to);
-      return res.ok || (res.status >= 200 && res.status < 400);
+      await new Promise(r => setTimeout(r, 3000));
+      return await doCheck();
     } catch (e2) {
       return false;
     }
@@ -1973,20 +1978,28 @@ async function runFallbackHealthCheck() {
       const ok = await checkUrlReachable(currentUrl);
 
       if (ok) {
+        fallbackFailCount.set(site.site_id, 0); // Reseta contador de falhas
         if (override) {
-          await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
-          const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
-          const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
-          await sendTelegramMessage(
-            `✅ <b>Site recuperado</b>\n\n` +
-            `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
-            `URL principal voltou: <code>${primary.replace(/</g, '&lt;')}</code>\n` +
-            (base ? `Link: ${linkSuffix}\n` : '') +
-            `\nO sistema voltou a usar a URL principal automaticamente.`
-          );
+          const primaryOk = await checkUrlReachable(primary);
+          if (primaryOk) {
+            await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
+            const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
+            const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
+            await sendTelegramMessage(
+              `✅ <b>Site recuperado</b>\n\n` +
+              `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+              `URL principal voltou: <code>${primary.replace(/</g, '&lt;')}</code>\n` +
+              (base ? `Link: ${linkSuffix}\n` : '') +
+              `\nO sistema voltou a usar a URL principal automaticamente.`
+            );
+          }
         }
         continue;
       }
+
+      const failCount = (fallbackFailCount.get(site.site_id) || 0) + 1;
+      fallbackFailCount.set(site.site_id, failCount);
+      if (failCount < FALLBACK_CONFIRM_FAILURES) continue; // Aguarda confirmação (2 falhas seguidas)
 
       const fallbacks = await getGlobalFallbacks();
       let found = null;
@@ -2012,7 +2025,7 @@ async function runFallbackHealthCheck() {
           (base ? `Link do painel: ${linkSuffix}\n` : '') +
           `\nO sistema trocou automaticamente para a URL de contingência.`
         );
-      } else if (!override) {
+      } else if (!override && failCount === FALLBACK_CONFIRM_FAILURES) {
         await sendTelegramMessage(
           `🚨 <b>Site offline – sem fallback disponível</b>\n\n` +
           `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
