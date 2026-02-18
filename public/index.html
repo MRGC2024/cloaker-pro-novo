@@ -1113,7 +1113,7 @@
       <div class="card" id="fallbackCard" style="display: none;">
         <div class="card-header"><h3 class="card-title"><i class="ri-refresh-line"></i> Fallback e Telegram (admin)</h3></div>
         <div class="card-body">
-          <p style="color: var(--text-secondary); margin-bottom: 20px;">Configure em um único lugar. Quando <strong>qualquer</strong> site ficar offline, o sistema troca automaticamente para a primeira URL de contingência que responder. Notificações enviadas no Telegram.</p>
+          <p style="color: var(--text-secondary); margin-bottom: 20px;">Configure em um único lugar. <strong>Critérios para considerar offline:</strong> 5 minutos de falhas seguidas (3 tentativas por minuto) + confirmação final (2 verificações extras). Só então envia notificação e troca o link.</p>
           <h4 style="margin: 20px 0 10px; font-size: 14px;">Telegram (notificações)</h4>
           <div class="form-group">
             <label class="form-label">Token do Bot</label>
@@ -1128,7 +1128,7 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="testTelegram()"><i class="ri-send-plane-line"></i> Enviar teste</button>
           <span id="telegramTestMsg" style="margin-left: 10px; font-size: 13px;"></span>
           <h4 style="margin: 25px 0 10px; font-size: 14px;">URLs de contingência (fallback global)</h4>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Uma lista única para todos os sites. O sistema só troca após 2 verificações seguidas (evita falsos positivos).</p>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Lista única para todos os sites. Só troca após <strong>5 minutos</strong> de falha confirmada + verificação final dupla (evita falsos positivos).</p>
           <div id="globalFallbacksList" style="margin-bottom: 12px;"></div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <input type="url" class="form-input" id="globalFallbackUrlInput" placeholder="https://backup.landing.com" style="flex:1; min-width:200px;">

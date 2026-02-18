@@ -1888,44 +1888,82 @@ function redirectWithDelay(res, url, status = 302) {
 
 // ---------- Fallback de site (verificação a cada minuto + Telegram) ----------
 const FALLBACK_CHECK_MS = 60 * 1000;
-const URL_CHECK_TIMEOUT_MS = 15000; // 15s – evita falso positivo em sites lentos
-const FALLBACK_CONFIRM_FAILURES = 2; // Só alerta/aprova fallback após 2 falhas seguidas
-const fallbackFailCount = new Map(); // site_id -> número de falhas consecutivas
+const URL_CHECK_TIMEOUT_MS = 20000; // 20s por tentativa
+const CHECK_ATTEMPTS_PER_CYCLE = 3; // 3 tentativas – 1 sucesso = ONLINE
+const DELAY_BETWEEN_ATTEMPTS_MS = 5000; // 5s entre tentativas
+const FALLBACK_CONFIRM_FAILURES = 5; // 5 ciclos (5 min) de falha antes de agir
+const FINAL_CONFIRM_ATTEMPTS = 2; // Antes de alertar: 2 verificações extras. Ambas devem falhar.
 
 async function checkUrlReachable(url) {
   if (!url || typeof url !== 'string') return false;
   const u = url.trim();
   if (!u.startsWith('http://') && !u.startsWith('https://')) return false;
+  let origin = '';
+  try { origin = new URL(u).origin + '/'; } catch (e) {}
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
   };
-  const doCheck = async () => {
+  if (origin) headers['Referer'] = origin;
+  const doSingleAttempt = async () => {
     const controller = new AbortController();
     const to = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
-    const res = await fetch(u, {
-      method: 'GET', // GET é mais confiável que HEAD (muitos sites bloqueiam HEAD)
-      redirect: 'follow',
-      signal: controller.signal,
-      headers
-    });
-    clearTimeout(to);
-    return res.status >= 200 && res.status < 400;
-  };
-  try {
-    const ok = await doCheck();
-    if (ok) return true;
-    await new Promise(r => setTimeout(r, 3000)); // Aguarda 3s e tenta de novo
-    return await doCheck();
-  } catch (e) {
     try {
-      await new Promise(r => setTimeout(r, 3000));
-      return await doCheck();
-    } catch (e2) {
+      const res = await fetch(u, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers
+      });
+      clearTimeout(to);
+      return res.status >= 200 && res.status < 400;
+    } catch (err) {
+      clearTimeout(to);
       return false;
     }
+  };
+  for (let i = 0; i < CHECK_ATTEMPTS_PER_CYCLE; i++) {
+    if (await doSingleAttempt()) return true;
+    if (i < CHECK_ATTEMPTS_PER_CYCLE - 1) await new Promise(r => setTimeout(r, DELAY_BETWEEN_ATTEMPTS_MS));
   }
+  return false;
+}
+
+async function finalConfirmationUrlDown(url) {
+  for (let i = 0; i < FINAL_CONFIRM_ATTEMPTS; i++) {
+    const ok = await checkUrlReachable(url);
+    if (ok) return false;
+    if (i < FINAL_CONFIRM_ATTEMPTS - 1) await new Promise(r => setTimeout(r, 8000));
+  }
+  return true;
+}
+
+async function getFallbackFailCounts() {
+  const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_fail_counts'");
+  if (!row || !row.value) return {};
+  try {
+    const o = JSON.parse(row.value);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function setFallbackFailCount(siteId, count) {
+  const counts = await getFallbackFailCounts();
+  if (count === 0) delete counts[siteId];
+  else counts[siteId] = count;
+  const val = JSON.stringify(counts);
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['fallback_fail_counts', val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['fallback_fail_counts', val]);
+}
+
+async function getFallbackFailCount(siteId) {
+  const counts = await getFallbackFailCounts();
+  return counts[siteId] || 0;
 }
 
 async function getTelegramConfig() {
@@ -1978,7 +2016,7 @@ async function runFallbackHealthCheck() {
       const ok = await checkUrlReachable(currentUrl);
 
       if (ok) {
-        fallbackFailCount.set(site.site_id, 0); // Reseta contador de falhas
+        await setFallbackFailCount(site.site_id, 0);
         if (override) {
           const primaryOk = await checkUrlReachable(primary);
           if (primaryOk) {
@@ -1997,9 +2035,14 @@ async function runFallbackHealthCheck() {
         continue;
       }
 
-      const failCount = (fallbackFailCount.get(site.site_id) || 0) + 1;
-      fallbackFailCount.set(site.site_id, failCount);
-      if (failCount < FALLBACK_CONFIRM_FAILURES) continue; // Aguarda confirmação (2 falhas seguidas)
+      const failCount = (await getFallbackFailCount(site.site_id)) + 1;
+      await setFallbackFailCount(site.site_id, failCount);
+      if (failCount < FALLBACK_CONFIRM_FAILURES) continue;
+
+      if (!(await finalConfirmationUrlDown(currentUrl))) {
+        await setFallbackFailCount(site.site_id, 0);
+        continue;
+      }
 
       const fallbacks = await getGlobalFallbacks();
       let found = null;
