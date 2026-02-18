@@ -1125,6 +1125,8 @@
             <input type="text" class="form-input" id="telegramChatId" placeholder="Ex: -1001234567890">
             <small style="color: var(--text-secondary); font-size: 12px;">ID do chat ou grupo onde receber os avisos.</small>
           </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="testTelegram()"><i class="ri-send-plane-line"></i> Enviar teste</button>
+          <span id="telegramTestMsg" style="margin-left: 10px; font-size: 13px;"></span>
           <h4 style="margin: 25px 0 10px; font-size: 14px;">URLs de contingência (fallback global)</h4>
           <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Uma lista única para todos os sites. Quando a URL principal de um site cair, o sistema testa estas URLs em ordem e usa a primeira que responder.</p>
           <div id="globalFallbacksList" style="margin-bottom: 12px;"></div>
@@ -2016,6 +2018,35 @@
       globalFallbacksCache.splice(idx, 1);
       renderGlobalFallbacksList();
     }
+    async function testTelegram() {
+      const msg = document.getElementById('telegramTestMsg');
+      msg.textContent = 'Enviando...';
+      msg.style.color = 'var(--text-secondary)';
+      try {
+        const res = await fetch('/api/admin/fallback-settings/test-telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            telegram_bot_token: document.getElementById('telegramBotToken').value || '',
+            telegram_chat_id: document.getElementById('telegramChatId').value || ''
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.textContent = '✓ ' + (data.message || 'Enviado! Verifique o Telegram.');
+          msg.style.color = 'var(--success)';
+        } else {
+          msg.textContent = '✗ ' + (data.error || 'Erro');
+          msg.style.color = 'var(--danger)';
+        }
+      } catch (e) {
+        msg.textContent = '✗ Erro de conexão';
+        msg.style.color = 'var(--danger)';
+      }
+      setTimeout(() => { msg.textContent = ''; }, 5000);
+    }
+
     async function saveFallbackSettings() {
       const msg = document.getElementById('fallbackSettingsMsg');
       try {

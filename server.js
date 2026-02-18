@@ -1183,6 +1183,33 @@ app.put('/api/admin/fallback-settings', async (req, res) => {
   }
   res.json({ success: true });
 });
+app.post('/api/admin/fallback-settings/test-telegram', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const { telegram_bot_token, telegram_chat_id } = req.body || {};
+  const token = (telegram_bot_token != null ? String(telegram_bot_token).trim() : '') || (await db.get("SELECT value FROM settings WHERE key = 'telegram_bot_token'"))?.value || '';
+  const chatId = (telegram_chat_id != null ? String(telegram_chat_id).trim() : '') || (await db.get("SELECT value FROM settings WHERE key = 'telegram_chat_id'"))?.value || '';
+  if (!token || !chatId) return res.status(400).json({ error: 'Preencha o Token e o Chat ID' });
+  try {
+    const u = `https://api.telegram.org/bot${token}/sendMessage`;
+    const r = await fetch(u, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: '✅ <b>Teste do Cloaker Pro</b>\n\nO Telegram está funcionando! Você receberá avisos quando algum site ficar offline.',
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      })
+    });
+    const data = await r.json();
+    if (!data.ok) return res.status(400).json({ error: data.description || 'Falha ao enviar' });
+    res.json({ success: true, message: 'Mensagem de teste enviada!' });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erro ao enviar' });
+  }
+});
 
 // API: Listar visitantes (apenas dos sites do usuário)
 app.get('/api/visitors', async (req, res) => {
