@@ -702,6 +702,7 @@
     <ul class="nav-menu">
       <li class="nav-item"><a class="nav-link active" data-section="dashboard"><i class="ri-dashboard-3-line"></i> Dashboard</a></li>
       <li class="nav-item"><a class="nav-link" data-section="sites"><i class="ri-global-line"></i> Meus Sites</a></li>
+      <li class="nav-item"><a class="nav-link" data-section="fallbackstatus"><i class="ri-links-line"></i> Status dos links</a></li>
       <li class="nav-item"><a class="nav-link" data-section="visitors"><i class="ri-user-line"></i> Visitantes</a></li>
       <li class="nav-item"><a class="nav-link" data-section="reports"><i class="ri-file-chart-line"></i> Relatórios</a></li>
       <li class="nav-item"><a class="nav-link" data-section="script"><i class="ri-link"></i> Link para Ads</a></li>
@@ -795,6 +796,46 @@
         <button class="btn btn-primary" onclick="openNewSiteModal()"><i class="ri-add-line"></i> Novo Site</button>
       </div>
       <div id="sitesList"></div>
+    </section>
+
+    <!-- Status dos links / Fallback -->
+    <section id="fallbackstatus" class="section">
+      <div class="header">
+        <h2>Status dos links e fallback</h2>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Quem está na URL principal, quem já foi trocado para contingência e quais URLs estão em standby para substituição.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-link"></i> Resumo por site</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadFallbackStatus()"><i class="ri-refresh-line"></i> Atualizar</button>
+        </div>
+        <div class="card-body">
+          <div id="fallbackStatusSummary" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 14px;"></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Site</th>
+                  <th>Status</th>
+                  <th>URL principal</th>
+                  <th>URL em uso agora</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="fallbackStatusTable"><tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="fallbackStandbyCard" style="display: none;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-list-check"></i> URLs em standby (para substituição)</h3>
+        </div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">Quando um site cair, o sistema usa estas URLs em ordem. Configure em <strong>Configurações → Fallback e Telegram</strong>.</p>
+          <div id="fallbackStandbyList"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Visitors -->
@@ -1720,6 +1761,7 @@
         document.getElementById(section).classList.add('active');
         if (section === 'dashboard') refreshStats();
         if (section === 'sites') { loadSites(); loadPages(); }
+        if (section === 'fallbackstatus') loadFallbackStatus();
         if (section === 'visitors') loadVisitors();
         if (section === 'reports') loadReports();
         if (section === 'domains') loadDomains();
@@ -1980,6 +2022,76 @@
     }
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
+
+    async function loadFallbackStatus() {
+      const tableEl = document.getElementById('fallbackStatusTable');
+      const summaryEl = document.getElementById('fallbackStatusSummary');
+      const standbyCard = document.getElementById('fallbackStandbyCard');
+      const standbyList = document.getElementById('fallbackStandbyList');
+      if (!tableEl) return;
+      tableEl.innerHTML = '<tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>';
+      if (summaryEl) summaryEl.textContent = '';
+      try {
+        const res = await apiGet('/api/sites');
+        if (!res || !res.ok) {
+          tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+          return;
+        }
+        const list = await res.json();
+        const sitesWithUrl = Array.isArray(list) ? list.filter(s => (s.target_url || '').trim()) : [];
+        let onPrincipal = 0, onContingencia = 0;
+        sitesWithUrl.forEach(s => {
+          if ((s.fallback_override_url || '').trim()) onContingencia++;
+          else onPrincipal++;
+        });
+        if (summaryEl) {
+          summaryEl.innerHTML = '<strong>Resumo:</strong> ' +
+            '<span style="color:var(--success);">' + onPrincipal + ' usando URL principal</span> · ' +
+            '<span style="color:var(--warning);">' + onContingencia + ' usando contingência</span>' +
+            (sitesWithUrl.length === 0 ? ' · Nenhum site com URL configurada.' : '');
+        }
+        if (sitesWithUrl.length === 0) {
+          tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--text-secondary);padding:20px;text-align:center;">Nenhum site com URL de landing configurada. Configure em Meus Sites.</td></tr>';
+        } else {
+          tableEl.innerHTML = sitesWithUrl.map(s => {
+            const primary = (s.target_url || '').trim();
+            const override = (s.fallback_override_url || '').trim();
+            const urlEmUso = override || primary;
+            const status = override ? 'contingencia' : 'principal';
+            const statusLabel = override ? 'Contingência' : 'URL principal';
+            const statusClass = override ? 'warning' : 'success';
+            return '<tr>' +
+              '<td><strong>' + (s.name || s.site_id || '').replace(/</g, '&lt;') + '</strong></td>' +
+              '<td><span class="badge badge-' + statusClass + '">' + statusLabel + '</span></td>' +
+              '<td style="word-break:break-all;font-size:12px;"><code>' + (primary || '—').replace(/</g, '&lt;') + '</code></td>' +
+              '<td style="word-break:break-all;font-size:12px;"><code>' + (urlEmUso || '—').replace(/</g, '&lt;') + '</code></td>' +
+              '<td><button type="button" class="btn btn-secondary btn-sm" onclick="editSite(\'' + s.site_id + '\')"><i class="ri-edit-line"></i> Editar</button></td>' +
+              '</tr>';
+          }).join('');
+        }
+        if (currentUser && currentUser.role === 'admin' && standbyCard && standbyList) {
+          const setRes = await apiGet('/api/admin/fallback-settings');
+          if (setRes && setRes.ok) {
+            const d = await setRes.json();
+            const urls = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
+            standbyCard.style.display = 'block';
+            if (urls.length === 0) {
+              standbyList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;">Nenhuma URL em standby. Configure em Configurações → Fallback e Telegram.</div>';
+            } else {
+              standbyList.innerHTML = '<ol style="margin:0;padding-left:20px;color:var(--text-primary);">' +
+                urls.map((u, i) => '<li style="margin-bottom:6px;"><code style="font-size:12px;word-break:break-all;">' + (u || '').replace(/</g, '&lt;') + '</code></li>').join('') +
+                '</ol>';
+            }
+          } else {
+            standbyCard.style.display = 'none';
+          }
+        } else if (standbyCard) {
+          standbyCard.style.display = 'none';
+        }
+      } catch (e) {
+        tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+      }
+    }
 
     let globalFallbacksCache = [];
     async function loadFallbackSettings() {
