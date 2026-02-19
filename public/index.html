@@ -1348,7 +1348,7 @@
           <h4 style="margin-bottom: 10px;"><i class="ri-dns-line"></i> Configuração DNS</h4>
           <p style="color: var(--text-secondary); margin-bottom: 14px;">O Railway exige <strong>dois registros</strong> para cada domínio: <strong>CNAME</strong> e <strong>TXT</strong> (verificação). Na tabela abaixo aparecem ambos. Configure os dois no seu provedor de DNS (Cloudflare, Registro.br, etc.). Clique em <strong>Sincronizar com Railway</strong> para puxar os valores atualizados do painel.</p>
           <p style="color: var(--text-secondary); font-size: 12px;">CNAME: Nome <code>@</code>, Valor: o que aparece na coluna. TXT: Nome <code>_railway-verify</code>, Valor: o token da coluna. <button type="button" class="btn btn-sm btn-primary" onclick="syncRailwayDomains()" style="margin-left:6px"><i class="ri-refresh-line"></i> Sincronizar com Railway</button> <span id="syncRailwayMsg" style="font-size: 12px; margin-left: 8px;"></span></p>
-          <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">O Railway na listagem só envia o CNAME; o TXT de verificação não vem nesse endpoint, por isso a coluna TXT pode ficar vazia. Ao excluir: <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta Railway</button> (abre modal; clique em Copiar para evitar erro de foco).</p>
+          <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">Se o TXT não aparecer na sincronização, use <strong>Colar TXT</strong> na linha do domínio e cole o valor do painel Railway. Ao excluir, o erro do Railway (se houver) aparece no alerta. <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta</button>.</p>
         </div>
       </div>
       <div class="card">
@@ -3391,9 +3391,10 @@
         var cnameJs = (d.railway_cname_target || target || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         var copyCnameBtn = (d.railway_cname_target || target) ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainCname(' + d.id + ')" title="Copiar CNAME"><i class="ri-file-copy-line"></i></button>' : '';
         var copyTxtBtn = d.railway_txt_verify ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainTxt(' + d.id + ')" title="Copiar TXT"><i class="ri-file-copy-line"></i></button>' : '';
+        var colarTxtBtn = '<button type="button" class="btn btn-sm btn-secondary" onclick="colarTxtDomain(' + d.id + ')" title="Colar TXT do Railway (se a sincronização não trouxer)"><i class="ri-clipboard-line"></i> Colar TXT</button>';
         var descEsc = (d.description || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         var createdAt = d.created_at ? (function () { try { var t = new Date(d.created_at); return isNaN(t.getTime()) ? '-' : t.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '-'; } })() : '-';
-        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + '</td><td style="white-space:nowrap;font-size:12px">' + createdAt + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
+        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + ' ' + colarTxtBtn + '</td><td style="white-space:nowrap;font-size:12px">' + createdAt + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
       }).join('');
       } catch (e) {
         tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar</td></tr>';
@@ -3432,6 +3433,17 @@
       if (!t || t === '(sincronize com Railway)') return;
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(() => alert('TXT de verificação copiado.')).catch(() => fallbackCopy(t)); }
       else fallbackCopy(t);
+    }
+    async function colarTxtDomain(id) {
+      const v = prompt('Cole o valor do registro TXT (_railway-verify) que aparece no painel do Railway para este domínio:');
+      if (v == null || (typeof v === 'string' && !v.trim())) return;
+      try {
+        const res = await fetch('/api/domains/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ railway_txt_verify: v.trim() }) });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) { loadDomains(); alert('TXT salvo.'); }
+        else alert(data.error || 'Erro ao salvar.');
+      } catch (e) { alert('Erro de conexão'); }
     }
     async function syncRailwayDomains() {
       const msg = document.getElementById('syncRailwayMsg');
@@ -3503,7 +3515,7 @@
         if (res.status === 401) { window.location.href = '/login'; return; }
         const data = await res.json().catch(() => ({}));
         loadDomains();
-        if (res.ok && data.railwayRemoved === false) alert('Domínio removido do painel. Não foi possível remover no Railway — verifique variáveis ou use "Copiar resposta Railway" para debug.');
+        if (res.ok && data.railwayRemoved === false) alert('Domínio removido do painel. Não foi possível remover no Railway.\n\nErro Railway: ' + (data.railwayError || 'verifique variáveis ou use "Copiar resposta Railway" para debug.'));
       } catch (e) {}
     }
 

@@ -576,30 +576,40 @@ function removeCustomDomainFromRailway(domain) {
     const found = custom.find(c => ((c.domain || c.name || '').toLowerCase()) === d);
     if (!found || !(found.id || found.customDomainId)) return { ok: true };
     const idToDelete = found.id || found.customDomainId;
-    const tryDelete = (mutationName) => {
+    const tryDelete = (mutationName, useInput) => {
+      if (useInput) {
+        const body = JSON.stringify({
+          query: `mutation ${mutationName}($input: CustomDomainRemoveInput!) { ${mutationName}(input: $input) { id } }`,
+          variables: { input: { id: idToDelete, projectId } }
+        });
+        return graphql(body);
+      }
       const body = JSON.stringify({
         query: `mutation ${mutationName}($id: String!, $projectId: String!) { ${mutationName}(id: $id, projectId: $projectId) { id } }`,
         variables: { id: idToDelete, projectId }
       });
       return graphql(body);
     };
-    return tryDelete('customDomainDelete').then(del => {
-      if (del.errors && del.errors.length) {
-        const msg = (del.errors[0].message || '').toLowerCase();
-        if (msg.includes('cannot query') || msg.includes('unknown') || msg.includes('customDomainDelete')) {
-          return tryDelete('customDomainRemove').then(rem => {
-            if (rem.errors && rem.errors.length) {
-              console.error('[Railway] customDomainRemove falhou:', rem.errors[0].message);
-              return { ok: false, error: rem.errors[0].message };
-            }
+    const runRemoval = () =>
+      tryDelete('customDomainRemove', false)
+        .then(rem => {
+          if (rem.errors && rem.errors.length) {
+            const errMsg = rem.errors[0].message || '';
+            return tryDelete('customDomainRemove', true).then(rem2 => {
+              if (rem2.errors && rem2.errors.length) return { ok: false, error: rem2.errors[0].message };
+              return { ok: true };
+            }).catch(() => ({ ok: false, error: errMsg }));
+          }
+          return { ok: true };
+        })
+        .then(r => {
+          if (r.ok) return r;
+          return tryDelete('customDomainDelete', false).then(del => {
+            if (del.errors && del.errors.length) return { ok: false, error: del.errors[0].message };
             return { ok: true };
-          });
-        }
-        console.error('[Railway] customDomainDelete falhou:', del.errors[0].message);
-        return { ok: false, error: del.errors[0].message };
-      }
-      return { ok: true };
-    });
+          }).catch(() => r);
+        });
+    return runRemoval();
   }).catch(e => {
     console.error('[Railway] removeCustomDomainFromRailway:', e.message);
     return { ok: false, error: e.message };
@@ -868,6 +878,20 @@ app.post('/api/domains/sync-railway', async (req, res) => {
   res.json({ success: true, updated, created, total: (result.domains || []).length });
 });
 
+app.patch('/api/domains/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const userId = req.session.userId;
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
+  const canEdit = user && (user.role === 'admin' || (await db.get('SELECT 1 FROM allowed_domains WHERE id = ? AND user_id = ?', [req.params.id, userId])));
+  if (!canEdit) return res.status(403).json({ error: 'Acesso negado' });
+  const { railway_txt_verify } = req.body || {};
+  if (railway_txt_verify !== undefined) {
+    await db.run('UPDATE allowed_domains SET railway_txt_verify = ? WHERE id = ?', [railway_txt_verify ? String(railway_txt_verify).trim() || null : null, req.params.id]);
+  }
+  const row = await db.get('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE id = ?', [req.params.id]);
+  res.json({ success: true, domain: row });
+});
+
 app.delete('/api/domains/:id', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
@@ -876,13 +900,17 @@ app.delete('/api/domains/:id', async (req, res) => {
   if (!canDelete) return res.status(403).json({ error: 'Acesso negado' });
   const row = await db.get('SELECT domain FROM allowed_domains WHERE id = ?', [req.params.id]);
   let railwayRemoved = false;
+  let railwayError = null;
   if (user.role === 'admin' && row && row.domain) {
     const out = await removeCustomDomainFromRailway(row.domain);
     railwayRemoved = out && out.ok === true;
-    if (!railwayRemoved && out && out.error) console.error('[Domains] Railway delete:', row.domain, out.error);
+    if (!railwayRemoved && out && out.error) {
+      railwayError = out.error;
+      console.error('[Domains] Railway delete:', row.domain, out.error);
+    }
   }
   await db.run('DELETE FROM allowed_domains WHERE id = ?', [req.params.id]);
-  res.json({ success: true, railwayRemoved });
+  res.json({ success: true, railwayRemoved, railwayError });
 });
 
 // API: Backup do banco (admin) – exporta dados para não perder
