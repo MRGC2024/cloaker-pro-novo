@@ -576,12 +576,25 @@ function removeCustomDomainFromRailway(domain) {
     const found = custom.find(c => ((c.domain || c.name || '').toLowerCase()) === d);
     if (!found || !(found.id || found.customDomainId)) return { ok: true };
     const idToDelete = found.id || found.customDomainId;
-    const deleteBody = JSON.stringify({
-      query: 'mutation CustomDomainDelete($id: String!, $projectId: String!) { customDomainDelete(id: $id, projectId: $projectId) { id } }',
-      variables: { id: idToDelete, projectId }
-    });
-    return graphql(deleteBody).then(del => {
+    const tryDelete = (mutationName) => {
+      const body = JSON.stringify({
+        query: `mutation ${mutationName}($id: String!, $projectId: String!) { ${mutationName}(id: $id, projectId: $projectId) { id } }`,
+        variables: { id: idToDelete, projectId }
+      });
+      return graphql(body);
+    };
+    return tryDelete('customDomainDelete').then(del => {
       if (del.errors && del.errors.length) {
+        const msg = (del.errors[0].message || '').toLowerCase();
+        if (msg.includes('cannot query') || msg.includes('unknown') || msg.includes('customDomainDelete')) {
+          return tryDelete('customDomainRemove').then(rem => {
+            if (rem.errors && rem.errors.length) {
+              console.error('[Railway] customDomainRemove falhou:', rem.errors[0].message);
+              return { ok: false, error: rem.errors[0].message };
+            }
+            return { ok: true };
+          });
+        }
         console.error('[Railway] customDomainDelete falhou:', del.errors[0].message);
         return { ok: false, error: del.errors[0].message };
       }
@@ -608,9 +621,11 @@ function parseDnsRecordsFromRailway(rd) {
     const val = r.requiredValue ?? r.required_value ?? r.value;
     const valStr = (typeof val === 'string' ? val : (val != null ? String(val) : '')).trim();
     const hostlabel = ((r.hostlabel || r.host_label || '') + '').toLowerCase();
+    const isCname = rt === 'CNAME' || rt === 'DNS_RECORD_TYPE_CNAME';
+    const isTxt = rt === 'TXT' || rt === 'DNS_RECORD_TYPE_TXT';
     const isTxtVerify = (hostlabel.includes('railway') && hostlabel.includes('verify')) || hostlabel === '_railway-verify';
-    if (rt === 'CNAME' && valStr) cnameVal = valStr;
-    if ((rt === 'TXT' || isTxtVerify) && valStr) txtVal = valStr;
+    if (isCname && valStr) cnameVal = valStr;
+    if ((isTxt || isTxtVerify) && valStr) txtVal = valStr;
   }
   return { cnameVal, txtVal };
 }
@@ -665,6 +680,40 @@ async function fetchRailwayDomainsWithRecords() {
   });
 }
 
+// Busca status completo de um domínio (inclui dnsRecords com TXT; a listagem só traz CNAME)
+function fetchDomainStatusFromRailway(domainId) {
+  const token = process.env.RAILWAY_API_TOKEN || process.env.RAILWAY_TOKEN;
+  const projectId = process.env.RAILWAY_PROJECT_ID;
+  if (!token || !projectId || !domainId) return Promise.resolve(null);
+  const body = JSON.stringify({
+    query: 'query DomainStatus($id: String!, $projectId: String!) { domainStatus(id: $id, projectId: $projectId) { dnsRecords { recordType hostlabel requiredValue } } }',
+    variables: { id: domainId, projectId }
+  });
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'backboard.railway.app',
+      path: '/graphql/v2',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Content-Length': Buffer.byteLength(body, 'utf8') }
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.errors && json.errors.length) return resolve(null);
+          const st = json.data && json.data.domainStatus;
+          resolve(st || null);
+        } catch (e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(8000, () => { req.destroy(); resolve(null); });
+    req.write(body);
+    req.end();
+  });
+}
+
 // API: Domínios do usuário logado – listar, criar, excluir. Qualquer usuário gerencia seus domínios.
 app.get('/api/domains', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -696,11 +745,11 @@ app.post('/api/domains', async (req, res) => {
           for (const r of dnsRecords) {
             const rt = (r.recordType || r.record_type || '').toUpperCase();
             const val = (r.requiredValue || r.required_value || '').trim();
-            if (rt === 'CNAME' && val) cnameValue = val;
-            if (rt === 'TXT' && val) txtVerify = val;
+            if ((rt === 'CNAME' || rt === 'DNS_RECORD_TYPE_CNAME') && val) cnameValue = val;
+            if ((rt === 'TXT' || rt === 'DNS_RECORD_TYPE_TXT') && val) txtVerify = val;
           }
           if (!cnameValue) {
-            const cnameRecord = dnsRecords.find(r => (r.recordType || r.record_type || '').toUpperCase() === 'CNAME') || dnsRecords[0];
+            const cnameRecord = dnsRecords.find(r => { const t = (r.recordType || r.record_type || '').toUpperCase(); return t === 'CNAME' || t === 'DNS_RECORD_TYPE_CNAME'; }) || dnsRecords[0];
             const val = cnameRecord && (cnameRecord.requiredValue || cnameRecord.required_value);
             cnameValue = (typeof val === 'string' && val.trim()) ? val.trim() : null;
           }
@@ -790,12 +839,19 @@ app.post('/api/domains/sync-railway', async (req, res) => {
   if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
   const result = await fetchRailwayDomainsWithRecords();
   if (!result.ok) return res.status(400).json({ error: result.error || 'Erro ao consultar Railway.' });
+  const projectId = process.env.RAILWAY_PROJECT_ID;
   const adminId = req.session.userId;
   let updated = 0;
   let created = 0;
   for (const rd of result.domains || []) {
     const domainName = (rd.domain || rd.name || '').toLowerCase().trim();
     if (!domainName) continue;
+    // A listagem só retorna CNAME; domainStatus(id, projectId) pode trazer o TXT
+    const statusExtra = await fetchDomainStatusFromRailway(rd.id);
+    if (statusExtra && statusExtra.dnsRecords && Array.isArray(statusExtra.dnsRecords)) {
+      rd.status = rd.status || {};
+      rd.status.dnsRecords = [...(rd.status.dnsRecords || []), ...statusExtra.dnsRecords];
+    }
     const { cnameVal, txtVal } = parseDnsRecordsFromRailway(rd);
     let row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ?', [domainName]);
     if (!row) {

@@ -1348,7 +1348,7 @@
           <h4 style="margin-bottom: 10px;"><i class="ri-dns-line"></i> Configuração DNS</h4>
           <p style="color: var(--text-secondary); margin-bottom: 14px;">O Railway exige <strong>dois registros</strong> para cada domínio: <strong>CNAME</strong> e <strong>TXT</strong> (verificação). Na tabela abaixo aparecem ambos. Configure os dois no seu provedor de DNS (Cloudflare, Registro.br, etc.). Clique em <strong>Sincronizar com Railway</strong> para puxar os valores atualizados do painel.</p>
           <p style="color: var(--text-secondary); font-size: 12px;">CNAME: Nome <code>@</code>, Valor: o que aparece na coluna. TXT: Nome <code>_railway-verify</code>, Valor: o token da coluna. <button type="button" class="btn btn-sm btn-primary" onclick="syncRailwayDomains()" style="margin-left:6px"><i class="ri-refresh-line"></i> Sincronizar com Railway</button> <span id="syncRailwayMsg" style="font-size: 12px; margin-left: 8px;"></span></p>
-          <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">Se o TXT não aparecer ou ao excluir aqui o domínio não sumir no Railway: <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta Railway</button> — depois cole o JSON no chat para eu ajustar o código.</p>
+          <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">O Railway na listagem só envia o CNAME; o TXT de verificação não vem nesse endpoint, por isso a coluna TXT pode ficar vazia. Ao excluir: <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta Railway</button> (abre modal; clique em Copiar para evitar erro de foco).</p>
         </div>
       </div>
       <div class="card">
@@ -1631,6 +1631,17 @@
     <div class="modal-content">
       <div class="modal-header"><h3>Detalhes do Visitante</h3><button class="modal-close" onclick="closeVisitorModal()">&times;</button></div>
       <div class="modal-body" id="visitorDetails"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <div class="modal" id="railwayRawModal">
+    <div class="modal-content" style="max-width: 90%; max-height: 85vh;">
+      <div class="modal-header"><h3>Resposta bruta do Railway</h3><button class="modal-close" onclick="document.getElementById('railwayRawModal').classList.remove('active')">&times;</button></div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); margin-bottom: 8px;">Cole este JSON no chat para eu ajustar o TXT e a exclusão. Clique em Copiar.</p>
+        <textarea id="railwayRawTextarea" readonly style="width:100%; height: 50vh; font-family: monospace; font-size: 12px; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; resize: vertical;"></textarea>
+        <div style="margin-top: 10px;"><button type="button" class="btn btn-primary" onclick="copyRailwayRawToClipboard()"><i class="ri-file-copy-line"></i> Copiar para área de transferência</button> <button type="button" class="btn btn-secondary" onclick="document.getElementById('railwayRawModal').classList.remove('active')">Fechar</button></div>
+      </div>
     </div>
   </div>
 
@@ -3444,15 +3455,30 @@
         const res = await fetch('/api/domains/railway-raw', { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         const text = JSON.stringify(data, null, 2);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(text);
-          alert('Resposta Railway copiada. Cole no chat para eu ajustar o TXT e a exclusão.');
+        const modal = document.getElementById('railwayRawModal');
+        const ta = document.getElementById('railwayRawTextarea');
+        if (modal && ta) {
+          ta.value = text;
+          modal.classList.add('active');
+          ta.focus();
+          ta.select();
         } else {
-          const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
-          try { document.execCommand('copy'); alert('Resposta Railway copiada. Cole no chat para eu ajustar o TXT e a exclusão.'); } catch (e) { alert('Copie manualmente: ' + text.slice(0, 200) + '...'); }
-          document.body.removeChild(ta);
+          var win = window.open('', '_blank');
+          if (win) { win.document.write('<pre style="padding:12px;font-family:monospace;white-space:pre-wrap">' + text.replace(/</g, '&lt;') + '</pre>'); win.document.close(); }
+          else alert('Resposta obtida. Cole no chat: ' + text.slice(0, 300) + '...');
         }
       } catch (e) { alert('Erro ao obter resposta: ' + (e.message || 'Erro')); }
+    }
+    function copyRailwayRawToClipboard() {
+      var ta = document.getElementById('railwayRawTextarea');
+      if (!ta) return;
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ta.value).then(function() { alert('Copiado. Cole no chat para debug.'); }).catch(function() { document.execCommand('copy'); alert('Copiado.'); });
+        } else { document.execCommand('copy'); alert('Copiado.'); }
+      } catch (e) { document.execCommand('copy'); alert('Copiado.'); }
     }
     async function checkDomainDns(domain, rowId, targetOptional) {
       const span = document.getElementById('dnsResult-' + rowId);
