@@ -591,19 +591,24 @@ function removeCustomDomainFromRailway(domain) {
   });
 }
 
-// Extrai CNAME e TXT dos registros DNS (aceita recordType/record_type, requiredValue/required_value, status.dnsRecords ou rd.dnsRecords)
+// Extrai CNAME e TXT dos registros DNS (aceita recordType/record_type, requiredValue/required_value/value, hostlabel para _railway-verify)
 function parseDnsRecordsFromRailway(rd) {
   let cnameVal = null;
   let txtVal = null;
   const status = rd.status || rd;
+  // Token de verificação TXT pode vir no nível do domínio (algumas APIs)
+  const domainTxt = (rd.verificationToken ?? rd.verification_token ?? status?.verificationToken ?? status?.verification_token ?? '').toString().trim();
+  if (domainTxt) txtVal = domainTxt;
   let records = (status && (status.dnsRecords || status.dns_records)) || (rd.dnsRecords || rd.dns_records) || [];
   const arr = Array.isArray(records) ? records : [];
   for (const r of arr) {
     const rt = ((r.recordType || r.record_type || '') + '').toUpperCase();
-    const val = (r.requiredValue != null ? r.requiredValue : r.required_value);
+    const val = r.requiredValue ?? r.required_value ?? r.value;
     const valStr = (typeof val === 'string' ? val : (val != null ? String(val) : '')).trim();
+    const hostlabel = ((r.hostlabel || r.host_label || '') + '').toLowerCase();
+    const isTxtVerify = (hostlabel.includes('railway') && hostlabel.includes('verify')) || hostlabel === '_railway-verify';
     if (rt === 'CNAME' && valStr) cnameVal = valStr;
-    if (rt === 'TXT' && valStr) txtVal = valStr;
+    if ((rt === 'TXT' || isTxtVerify) && valStr) txtVal = valStr;
   }
   return { cnameVal, txtVal };
 }
@@ -640,8 +645,11 @@ async function fetchRailwayDomainsWithRecords() {
           const json = JSON.parse(data);
           if (json.errors && json.errors.length) return resolve({ ok: false, domains: [], error: json.errors[0].message });
           const dd = json.data && json.data.domains;
-          let custom = (dd && (dd.customDomains || dd.custom_domains)) || [];
-          if (Array.isArray(custom) && custom.length && custom[0] && custom[0].node) custom = custom.map(e => e.node || e);
+          let raw = (dd && (dd.customDomains || dd.custom_domains)) || [];
+          // API pode retornar conexão Relay: { edges: [ { node: { id, domain, status } } ] }
+          if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.edges) raw = raw.edges.map(e => e.node || e);
+          let custom = Array.isArray(raw) ? raw : [];
+          if (custom.length && custom[0] && custom[0].node) custom = custom.map(e => e.node || e);
           resolve({ ok: true, domains: custom });
         } catch (e) {
           resolve({ ok: false, domains: [], error: e.message });
@@ -762,6 +770,15 @@ app.get('/api/domains/check-dns', async (req, res) => {
   }
   if (!propagated && !message) message = 'Pode levar alguns minutos até 48h para propagar. Verifique os registros no seu provedor de DNS.';
   return res.json({ domain, expectedTarget, resolved, propagated, message });
+});
+
+// Debug: resposta bruta do Railway (só admin) – para inspecionar se status.dnsRecords vem na listagem
+app.get('/api/domains/railway-raw', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const result = await fetchRailwayDomainsWithRecords();
+  res.json({ ok: result.ok, error: result.error, domains: result.domains, count: (result.domains || []).length });
 });
 
 // Sincronizar registros DNS (CNAME + TXT) do Railway: atualiza existentes e cria no painel os que só existem no Railway
