@@ -568,8 +568,10 @@ function removeCustomDomainFromRailway(domain) {
       return { ok: false, error: json.errors[0].message };
     }
     const domainsData = json.data && json.data.domains;
-    let custom = (domainsData && (domainsData.customDomains || domainsData.custom_domains)) || [];
-    if (Array.isArray(custom) && custom.length && custom[0].node) custom = custom.map(e => e.node);
+    let raw = (domainsData && (domainsData.customDomains || domainsData.custom_domains)) || [];
+    if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.edges) raw = raw.edges.map(e => e.node || e);
+    let custom = Array.isArray(raw) ? raw : [];
+    if (custom.length && custom[0] && custom[0].node) custom = custom.map(e => e.node || e);
     const d = domain.trim().toLowerCase();
     const found = custom.find(c => ((c.domain || c.name || '').toLowerCase()) === d);
     if (!found || !(found.id || found.customDomainId)) return { ok: true };
@@ -817,11 +819,14 @@ app.delete('/api/domains/:id', async (req, res) => {
   const canDelete = user && (user.role === 'admin' || (await db.get('SELECT 1 FROM allowed_domains WHERE id = ? AND user_id = ?', [req.params.id, userId])));
   if (!canDelete) return res.status(403).json({ error: 'Acesso negado' });
   const row = await db.get('SELECT domain FROM allowed_domains WHERE id = ?', [req.params.id]);
+  let railwayRemoved = false;
   if (user.role === 'admin' && row && row.domain) {
-    await removeCustomDomainFromRailway(row.domain);
+    const out = await removeCustomDomainFromRailway(row.domain);
+    railwayRemoved = out && out.ok === true;
+    if (!railwayRemoved && out && out.error) console.error('[Domains] Railway delete:', row.domain, out.error);
   }
   await db.run('DELETE FROM allowed_domains WHERE id = ?', [req.params.id]);
-  res.json({ success: true });
+  res.json({ success: true, railwayRemoved });
 });
 
 // API: Backup do banco (admin) – exporta dados para não perder

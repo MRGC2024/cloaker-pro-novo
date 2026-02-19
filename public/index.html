@@ -1348,6 +1348,7 @@
           <h4 style="margin-bottom: 10px;"><i class="ri-dns-line"></i> Configuração DNS</h4>
           <p style="color: var(--text-secondary); margin-bottom: 14px;">O Railway exige <strong>dois registros</strong> para cada domínio: <strong>CNAME</strong> e <strong>TXT</strong> (verificação). Na tabela abaixo aparecem ambos. Configure os dois no seu provedor de DNS (Cloudflare, Registro.br, etc.). Clique em <strong>Sincronizar com Railway</strong> para puxar os valores atualizados do painel.</p>
           <p style="color: var(--text-secondary); font-size: 12px;">CNAME: Nome <code>@</code>, Valor: o que aparece na coluna. TXT: Nome <code>_railway-verify</code>, Valor: o token da coluna. <button type="button" class="btn btn-sm btn-primary" onclick="syncRailwayDomains()" style="margin-left:6px"><i class="ri-refresh-line"></i> Sincronizar com Railway</button> <span id="syncRailwayMsg" style="font-size: 12px; margin-left: 8px;"></span></p>
+          <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">Se o TXT não aparecer ou ao excluir aqui o domínio não sumir no Railway: <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta Railway</button> — depois cole o JSON no chat para eu ajustar o código.</p>
         </div>
       </div>
       <div class="card">
@@ -3438,6 +3439,21 @@
         if (msg) msg.textContent = 'Erro de conexão';
       }
     }
+    async function copyRailwayRaw() {
+      try {
+        const res = await fetch('/api/domains/railway-raw', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        const text = JSON.stringify(data, null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          alert('Resposta Railway copiada. Cole no chat para eu ajustar o TXT e a exclusão.');
+        } else {
+          const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); alert('Resposta Railway copiada. Cole no chat para eu ajustar o TXT e a exclusão.'); } catch (e) { alert('Copie manualmente: ' + text.slice(0, 200) + '...'); }
+          document.body.removeChild(ta);
+        }
+      } catch (e) { alert('Erro ao obter resposta: ' + (e.message || 'Erro')); }
+    }
     async function checkDomainDns(domain, rowId, targetOptional) {
       const span = document.getElementById('dnsResult-' + rowId);
       if (span) span.textContent = '...';
@@ -3455,11 +3471,13 @@
     }
 
     async function deleteDomain(id) {
-      if (!confirm('Remover este domínio da lista?')) return;
+      if (!confirm('Remover este domínio da lista? (Se for admin, também tenta remover no Railway.)')) return;
       try {
         const res = await fetch('/api/domains/' + id, { method: 'DELETE', credentials: 'include' });
         if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json().catch(() => ({}));
         loadDomains();
+        if (res.ok && data.railwayRemoved === false) alert('Domínio removido do painel. Não foi possível remover no Railway — verifique variáveis ou use "Copiar resposta Railway" para debug.');
       } catch (e) {}
     }
 
