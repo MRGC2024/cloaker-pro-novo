@@ -1355,8 +1355,8 @@
           <p style="color: var(--text-secondary); margin-bottom: 15px;">Lista de domínios. Configure <strong>CNAME</strong> e <strong>TXT</strong> no seu provedor de DNS.</p>
           <div class="table-container">
             <table>
-              <thead><tr><th>Descrição</th><th>Domínio</th><th>CNAME (Valor)</th><th>TXT Verificação</th><th>Propagação</th><th>Ações</th></tr></thead>
-              <tbody id="domainsTable"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
+              <thead><tr><th>Descrição</th><th>Domínio</th><th>CNAME (Valor)</th><th>TXT Verificação</th><th>Cadastrado em</th><th>Propagação</th><th>Ações</th></tr></thead>
+              <tbody id="domainsTable"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
             </table>
           </div>
           <p id="domainsEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhum domínio cadastrado. Clique em "Cadastrar domínio" para adicionar.</p>
@@ -3380,10 +3380,11 @@
         var copyCnameBtn = (d.railway_cname_target || target) ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainCname(' + d.id + ')" title="Copiar CNAME"><i class="ri-file-copy-line"></i></button>' : '';
         var copyTxtBtn = d.railway_txt_verify ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainTxt(' + d.id + ')" title="Copiar TXT"><i class="ri-file-copy-line"></i></button>' : '';
         var descEsc = (d.description || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
+        var createdAt = d.created_at ? (function () { try { var t = new Date(d.created_at); return isNaN(t.getTime()) ? '-' : t.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '-'; } })() : '-';
+        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + '</td><td style="white-space:nowrap;font-size:12px">' + createdAt + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
       }).join('');
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar</td></tr>';
       }
     }
 
@@ -3427,7 +3428,7 @@
         const res = await fetch('/api/domains/sync-railway', { method: 'POST', credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          if (msg) msg.textContent = data.updated !== undefined ? 'Atualizado: ' + data.updated + ' domínio(s).' : 'Sincronizado.';
+          if (msg) msg.textContent = (data.updated !== undefined || data.created !== undefined) ? 'Atualizado: ' + (data.updated || 0) + ', criados: ' + (data.created || 0) + ' domínio(s).' : 'Sincronizado.';
           loadDomains();
         } else {
           if (msg) msg.textContent = data.error || 'Erro.';

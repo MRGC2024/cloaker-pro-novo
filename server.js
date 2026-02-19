@@ -591,6 +591,23 @@ function removeCustomDomainFromRailway(domain) {
   });
 }
 
+// Extrai CNAME e TXT dos registros DNS (aceita recordType/record_type, requiredValue/required_value, status.dnsRecords ou rd.dnsRecords)
+function parseDnsRecordsFromRailway(rd) {
+  let cnameVal = null;
+  let txtVal = null;
+  const status = rd.status || rd;
+  let records = (status && (status.dnsRecords || status.dns_records)) || (rd.dnsRecords || rd.dns_records) || [];
+  const arr = Array.isArray(records) ? records : [];
+  for (const r of arr) {
+    const rt = ((r.recordType || r.record_type || '') + '').toUpperCase();
+    const val = (r.requiredValue != null ? r.requiredValue : r.required_value);
+    const valStr = (typeof val === 'string' ? val : (val != null ? String(val) : '')).trim();
+    if (rt === 'CNAME' && valStr) cnameVal = valStr;
+    if (rt === 'TXT' && valStr) txtVal = valStr;
+  }
+  return { cnameVal, txtVal };
+}
+
 // Busca domínios no Railway com registros DNS (para sincronizar CNAME + TXT)
 async function fetchRailwayDomainsWithRecords() {
   const token = process.env.RAILWAY_API_TOKEN || process.env.RAILWAY_TOKEN;
@@ -747,35 +764,33 @@ app.get('/api/domains/check-dns', async (req, res) => {
   return res.json({ domain, expectedTarget, resolved, propagated, message });
 });
 
-// Sincronizar registros DNS (CNAME + TXT) do Railway para domínios existentes
+// Sincronizar registros DNS (CNAME + TXT) do Railway: atualiza existentes e cria no painel os que só existem no Railway
 app.post('/api/domains/sync-railway', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
   if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
   const result = await fetchRailwayDomainsWithRecords();
   if (!result.ok) return res.status(400).json({ error: result.error || 'Erro ao consultar Railway.' });
+  const adminId = req.session.userId;
   let updated = 0;
+  let created = 0;
   for (const rd of result.domains || []) {
     const domainName = (rd.domain || rd.name || '').toLowerCase().trim();
     if (!domainName) continue;
-    let cnameVal = null;
-    let txtVal = null;
-    const records = rd.status && rd.status.dnsRecords;
-    if (Array.isArray(records)) {
-      for (const r of records) {
-        const rt = (r.recordType || r.record_type || '').toUpperCase();
-        const val = (r.requiredValue || r.required_value || '').trim();
-        if (rt === 'CNAME' && val) cnameVal = val;
-        if (rt === 'TXT' && val) txtVal = val;
-      }
+    const { cnameVal, txtVal } = parseDnsRecordsFromRailway(rd);
+    let row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ?', [domainName]);
+    if (!row) {
+      await db.run('INSERT INTO allowed_domains (user_id, domain, description, railway_cname_target, railway_txt_verify) VALUES (?, ?, ?, ?, ?)',
+        [adminId, domainName, 'Sincronizado do Railway', cnameVal || null, txtVal || null]);
+      row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ? ORDER BY id DESC LIMIT 1', [domainName]);
+      if (row) created++;
     }
-    const row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ?', [domainName]);
     if (row && (cnameVal || txtVal)) {
       await db.run('UPDATE allowed_domains SET railway_cname_target = COALESCE(?, railway_cname_target), railway_txt_verify = COALESCE(?, railway_txt_verify) WHERE id = ?', [cnameVal, txtVal, row.id]);
       updated++;
     }
   }
-  res.json({ success: true, updated, total: (result.domains || []).length });
+  res.json({ success: true, updated, created, total: (result.domains || []).length });
 });
 
 app.delete('/api/domains/:id', async (req, res) => {
