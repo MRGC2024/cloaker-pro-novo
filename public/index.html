@@ -825,13 +825,14 @@
               <thead>
                 <tr>
                   <th>Site</th>
+                  <th>Fallback</th>
                   <th>Status</th>
                   <th>URL principal</th>
                   <th>URL em uso agora</th>
                   <th>Ação</th>
                 </tr>
               </thead>
-              <tbody id="fallbackStatusTable"><tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr></tbody>
+              <tbody id="fallbackStatusTable"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1536,6 +1537,9 @@
           <div id="siteFallbackOverrideStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(210,153,34,0.15); border-radius:8px; font-size:13px; color:var(--warning);">
             <i class="ri-alert-line"></i> Usando URL de contingência: <code id="siteFallbackOverrideUrl" style="font-size:12px; word-break:break-all;"></code>
           </div>
+          <div class="form-group" style="margin-top: 12px;">
+            <label class="radio-label"><input type="checkbox" id="siteUseFallback" checked> <strong>Usar fallback ao cair</strong> — quando este site ficar offline, substituir o link pela URL de contingência (standby). Desmarque para sites que não devem receber substituição.</label>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Domínio (opcional)</label>
@@ -1862,7 +1866,7 @@
         <div class="site-card">
           <div class="site-card-header">
             <div>
-              <div class="site-card-title">${s.name} ${s.fallback_override_url ? '<span class="badge badge-warning" style="font-size:10px;margin-left:6px;" title="Usando URL de contingência">Fallback ativo</span>' : ''}</div>
+              <div class="site-card-title">${s.name} ${s.fallback_override_url ? '<span class="badge badge-warning" style="font-size:10px;margin-left:6px;" title="Usando URL de contingência">Fallback ativo</span>' : ''} ${(s.use_fallback !== 0 && s.use_fallback !== false) ? '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--primary);opacity:0.9;" title="Substituição de link ativa ao cair">Fallback</span>' : '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--text-secondary);" title="Sem substituição ao cair">Sem fallback</span>'}</div>
               <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -1930,6 +1934,7 @@
       document.getElementById('siteDefaultLinkParams').value = '';
       regenerateRefOnSave = false;
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
+      document.getElementById('siteUseFallback').checked = true;
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -1950,6 +1955,7 @@
       document.getElementById('siteTargetUrl').value = site.target_url || '';
       document.getElementById('siteFallbackOverrideStatus').style.display = site.fallback_override_url ? 'block' : 'none';
       if (site.fallback_override_url) document.getElementById('siteFallbackOverrideUrl').textContent = site.fallback_override_url;
+      document.getElementById('siteUseFallback').checked = site.use_fallback !== 0 && site.use_fallback !== false;
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
       const behavior = site.block_behavior || 'redirect';
       const isEmbed = behavior === 'embed';
@@ -2013,7 +2019,8 @@
         block_vpn: document.getElementById('siteBlockVpn').checked,
         allowed_countries: getCountrySelectValue('siteAllowedCountries') || 'BR',
         blocked_countries: getCountrySelectValue('siteBlockedCountries') || '',
-        is_active: true
+        is_active: true,
+        use_fallback: document.getElementById('siteUseFallback').checked
       };
       if (siteId) {
         if (!requireRef) data.required_ref_token = '';
@@ -2055,12 +2062,12 @@
       const standbyCard = document.getElementById('fallbackStandbyCard');
       const standbyList = document.getElementById('fallbackStandbyList');
       if (!tableEl) return;
-      tableEl.innerHTML = '<tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr>';
       if (summaryEl) summaryEl.textContent = '';
       try {
         const res = await apiGet('/api/sites');
         if (!res || !res.ok) {
-          tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+          tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
           return;
         }
         const list = await res.json();
@@ -2074,20 +2081,25 @@
           summaryEl.innerHTML = '<strong>Resumo:</strong> ' +
             '<span style="color:var(--success);">' + onPrincipal + ' usando URL principal</span> · ' +
             '<span style="color:var(--warning);">' + onContingencia + ' usando contingência</span>' +
-            (sitesWithUrl.length === 0 ? ' · Nenhum site com URL configurada.' : '');
+            (sitesWithUrl.length === 0 ? ' · Nenhum site com URL configurada.' : '') +
+            ' · Sites com fallback ativo: marque em Meus Sites → Editar → "Usar fallback ao cair".';
         }
         if (sitesWithUrl.length === 0) {
-          tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--text-secondary);padding:20px;text-align:center;">Nenhum site com URL de landing configurada. Configure em Meus Sites.</td></tr>';
+          tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--text-secondary);padding:20px;text-align:center;">Nenhum site com URL de landing configurada. Configure em Meus Sites.</td></tr>';
         } else {
           tableEl.innerHTML = sitesWithUrl.map(s => {
+            const useFb = s.use_fallback !== 0 && s.use_fallback !== false;
             const primary = (s.target_url || '').trim();
             const override = (s.fallback_override_url || '').trim();
             const urlEmUso = override || primary;
             const status = override ? 'contingencia' : 'principal';
             const statusLabel = override ? 'Contingência' : 'URL principal';
             const statusClass = override ? 'warning' : 'success';
+            const fallbackLabel = useFb ? 'Sim' : 'Não';
+            const fallbackTitle = useFb ? 'Substituição de link ao cair ativa' : 'Sem substituição ao cair';
             return '<tr>' +
               '<td><strong>' + (s.name || s.site_id || '').replace(/</g, '&lt;') + '</strong></td>' +
+              '<td><span class="badge ' + (useFb ? 'badge-primary' : '') + '" style="' + (useFb ? '' : 'background:var(--text-secondary);') + '" title="' + fallbackTitle + '">' + fallbackLabel + '</span></td>' +
               '<td><span class="badge badge-' + statusClass + '">' + statusLabel + '</span></td>' +
               '<td style="word-break:break-all;font-size:12px;"><code>' + (primary || '—').replace(/</g, '&lt;') + '</code></td>' +
               '<td style="word-break:break-all;font-size:12px;"><code>' + (urlEmUso || '—').replace(/</g, '&lt;') + '</code></td>' +
@@ -2109,7 +2121,7 @@
           standbyCard.style.display = 'none';
         }
       } catch (e) {
-        tableEl.innerHTML = '<tr><td colspan="5" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+        tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
       }
     }
 

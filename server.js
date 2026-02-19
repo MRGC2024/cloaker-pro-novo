@@ -1136,7 +1136,7 @@ function generateRefToken() {
 // API: Criar site (padrão: apenas Brasil; gera link para usar nos Ads) – pertence ao usuário logado
 app.post('/api/sites', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const { name, domain, target_url, redirect_url, allowed_countries, block_behavior, landing_page_id, selected_domain } = req.body;
+  const { name, domain, target_url, redirect_url, allowed_countries, block_behavior, landing_page_id, selected_domain, use_fallback } = req.body;
   const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   const linkCode = await generateLinkCode();
   const refToken = generateRefToken();
@@ -1146,10 +1146,11 @@ app.post('/api/sites', async (req, res) => {
   const behavior = block_behavior === 'page' ? 'page' : (block_behavior === 'embed' ? 'embed' : 'redirect');
   const lpId = behavior === 'page' && landing_page_id ? parseInt(landing_page_id, 10) : null;
   const selDomain = (selected_domain || '').trim() || null;
+  const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain]);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain, useFb]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json(site);
   } catch (error) {
@@ -1176,13 +1177,14 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const selDomain = (data.selected_domain || '').trim() || null;
     const newTarget = (data.target_url || '').trim() || null;
     const targetChanged = ((existing.target_url || '').trim() || null) !== newTarget;
-    const clearFallback = targetChanged ? ', fallback_override_url = NULL' : '';
+    const useFb = data.use_fallback === false || data.use_fallback === 0 ? 0 : 1;
+    const clearFallback = (targetChanged || useFb === 0) ? ', fallback_override_url = NULL' : '';
     const sql = `
       UPDATE sites SET
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
-        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?${clearFallback}
+        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, use_fallback = ?${clearFallback}
       WHERE site_id = ?
     `;
     await db.run(sql, [
@@ -1190,7 +1192,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_desktop ? 1 : 0, data.block_facebook_library ? 1 : 0, data.block_bots ? 1 : 0,
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       data.allowed_countries || '', data.blocked_countries || '', data.is_active ? 1 : 0, refToken,
-      selDomain, lpId,
+      selDomain, lpId, useFb,
       req.params.siteId
     ]);
     res.json({ success: true });
@@ -2175,11 +2177,16 @@ async function getGlobalFallbacks() {
 async function runFallbackHealthCheck() {
   try {
     const sites = await db.all(`
-      SELECT site_id, name, link_code, target_url, fallback_override_url, selected_domain
+      SELECT site_id, name, link_code, target_url, fallback_override_url, selected_domain, use_fallback
       FROM sites
       WHERE is_active = 1 AND (target_url IS NOT NULL AND target_url != '')
     `);
     for (const site of sites) {
+      const useFallback = site.use_fallback !== 0 && site.use_fallback !== false;
+      if (!useFallback) {
+        await setFallbackFailCount(site.site_id, 0);
+        continue;
+      }
       const primary = (site.target_url || '').trim();
       const override = (site.fallback_override_url || '').trim();
       const currentUrl = override || primary;
