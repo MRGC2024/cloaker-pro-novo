@@ -64,6 +64,19 @@ function getBrasiliaDateRange(period) {
       return { start: toSqliteUtc(startToday), end: toSqliteUtc(endToday) };
   }
 }
+
+// Converte datas YYYY-MM-DD (Brasília) em { start, end } UTC para comparação com created_at
+function getBrasiliaRangeFromDates(fromDate, toDate) {
+  const toSqliteUtc = (d) => {
+    const y = d.getUTCFullYear(), m = String(d.getUTCMonth() + 1).padStart(2, '0'), day = String(d.getUTCDate()).padStart(2, '0');
+    const h = String(d.getUTCHours()).padStart(2, '0'), min = String(d.getUTCMinutes()).padStart(2, '0'), s = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${y}-${m}-${day} ${h}:${min}:${s}`;
+  };
+  const startBr = new Date(fromDate + 'T03:00:00.000Z');
+  const endOfDayBr = new Date(new Date(toDate + 'T03:00:00.000Z').getTime() + 24 * 60 * 60 * 1000 - 1);
+  return { start: toSqliteUtc(startBr), end: toSqliteUtc(endOfDayBr) };
+}
+
 // Railway: atrás de proxy HTTPS – precisa confiar no proxy para cookie e sessão
 if (isProduction) app.set('trust proxy', 1);
 
@@ -933,6 +946,31 @@ app.get('/api/backup', async (req, res) => {
   res.json(await exportBackup());
 });
 
+app.post('/api/admin/cleanup-visitors', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  if (!db.usePg || VISITOR_RETENTION_DAYS <= 0) return res.status(400).json({ error: 'Limpeza por retenção só está ativa com PostgreSQL (Supabase) e VISITOR_RETENTION_DAYS > 0' });
+  await cleanupOldVisitors();
+  res.json({ success: true, message: 'Limpeza executada. Visitantes com mais de ' + VISITOR_RETENTION_DAYS + ' dias foram removidos.' });
+});
+
+app.post('/api/admin/cleanup-visitors-range', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const { fromDate, toDate } = req.body || {};
+  if (!fromDate || !toDate || !/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+    return res.status(400).json({ error: 'Informe fromDate e toDate no formato YYYY-MM-DD' });
+  }
+  if (fromDate > toDate) return res.status(400).json({ error: 'Data inicial não pode ser maior que a data final' });
+  const { start, end } = getBrasiliaRangeFromDates(fromDate, toDate);
+  const countRow = await db.get('SELECT COUNT(*) as c FROM visitors WHERE created_at >= ? AND created_at <= ?', [start, end]);
+  const count = (countRow && countRow.c) ? parseInt(countRow.c, 10) : 0;
+  await db.run('DELETE FROM visitors WHERE created_at >= ? AND created_at <= ?', [start, end]);
+  res.json({ success: true, deleted: count, message: count + ' visitante(s) removido(s) no período ' + fromDate + ' a ' + toDate + '.' });
+});
+
 app.post('/api/backup/send', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
@@ -1374,7 +1412,8 @@ app.get('/api/visitors', async (req, res) => {
   else if (filter === 'desktop') where.push("(v.device_type = 'desktop' OR v.device_type IS NULL)");
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const visitors = await db.all(`SELECT v.* FROM visitors v ${whereClause} ORDER BY v.created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
+  const visitorCols = 'v.id, v.site_id, v.ip, v.country, v.city, v.region, v.device_type, v.browser, v.os, v.was_blocked, v.block_reason, v.is_bot, v.created_at';
+  const visitors = await db.all(`SELECT ${visitorCols} FROM visitors v ${whereClause} ORDER BY v.created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
   const total = await db.get(`SELECT COUNT(*) as count FROM visitors v ${whereClause}`, params);
 
   res.json({
@@ -2422,6 +2461,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Limpeza de visitantes antigos (reduz uso no Supabase: storage + bandwidth)
+const VISITOR_RETENTION_DAYS = parseInt(process.env.VISITOR_RETENTION_DAYS, 10) || 90;
+async function cleanupOldVisitors() {
+  if (!db.usePg || VISITOR_RETENTION_DAYS <= 0) return;
+  try {
+    await db.run(
+      "DELETE FROM visitors WHERE created_at < NOW() - (? || ' days')::interval",
+      [VISITOR_RETENTION_DAYS]
+    );
+    console.log('[Supabase] Cleanup de visitantes antigos (> ' + VISITOR_RETENTION_DAYS + ' dias) executado.');
+  } catch (e) {
+    console.warn('[Supabase] Cleanup visitantes:', e.message);
+  }
+}
+
 // Iniciar servidor
 db.initDb().then(async () => {
   await loadMetaReviewerIPs();
@@ -2432,6 +2486,8 @@ db.initDb().then(async () => {
   setInterval(runAutoImprovementJob, 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
   runFallbackHealthCheck();
   setInterval(runFallbackHealthCheck, FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
+  await cleanupOldVisitors();
+  if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(cleanupOldVisitors, 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗

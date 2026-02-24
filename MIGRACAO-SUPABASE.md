@@ -90,4 +90,14 @@ Com `DATABASE_URL` apontando para o Supabase, você pode aumentar o número de *
 | Migrar JSON → Supabase | Seu PC: `DATABASE_URL=... node scripts/migrate-json-to-pg.js backup.json` |
 | App usar Supabase | Railway: variável `DATABASE_URL` + redeploy |
 
-Tudo pode ser feito por você, sem precisar dar acesso a terceiros; os únicos “comandos” são no seu ambiente (PowerShell/terminal) com o arquivo de backup que você baixou.
+Tudo pode ser feito por você, sem precisar dar acesso a terceiros; os únicos "comandos" são no seu ambiente (PowerShell/terminal) com o arquivo de backup que você baixou.
+
+---
+
+## 7. Reduzir uso (cota / bandwidth) sem pagar mais
+
+Se o Supabase avisar que você passou da cota (ex.: bandwidth > 5 GB), dá para reduzir consumo **sem upgrade**:
+
+1. **Retenção de visitantes** — O app apaga automaticamente visitantes com mais de **90 dias** (padrão). No Railway → Variables: `VISITOR_RETENTION_DAYS` = `90` (ou `60`, `30`; use `0` para desativar).
+2. **Limpeza manual (admin)** — `POST /api/admin/cleanup-visitors` com sessão de admin executa a limpeza na hora.
+3. **Painel do Supabase** — Em Usage/Dashboard veja o que mais consome e ajuste a retenção ou limpe dados antigos pelo painel do app.

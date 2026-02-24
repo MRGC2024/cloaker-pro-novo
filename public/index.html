@@ -1166,6 +1166,29 @@
           <span id="backupMsg" style="margin-left: 10px; font-size: 13px;"></span>
         </div>
       </div>
+      <div class="card" id="cleanupVisitorsCard" style="display: none;">
+        <div class="card-header"><h3 class="card-title"><i class="ri-delete-bin-line"></i> Limpeza de visitantes (admin)</h3></div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 16px;">Reduza o uso do Supabase (bandwidth e armazenamento) removendo visitantes antigos. As ações abaixo são irreversíveis.</p>
+          <h4 style="margin: 0 0 10px; font-size: 14px;">Por período (escolha as datas)</h4>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 12px;">De</label>
+              <input type="date" class="form-input" id="cleanupFromDate" style="min-width: 140px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 12px;">Até</label>
+              <input type="date" class="form-input" id="cleanupToDate" style="min-width: 140px;">
+            </div>
+            <button type="button" class="btn btn-danger" onclick="cleanupVisitorsByRange()" style="margin-top: 18px;"><i class="ri-delete-bin-line"></i> Limpar visitantes neste período</button>
+          </div>
+          <p id="cleanupRangeMsg" style="font-size: 13px; margin: 0 0 20px;"></p>
+          <h4 style="margin: 0 0 10px; font-size: 14px;">Por retenção automática</h4>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 10px;">Remove todos os visitantes com mais de 90 dias (ou o valor de <code>VISITOR_RETENTION_DAYS</code> no Railway). Só funciona com PostgreSQL/Supabase.</p>
+          <button type="button" class="btn btn-secondary" onclick="cleanupVisitorsByRetention()"><i class="ri-refresh-line"></i> Executar limpeza por retenção agora</button>
+          <span id="cleanupRetentionMsg" style="margin-left: 10px; font-size: 13px;"></span>
+        </div>
+      </div>
       <div class="card" id="fallbackCard" style="display: none;">
         <div class="card-header"><h3 class="card-title"><i class="ri-refresh-line"></i> Fallback e Telegram (admin)</h3></div>
         <div class="card-body">
@@ -3543,6 +3566,54 @@
       }
     }
 
+    async function cleanupVisitorsByRange() {
+      const fromEl = document.getElementById('cleanupFromDate');
+      const toEl = document.getElementById('cleanupToDate');
+      const msgEl = document.getElementById('cleanupRangeMsg');
+      const fromDate = (fromEl && fromEl.value) ? fromEl.value.trim() : '';
+      const toDate = (toEl && toEl.value) ? toEl.value.trim() : '';
+      if (!fromDate || !toDate) {
+        if (msgEl) { msgEl.textContent = 'Selecione as duas datas (De e Até).'; msgEl.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (fromDate > toDate) {
+        if (msgEl) { msgEl.textContent = 'Data inicial não pode ser maior que a data final.'; msgEl.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (!confirm('Remover todos os visitantes entre ' + fromDate + ' e ' + toDate + '? Esta ação não pode ser desfeita.')) return;
+      if (msgEl) { msgEl.textContent = 'Limpando...'; msgEl.style.color = ''; }
+      try {
+        const res = await fetch('/api/admin/cleanup-visitors-range', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ fromDate, toDate })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (msgEl) {
+          msgEl.textContent = res.ok ? (data.message || 'Concluído.') : (data.error || 'Erro.');
+          msgEl.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+        }
+      } catch (e) {
+        if (msgEl) { msgEl.textContent = 'Erro de conexão'; msgEl.style.color = 'var(--danger)'; }
+      }
+    }
+
+    async function cleanupVisitorsByRetention() {
+      const msgEl = document.getElementById('cleanupRetentionMsg');
+      if (msgEl) { msgEl.textContent = 'Executando...'; msgEl.style.color = ''; }
+      try {
+        const res = await fetch('/api/admin/cleanup-visitors', { method: 'POST', credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (msgEl) {
+          msgEl.textContent = res.ok ? (data.message || 'Concluído.') : (data.error || 'Erro.');
+          msgEl.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+        }
+      } catch (e) {
+        if (msgEl) { msgEl.textContent = 'Erro de conexão'; msgEl.style.color = 'var(--danger)'; }
+      }
+    }
+
     async function createUser() {
       const username = (document.getElementById('newUserUsername').value || '').trim();
       const password = document.getElementById('newUserPassword').value;
@@ -3578,6 +3649,8 @@
             if (nai) nai.style.display = 'block';
             var bc = document.getElementById('backupCard');
             if (bc) bc.style.display = 'block';
+            var cvc = document.getElementById('cleanupVisitorsCard');
+            if (cvc) cvc.style.display = 'block';
             var fc = document.getElementById('fallbackCard');
             if (fc) fc.style.display = 'block';
           }
