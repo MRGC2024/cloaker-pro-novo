@@ -951,8 +951,10 @@ app.post('/api/admin/cleanup-visitors', async (req, res) => {
   const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
   if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
   if (!db.usePg || VISITOR_RETENTION_DAYS <= 0) return res.status(400).json({ error: 'Limpeza por retenção só está ativa com PostgreSQL (Supabase) e VISITOR_RETENTION_DAYS > 0' });
+  const countRow = await db.get("SELECT COUNT(*) as c FROM visitors WHERE created_at < NOW() - (? || ' days')::interval", [VISITOR_RETENTION_DAYS]);
+  const count = (countRow && countRow.c) ? parseInt(countRow.c, 10) : 0;
   await cleanupOldVisitors();
-  res.json({ success: true, message: 'Limpeza executada. Visitantes com mais de ' + VISITOR_RETENTION_DAYS + ' dias foram removidos.' });
+  res.json({ success: true, deleted: count, message: count + ' visitante(s) removido(s) (com mais de ' + VISITOR_RETENTION_DAYS + ' dias).' });
 });
 
 app.post('/api/admin/cleanup-visitors-range', async (req, res) => {
