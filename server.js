@@ -1414,7 +1414,7 @@ app.get('/api/visitors', async (req, res) => {
   else if (filter === 'desktop') where.push("(v.device_type = 'desktop' OR v.device_type IS NULL)");
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const visitorCols = 'v.id, v.site_id, v.ip, v.country, v.city, v.region, v.device_type, v.browser, v.os, v.was_blocked, v.block_reason, v.is_bot, v.created_at';
+  const visitorCols = 'v.id, v.site_id, v.ip, v.country, v.city, v.region, v.device_type, v.browser, v.os, v.was_blocked, v.block_reason, v.is_bot, v.referrer, v.utm_source, v.utm_medium, v.utm_campaign, v.created_at';
   const visitors = await db.all(`SELECT ${visitorCols} FROM visitors v ${whereClause} ORDER BY v.created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
   const total = await db.get(`SELECT COUNT(*) as count FROM visitors v ${whereClause}`, params);
 
