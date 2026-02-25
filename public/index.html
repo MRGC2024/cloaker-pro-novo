@@ -387,6 +387,9 @@
       background: #6ab0ff;
       box-shadow: var(--shadow-md); 
     }
+    .copy-btn.copied { background: var(--success); }
+    #toastCopy { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 9999; opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; display: flex; align-items: center; gap: 8px; }
+    #toastCopy.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
     .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
     .page-btn { padding: 8px 14px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); cursor: pointer; font-size: 13px; }
@@ -1918,12 +1921,12 @@
             </div>
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Domínio gerado</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkBase('${s.site_id}')"><i class="ri-file-copy-line"></i> Copiar</button>
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkBase('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkBase-${s.site_id}">${s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—'}</span>
             </div>
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Parâmetros</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkParams('${s.site_id}')"><i class="ri-file-copy-line"></i> Copiar</button>
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkParams('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkParams-${s.site_id}">${s.link_code ? (buildLinkParams(s) || '—') : '—'}</span>
             </div>
             <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Copie o <strong>domínio gerado</strong> e os <strong>parâmetros</strong> separadamente, ou use o link completo nos anúncios.</p>
@@ -2722,9 +2725,22 @@
       if (code && code.textContent) copyToClipboard(code.textContent.trim());
     }
 
+    function showCopyToast() {
+      var toast = document.getElementById('toastCopy');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toastCopy';
+        toast.innerHTML = '<i class="ri-checkbox-circle-fill" style="color: var(--success);"></i> Copiado!';
+        document.body.appendChild(toast);
+      }
+      toast.classList.remove('show');
+      clearTimeout(toast._tid);
+      requestAnimationFrame(function() { toast.classList.add('show'); });
+      toast._tid = setTimeout(function() { toast.classList.remove('show'); }, 2200);
+    }
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text);
-      alert('Copiado!');
+      showCopyToast();
     }
 
     function openExportModal() {
@@ -3282,20 +3298,37 @@
       if (paramsEl) paramsEl.textContent = site && site.link_code ? (buildLinkParams(site) || '—') : '—';
     }
 
-    function copySiteLinkBase(siteId) {
+    function setButtonCopiedFeedback(btn) {
+      if (!btn || !btn.classList) return;
+      var oldHtml = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Copiado!';
+      btn.disabled = true;
+      clearTimeout(btn._copyTid);
+      btn._copyTid = setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+      }, 2000);
+    }
+    function copySiteLinkBase(siteId, ev) {
       const site = sites.find(s => s.site_id === siteId);
       if (!site || !site.link_code) { alert('Edite o site e salve a URL do seu site para gerar o link.'); return; }
       const baseUrl = getLinkBaseUrl(document.getElementById('domainSelect-' + siteId)?.value || '');
       const base = buildLinkBase(site, baseUrl);
-      if (base) copyToClipboard(base);
+      if (base) {
+        copyToClipboard(base);
+        if (ev && ev.target) setButtonCopiedFeedback(ev.target.closest('.copy-btn'));
+      }
     }
 
-    function copySiteLinkParams(siteId) {
+    function copySiteLinkParams(siteId, ev) {
       const site = sites.find(s => s.site_id === siteId);
       if (!site) return;
       const params = buildLinkParams(site);
       if (params) copyToClipboard(params);
       else copyToClipboard('');
+      if (ev && ev.target) setButtonCopiedFeedback(ev.target.closest('.copy-btn'));
     }
 
     function copySiteLink(siteId) {
