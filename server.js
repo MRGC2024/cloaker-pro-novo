@@ -1966,56 +1966,56 @@ function isPrivateIP(ip) {
   return false;
 }
 
-// Helper: geolocalização por IP – retorna { country, city, region, isp } (ipapi.co + fallback ip-api.com)
+const GEO_LOOKUP_TIMEOUT_MS = 1500;
+const GEO_CACHE_TTL_MS = 15 * 60 * 1000;
+const geoCache = new Map(); // ip -> { data, expiresAt }
+
+async function fetchGeoJson(url, parser, headers) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(GEO_LOOKUP_TIMEOUT_MS), headers });
+  if (!res.ok) throw new Error('geo lookup failed');
+  const raw = await res.json();
+  const parsed = parser(raw);
+  if (!parsed || !parsed.country) throw new Error('geo lookup empty');
+  return parsed;
+}
+
+// Helper: geolocalização por IP – rápida, com cache e provedores em paralelo
 async function getGeoByIP(ip) {
   const out = { country: null, city: null, region: null, isp: null };
   if (!ip || isPrivateIP(ip)) return out;
   const normalized = ip.replace(/^::ffff:/, '');
+  const cached = geoCache.get(normalized);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
   const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' };
+  const providers = [
+    fetchGeoJson(`https://ipapi.co/${normalized}/json/`, (geo) => ({
+      country: geo.country_code || null,
+      city: geo.city || null,
+      region: geo.region || null,
+      isp: geo.org || geo.organisation || null
+    }), headers),
+    fetchGeoJson(`http://ip-api.com/json/${normalized}?fields=countryCode,city,regionName,isp`, (geo) => ({
+      country: geo.countryCode || null,
+      city: geo.city || null,
+      region: geo.regionName || null,
+      isp: geo.isp || null
+    }), headers),
+    fetchGeoJson(`https://ipwho.is/${normalized}`, (geo) => ({
+      country: geo.success ? (geo.country_code || null) : null,
+      city: geo.city || null,
+      region: geo.region || null,
+      isp: (geo.connection && (geo.connection.isp || geo.connection.org)) || null
+    }), headers)
+  ];
 
   try {
-    const res = await fetch(`https://ipapi.co/${normalized}/json/`, { signal: AbortSignal.timeout(5000), headers });
-    if (res.ok) {
-      const geo = await res.json();
-      if (geo.country_code) {
-        out.country = geo.country_code;
-        out.city = geo.city || null;
-        out.region = geo.region || null;
-        out.isp = geo.org || geo.organisation || null;
-        return out;
-      }
-    }
-  } catch (e) {}
-
-  try {
-    const res = await fetch(`http://ip-api.com/json/${normalized}?fields=countryCode,city,regionName,isp`, { signal: AbortSignal.timeout(5000), headers });
-    if (res.ok) {
-      const geo = await res.json();
-      if (geo.countryCode) {
-        out.country = geo.countryCode;
-        out.city = geo.city || null;
-        out.region = geo.regionName || null;
-        out.isp = geo.isp || null;
-        return out;
-      }
-    }
-  } catch (e) {}
-
-  try {
-    const res = await fetch(`https://ipwho.is/${normalized}`, { signal: AbortSignal.timeout(5000), headers });
-    if (res.ok) {
-      const geo = await res.json();
-      if (geo.success && geo.country_code) {
-        out.country = geo.country_code;
-        out.city = geo.city || null;
-        out.region = geo.region || null;
-        out.isp = (geo.connection && (geo.connection.isp || geo.connection.org)) || null;
-        return out;
-      }
-    }
-  } catch (e) {}
-
-  return out;
+    const geo = await Promise.any(providers);
+    geoCache.set(normalized, { data: geo, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+    return geo;
+  } catch (e) {
+    return out;
+  }
 }
 
 // Helper: ao bloquear com opção "mostrar no mesmo link", busca a URL e devolve o HTML com <base> para links relativos
