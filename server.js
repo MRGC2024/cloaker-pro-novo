@@ -1247,8 +1247,15 @@ app.put('/api/sites/bulk-primary-url', async (req, res) => {
   const url = (req.body?.url || '').trim();
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });
   try {
-    await db.run('UPDATE sites SET target_url = ?, fallback_override_url = NULL WHERE user_id = ?', [url, req.session.userId]);
-    res.json({ success: true });
+    const affected = await db.get(
+      "SELECT COUNT(*) as count FROM sites WHERE user_id = ? AND fallback_override_url IS NOT NULL AND TRIM(fallback_override_url) != ''",
+      [req.session.userId]
+    );
+    await db.run(
+      "UPDATE sites SET target_url = ?, fallback_override_url = NULL WHERE user_id = ? AND fallback_override_url IS NOT NULL AND TRIM(fallback_override_url) != ''",
+      [url, req.session.userId]
+    );
+    res.json({ success: true, updated: affected?.count || 0 });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

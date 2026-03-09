@@ -815,11 +815,11 @@
         <div class="card-body">
           <div id="fallbackStatusSummary" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 14px;"></div>
           <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 10px;">
-            <h4 style="margin: 0 0 10px; font-size: 14px;"><i class="ri-link"></i> Definir mesma URL para todos os sites</h4>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Altera a URL principal de todos os seus sites de uma vez e limpa contingência.</p>
+            <h4 style="margin: 0 0 10px; font-size: 14px;"><i class="ri-link"></i> Trocar manualmente os sites em contingência</h4>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Aplica a URL abaixo somente nos sites que estão usando fallback neste momento e remove a contingência deles.</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
               <input type="url" class="form-input" id="bulkPrimaryUrlInput" placeholder="https://nova-url.com/landing" style="flex: 1; min-width: 260px;">
-              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetPrimaryUrl()"><i class="ri-links-line"></i> Aplicar em todos</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetPrimaryUrl()"><i class="ri-links-line"></i> Aplicar nos links com fallback</button>
             </div>
             <span id="bulkPrimaryUrlMsg" style="margin-left: 10px; font-size: 13px;"></span>
           </div>
@@ -2209,7 +2209,7 @@
       const url = (input && input.value || '').trim();
       if (!url) { if (msg) msg.textContent = 'Digite uma URL'; msg.style.color = 'var(--danger)'; return; }
       if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
-      if (!confirm('Definir esta URL como URL principal de TODOS os seus sites? A contingência será limpa.')) return;
+      if (!confirm('Aplicar esta URL somente nos sites que estão em contingência agora? O fallback ativo deles será removido.')) return;
       try {
         const res = await fetch('/api/sites/bulk-primary-url', {
           method: 'PUT',
@@ -2218,7 +2218,14 @@
           body: JSON.stringify({ url })
         });
         if (!res.ok) throw new Error('Erro');
-        if (msg) { msg.textContent = 'Aplicado em todos os sites.'; msg.style.color = 'var(--success)'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+        const data = await res.json();
+        if (msg) {
+          msg.textContent = (data.updated > 0)
+            ? ('Aplicado em ' + data.updated + ' site(s) com fallback ativo.')
+            : 'Nenhum site estava em contingência para atualizar.';
+          msg.style.color = data.updated > 0 ? 'var(--success)' : 'var(--warning)';
+          setTimeout(() => { msg.textContent = ''; }, 3500);
+        }
         loadFallbackStatus();
         loadSites();
       } catch (e) { if (msg) { msg.textContent = e.message || 'Erro ao aplicar'; msg.style.color = 'var(--danger)'; } }
