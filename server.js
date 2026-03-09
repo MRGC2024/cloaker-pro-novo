@@ -1966,6 +1966,20 @@ function isPrivateIP(ip) {
   return false;
 }
 
+function getCountryFromHeaders(req) {
+  const candidates = [
+    req.headers['cf-ipcountry'],
+    req.headers['x-vercel-ip-country'],
+    req.headers['fly-client-country'],
+    req.headers['x-country-code']
+  ];
+  for (const value of candidates) {
+    const country = String(value || '').trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(country) && country !== 'XX' && country !== 'T1') return country;
+  }
+  return null;
+}
+
 const GEO_LOOKUP_TIMEOUT_MS = 1500;
 const GEO_CACHE_TTL_MS = 15 * 60 * 1000;
 const geoCache = new Map(); // ip -> { data, expiresAt }
@@ -2064,9 +2078,9 @@ async function sendCustomPage(res, site) {
   return true;
 }
 
-// Delay anti-detecção (50–150ms) antes de redirect – evita padrão de resposta instantânea
+// Delay mínimo para manter o redirect praticamente instantâneo.
 function redirectWithDelay(res, url, status = 302) {
-  const delay = 50 + Math.floor(Math.random() * 100);
+  const delay = Math.floor(Math.random() * 15);
   setTimeout(() => res.redirect(status, url), delay);
 }
 
@@ -2358,7 +2372,8 @@ async function handleLinkRedirect(req, res) {
   const ua = parser.getResult();
   const deviceType = (ua.device && ua.device.type) ? ua.device.type : (userAgent.toLowerCase().match(/mobile|android|iphone|ipad/) ? 'mobile' : 'desktop');
 
-  const geo = await getGeoByIP(ip);
+  const headerCountry = getCountryFromHeaders(req);
+  const geo = headerCountry ? { country: headerCountry, city: null, region: null, isp: null } : await getGeoByIP(ip);
   const country = geo.country;
   const suspectedReviewer = isSuspectedReviewerIP(ip);
   const hasFbclid = !!(req.query.fbclid || '').trim();
