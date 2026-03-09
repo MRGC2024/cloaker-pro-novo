@@ -1241,8 +1241,8 @@ app.put('/api/sites/:siteId', async (req, res) => {
   }
 });
 
-// API: Definir mesma URL principal para todos os sites do usuário (e limpar fallback)
-app.put('/api/sites/bulk-primary-url', async (req, res) => {
+// API: Definir mesma URL principal para sites em contingência do usuário
+app.put('/api/sites/bulk/primary-url', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const url = (req.body?.url || '').trim();
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });

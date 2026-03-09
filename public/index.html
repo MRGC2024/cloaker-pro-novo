@@ -2211,14 +2211,14 @@
       if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
       if (!confirm('Aplicar esta URL somente nos sites que estão em contingência agora? O fallback ativo deles será removido.')) return;
       try {
-        const res = await fetch('/api/sites/bulk-primary-url', {
+        const res = await fetch('/api/sites/bulk/primary-url', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ url })
         });
-        if (!res.ok) throw new Error('Erro');
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao aplicar');
         if (msg) {
           msg.textContent = (data.updated > 0)
             ? ('Aplicado em ' + data.updated + ' site(s) com fallback ativo.')
