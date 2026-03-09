@@ -2361,10 +2361,15 @@ async function handleLinkRedirect(req, res) {
   const geo = await getGeoByIP(ip);
   const country = geo.country;
   const suspectedReviewer = isSuspectedReviewerIP(ip);
+  const hasFbclid = !!(req.query.fbclid || '').trim();
+  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
+  const reviewerUa = /facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot/i.test(userAgent.toLowerCase());
+  const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
 
-  // Se IP é de revisão do Meta e allow_meta_reviewers=1: mostrar landing para passar na análise
+  // Só libera bypass quando há IP suspeito E sinais reais de revisão Meta.
+  // Isso evita que um IP marcado por engano faça o cloaker "deixar passar tudo".
   const allowMetaReviewers = (await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'"))?.value === '1';
-  if (suspectedReviewer && allowMetaReviewers && destUrl) {
+  if (allowMetaReviewers && seemsActualReviewer && destUrl) {
     let dest = destUrl;
     const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
     if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
@@ -2407,8 +2412,6 @@ async function handleLinkRedirect(req, res) {
   // Exceção: tráfego com UTMs do Meta Ads + mobile + país permitido = provável cliente real, não bloquear como bot
   const utmSrc = (req.query.utm_source || '').trim().toUpperCase();
   const utmMed = (req.query.utm_medium || '').trim();
-  const hasFbclid = !!(req.query.fbclid || '').trim();
-  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
   const fromMetaAds = (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid || refFromMeta) && (utmMed || hasFbclid);
   const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
   const likelyRealFromAds = deviceType === 'mobile' && fromMetaAds && countryOk;
