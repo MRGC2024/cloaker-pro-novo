@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -116,6 +116,146 @@
     body.theme-minimal .site-card { border-radius: 12px; box-shadow: none; }
     body.theme-minimal .site-card:hover { transform: none; box-shadow: none; border-color: var(--border); }
     body.theme-minimal .sidebar-toggle { border-radius: 8px; }
+
+    /* ===== TEMA NEON (cyber, monospace, verde neon) ===== */
+    body.theme-neon {
+      --bg-primary: #0a0a0c;
+      --bg-secondary: #0d0d10;
+      --bg-card: #12121a;
+      --bg-hover: #1a1a24;
+      --accent-primary: #00ff9f;
+      --accent-secondary: #00cc7f;
+      --accent-solid: #00ff9f;
+      --accent-gradient: #00ff9f;
+      --text-primary: #e0ffe8;
+      --text-secondary: #8fbc9b;
+      --text-tertiary: #5a7a64;
+      --border: rgba(0, 255, 159, 0.15);
+      --border-hover: rgba(0, 255, 159, 0.4);
+      --accent-glow: rgba(0, 255, 159, 0.08);
+      --accent-glow-2: rgba(0, 204, 127, 0.05);
+    }
+    body.theme-neon { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+    body.theme-neon .nav-link i { filter: drop-shadow(0 0 6px var(--accent-solid)); }
+    body.theme-neon .nav-link.active { box-shadow: inset 0 0 12px rgba(0,255,159,0.1); }
+    body.theme-neon .card { border-color: var(--border); box-shadow: 0 0 20px rgba(0,255,159,0.03); }
+    body.theme-neon .btn-primary { color: #0a0a0c; text-transform: none; }
+    body.theme-neon .stat-card::before { background: var(--accent-solid); box-shadow: 0 0 12px var(--accent-solid); }
+
+    /* ===== TEMA CLARO (light mode) ===== */
+    body.theme-light {
+      --bg-primary: #f1f5f9;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #e2e8f0;
+      --accent-primary: #0ea5e9;
+      --accent-secondary: #0284c7;
+      --accent-solid: #0ea5e9;
+      --accent-gradient: linear-gradient(135deg, #0ea5e9, #0284c7);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-tertiary: #64748b;
+      --border: rgba(15, 23, 42, 0.1);
+      --border-hover: rgba(14, 165, 233, 0.4);
+      --accent-glow: rgba(14, 165, 233, 0.06);
+      --accent-glow-2: rgba(2, 132, 199, 0.04);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    body.theme-light { font-family: 'DM Sans', -apple-system, sans-serif; background-image: none; }
+    body.theme-light::before { display: none; }
+    body.theme-light .sidebar { box-shadow: 4px 0 20px rgba(0,0,0,0.06); }
+    body.theme-light .btn-primary { color: #fff; }
+    body.theme-light .card { box-shadow: var(--shadow-sm); }
+    body.theme-light th { background: #f8fafc !important; }
+
+    /* ===== TEMA GLASS (glassmorphism) ===== */
+    body.theme-glass {
+      --bg-primary: #0f172a;
+      --bg-secondary: rgba(30, 41, 59, 0.6);
+      --bg-card: rgba(30, 41, 59, 0.5);
+      --bg-hover: rgba(51, 65, 85, 0.5);
+      --accent-primary: #38bdf8;
+      --accent-solid: #38bdf8;
+      --accent-gradient: #38bdf8;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border: rgba(148, 163, 184, 0.2);
+      --border-hover: rgba(56, 189, 248, 0.4);
+      --accent-glow: rgba(56, 189, 248, 0.06);
+      --accent-glow-2: transparent;
+    }
+    body.theme-glass { font-family: 'Space Grotesk', sans-serif; background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%); }
+    body.theme-glass::before { display: none; }
+    body.theme-glass .sidebar { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right-color: var(--border); }
+    body.theme-glass .card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border); }
+    body.theme-glass .stat-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); }
+    body.theme-glass .btn-primary { color: #0f172a; }
+
+    /* ===== TEMA COMPACTO (denso, mais informação) ===== */
+    body.theme-compact {
+      --bg-primary: #0c0c0e;
+      --bg-secondary: #111114;
+      --bg-card: #16161a;
+      --bg-hover: #1c1c22;
+      --accent-primary: #818cf8;
+      --accent-solid: #818cf8;
+      --text-primary: #e4e4e7;
+      --text-secondary: #71717a;
+      --text-tertiary: #52525b;
+      --border: rgba(63, 63, 70, 0.8);
+      --border-hover: rgba(129, 140, 248, 0.35);
+      --accent-glow: transparent;
+      --accent-glow-2: transparent;
+    }
+    body.theme-compact { font-family: 'Outfit', sans-serif; font-size: 13px; background-image: none; }
+    body.theme-compact::before { display: none; }
+    body.theme-compact .main { margin-left: 240px; padding: 16px 20px 24px; }
+    body.theme-compact .sidebar { width: 240px; padding: 14px 12px; }
+    body.sidebar-collapsed .main { margin-left: 60px; }
+    body.theme-compact.sidebar-collapsed .main { margin-left: 60px; }
+    body.theme-compact .sidebar.collapsed { width: 60px; padding: 12px 8px; }
+    body.theme-compact .nav-link { padding: 10px 12px; }
+    body.theme-compact .nav-link i { font-size: 18px; }
+    body.theme-compact .nav-group-title { padding: 12px 12px 6px; font-size: 9px; }
+    body.theme-compact .card { padding: 0; margin-bottom: 16px; border-radius: 10px; }
+    body.theme-compact .card-header { padding: 14px 18px; }
+    body.theme-compact .card-body { padding: 16px 18px; }
+    body.theme-compact .card-title { font-size: 14px; }
+    body.theme-compact .header h2 { font-size: 18px; }
+    body.theme-compact .page-top-bar { margin-bottom: 20px; padding-bottom: 12px; }
+    body.theme-compact .page-top-bar h1 { font-size: 20px; }
+    body.theme-compact .stat-card { padding: 16px; }
+    body.theme-compact .stat-value { font-size: 28px; }
+    body.theme-compact .stat-icon { width: 44px; height: 44px; font-size: 20px; }
+    body.theme-compact .btn { padding: 10px 18px; font-size: 12px; }
+    body.theme-compact th, body.theme-compact td { padding: 10px 12px; font-size: 12px; }
+
+    /* ===== TEMA WARM (âmbar, tons quentes) ===== */
+    body.theme-warm {
+      --bg-primary: #1c1917;
+      --bg-secondary: #292524;
+      --bg-card: #292524;
+      --bg-hover: #44403c;
+      --accent-primary: #f59e0b;
+      --accent-secondary: #d97706;
+      --accent-solid: #f59e0b;
+      --accent-gradient: linear-gradient(135deg, #fbbf24, #d97706);
+      --text-primary: #fafaf9;
+      --text-secondary: #a8a29e;
+      --text-tertiary: #78716c;
+      --border: rgba(168, 162, 158, 0.2);
+      --border-hover: rgba(245, 158, 11, 0.35);
+      --accent-glow: rgba(245, 158, 11, 0.06);
+      --accent-glow-2: rgba(217, 119, 6, 0.04);
+    }
+    body.theme-warm { font-family: 'DM Sans', sans-serif; }
+    body.theme-warm .logo::after { background: var(--accent-solid); }
+    body.theme-warm .card { border-color: var(--border); }
+    body.theme-warm .stat-card::before { background: var(--accent-solid); }
+    body.theme-warm .btn-primary { color: #1c1917; }
+
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
@@ -289,41 +429,21 @@
       gap: 4px;
     }
     .sidebar.collapsed .sidebar-footer .nav-link { justify-content: center; }
-    .theme-switcher {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-    .theme-switcher-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-tertiary);
-      width: 100%;
-      margin-bottom: 4px;
-    }
-    .sidebar.collapsed .theme-switcher-label { display: none; }
-    .theme-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      border: 2px solid transparent;
+    .appearance-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .appearance-theme-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      padding: 0;
-      flex-shrink: 0;
+      transition: all 0.2s;
+      text-align: left;
     }
-    .theme-btn:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-    .theme-btn.active { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--border); }
-    .theme-btn[data-theme="teal"] { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-    .theme-btn[data-theme="violet"] { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
-    .theme-btn[data-theme="amber"] { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-    .theme-btn[data-theme="slate"] { background: linear-gradient(135deg, #94a3b8, #64748b); }
-    .theme-btn[data-theme="minimal"] { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-    .sidebar.collapsed .theme-switcher { justify-content: center; margin-bottom: 8px; }
+    .appearance-theme-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); }
+    .appearance-theme-card.active { border-color: var(--accent-solid); box-shadow: 0 0 0 1px var(--accent-solid); }
+    .appearance-theme-preview { height: 80px; border-radius: 12px; margin-bottom: 16px; background: var(--bg-secondary); }
+    .appearance-theme-card h4 { font-size: 18px; margin-bottom: 6px; color: var(--text-primary); }
+    .appearance-theme-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 
     .main { 
       margin-left: 272px; 
@@ -937,6 +1057,7 @@
       <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link para Ads"><i class="ri-link"></i><span class="nav-link-text">Link para Ads</span></a></li>
       <li class="nav-group-title">Sistema</li>
       <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#appearance" data-section="appearance" title="Aparência"><i class="ri-palette-line"></i><span class="nav-link-text">Aparência</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-file-code-line"></i><span class="nav-link-text">Páginas</span></a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Admin</li>
@@ -945,14 +1066,6 @@
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-magic-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
     <div class="sidebar-footer">
-      <div class="theme-switcher">
-        <span class="theme-switcher-label">Tema</span>
-        <button type="button" class="theme-btn active" data-theme="teal" title="Teal" aria-label="Tema Teal"></button>
-        <button type="button" class="theme-btn" data-theme="violet" title="Violeta" aria-label="Tema Violeta"></button>
-        <button type="button" class="theme-btn" data-theme="amber" title="Âmbar" aria-label="Tema Âmbar"></button>
-        <button type="button" class="theme-btn" data-theme="slate" title="Slate" aria-label="Tema Slate"></button>
-        <button type="button" class="theme-btn" data-theme="minimal" title="Minimal" aria-label="Tema Minimal"></button>
-      </div>
       <button type="button" class="sidebar-toggle" id="sidebarCollapseBtn" aria-label="Recolher menu" title="Recolher menu"><i class="ri-menu-fold-line" id="sidebarCollapseIcon"></i></button>
       <button type="button" class="nav-link" style="width:100%; background:none; border:none; color: var(--text-secondary); cursor: pointer; text-align: left;" onclick="logout()" title="Sair"><i class="ri-logout-box-line"></i><span class="nav-link-text">Sair</span></button>
     </div>
@@ -989,18 +1102,8 @@
       } catch (e) {}
       var savedTheme = '';
       try { savedTheme = localStorage.getItem('appTheme') || 'teal'; } catch (e) { savedTheme = 'teal'; }
-      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal');
+      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm');
       if (savedTheme && savedTheme !== 'teal') document.body.classList.add('theme-' + savedTheme);
-      document.querySelectorAll('.theme-btn').forEach(function(btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-theme') === savedTheme);
-        btn.addEventListener('click', function() {
-          var t = btn.getAttribute('data-theme');
-          document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal');
-          if (t && t !== 'teal') document.body.classList.add('theme-' + t);
-          document.querySelectorAll('.theme-btn').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-theme') === t); });
-          try { localStorage.setItem('appTheme', t); } catch (e) {}
-        });
-      });
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('.nav-link').forEach(function(link) { link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); }); });
@@ -1515,6 +1618,56 @@
           </div>
           <button type="button" class="btn btn-primary" style="margin-top: 20px;" onclick="saveFallbackSettings()"><i class="ri-save-line"></i> Salvar configurações</button>
           <span id="fallbackSettingsMsg" style="margin-left: 15px; font-size: 13px;"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Aparência – tema do painel -->
+    <section id="appearance" class="section">
+      <div class="header">
+        <h2>Aparência</h2>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-top: 6px;">Escolha o tema do painel. Cores, fontes e layout mudam conforme o tema.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="ri-palette-line"></i> Tema do painel</h3></div>
+        <div class="card-body">
+          <div class="appearance-themes" id="appearanceThemes">
+            <div class="appearance-theme-card active" data-theme="teal" onclick="applyTheme('teal')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #14b8a6, #0d9488);"></div>
+              <h4>Padrão (Teal)</h4>
+              <p>Verde-água, visual atual do painel.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="minimal" onclick="applyTheme('minimal')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #0a0a0a 50%, #3b82f6 50%);"></div>
+              <h4>Minimal</h4>
+              <p>Preto e azul, limpo e moderno.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="neon" onclick="applyTheme('neon')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #0d0d0d, #00ff9f); box-shadow: 0 0 20px rgba(0,255,159,0.5);"></div>
+              <h4>Neon</h4>
+              <p>Estilo cyber: fonte monoespaçada, verde neon.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="light" onclick="applyTheme('light')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #f8fafc, #e2e8f0);"></div>
+              <h4>Claro</h4>
+              <p>Fundo claro, ideal para ambientes iluminados.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="glass" onclick="applyTheme('glass')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, rgba(30,41,59,0.7), rgba(51,65,85,0.5)); backdrop-filter: blur(10px);"></div>
+              <h4>Glass</h4>
+              <p>Glassmorphism: vidro fosco e transparências.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="compact" onclick="applyTheme('compact')">
+              <div class="appearance-theme-preview" style="background: #1e293b; border: 1px solid #334155;"></div>
+              <h4>Compacto</h4>
+              <p>Interface densa, mais informação na tela.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="warm" onclick="applyTheme('warm')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #1c1917, #f59e0b);"></div>
+              <h4>Warm</h4>
+              <p>Tons quentes: âmbar e marrom escuro.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -2105,8 +2258,8 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas' };
-    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-global-line', fallbackstatus: 'ri-links-line', visitors: 'ri-user-line', reports: 'ri-file-chart-line', script: 'ri-link', analytics: 'ri-bar-chart-box-line', settings: 'ri-settings-3-line', users: 'ri-team-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-magic-line', domains: 'ri-global-line', pages: 'ri-file-code-line' };
+    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', appearance: 'Aparência', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas' };
+    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-global-line', fallbackstatus: 'ri-links-line', visitors: 'ri-user-line', reports: 'ri-file-chart-line', script: 'ri-link', analytics: 'ri-bar-chart-box-line', settings: 'ri-settings-3-line', appearance: 'ri-palette-line', users: 'ri-team-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-magic-line', domains: 'ri-global-line', pages: 'ri-file-code-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
       var titleEl = document.getElementById('pageTopBarTitle');
@@ -2129,9 +2282,26 @@
       if (sectionId === 'script') loadScriptSection();
       if (sectionId === 'analytics') loadAnalytics();
       if (sectionId === 'settings') { loadSettings(); if (currentUser && currentUser.role === 'admin') loadFallbackSettings(); }
+      if (sectionId === 'appearance') loadAppearance();
       if (sectionId === 'users') loadUsers();
       if (sectionId === 'metaips') loadMetaIPs();
       if (sectionId === 'autoimprove') loadAutoImprove();
+    }
+    var THEME_IDS = ['teal', 'minimal', 'neon', 'light', 'glass', 'compact', 'warm'];
+    function applyTheme(themeId) {
+      if (!themeId || !THEME_IDS.includes(themeId)) return;
+      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm');
+      if (themeId !== 'teal') document.body.classList.add('theme-' + themeId);
+      try { localStorage.setItem('appTheme', themeId); } catch (e) {}
+      loadAppearance();
+    }
+    function loadAppearance() {
+      var current = '';
+      try { current = localStorage.getItem('appTheme') || 'teal'; } catch (e) { current = 'teal'; }
+      document.querySelectorAll('.appearance-theme-card').forEach(function(card) {
+        var t = card.getAttribute('data-theme');
+        card.classList.toggle('active', t === current);
+      });
     }
     window.addEventListener('hashchange', function() {
       const hash = (location.hash || '').replace(/^#/, '').toLowerCase();
