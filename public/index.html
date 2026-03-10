@@ -34,13 +34,43 @@
       --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
       --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6);
       --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.65);
+      --accent-glow: rgba(20, 184, 166, 0.06);
+      --accent-glow-2: rgba(15, 118, 110, 0.05);
+    }
+    /* ===== TEMAS ALTERNATIVOS ===== */
+    body.theme-violet {
+      --accent-primary: #a78bfa;
+      --accent-secondary: #8b5cf6;
+      --accent-solid: #8b5cf6;
+      --accent-gradient: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #7c3aed 100%);
+      --border-hover: rgba(139, 92, 246, 0.35);
+      --accent-glow: rgba(139, 92, 246, 0.06);
+      --accent-glow-2: rgba(124, 58, 237, 0.05);
+    }
+    body.theme-amber {
+      --accent-primary: #fbbf24;
+      --accent-secondary: #f59e0b;
+      --accent-solid: #f59e0b;
+      --accent-gradient: linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #d97706 100%);
+      --border-hover: rgba(245, 158, 11, 0.35);
+      --accent-glow: rgba(245, 158, 11, 0.06);
+      --accent-glow-2: rgba(217, 119, 6, 0.05);
+    }
+    body.theme-slate {
+      --accent-primary: #94a3b8;
+      --accent-secondary: #64748b;
+      --accent-solid: #64748b;
+      --accent-gradient: linear-gradient(135deg, #94a3b8 0%, #64748b 50%, #475569 100%);
+      --border-hover: rgba(100, 116, 139, 0.4);
+      --accent-glow: rgba(100, 116, 139, 0.06);
+      --accent-glow-2: rgba(71, 85, 105, 0.05);
     }
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       background-image: 
-        linear-gradient(160deg, rgba(20, 184, 166, 0.04) 0%, transparent 45%),
-        linear-gradient(260deg, rgba(13, 148, 136, 0.03) 0%, transparent 45%);
+        linear-gradient(160deg, var(--accent-glow) 0%, transparent 45%),
+        linear-gradient(260deg, var(--accent-glow-2) 0%, transparent 45%);
       color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.6;
@@ -54,8 +84,8 @@
       width: 100%;
       height: 100%;
       background: 
-        radial-gradient(ellipse 80% 50% at 15% 20%, rgba(20, 184, 166, 0.06) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 85% 80%, rgba(15, 118, 110, 0.05) 0%, transparent 55%);
+        radial-gradient(ellipse 80% 50% at 15% 20%, var(--accent-glow) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 85% 80%, var(--accent-glow-2) 0%, transparent 55%);
       pointer-events: none;
       z-index: 0;
     }
@@ -117,6 +147,10 @@
       transition: all 0.2s;
       margin: 8px 0 0;
       flex-shrink: 0;
+      font-size: 22px;
+    }
+    .sidebar-toggle i {
+      font-size: 22px;
     }
     .sidebar-toggle:hover {
       background: var(--accent-solid);
@@ -204,6 +238,40 @@
       gap: 4px;
     }
     .sidebar.collapsed .sidebar-footer .nav-link { justify-content: center; }
+    .theme-switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .theme-switcher-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      width: 100%;
+      margin-bottom: 4px;
+    }
+    .sidebar.collapsed .theme-switcher-label { display: none; }
+    .theme-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .theme-btn:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+    .theme-btn.active { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--border); }
+    .theme-btn[data-theme="teal"] { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+    .theme-btn[data-theme="violet"] { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
+    .theme-btn[data-theme="amber"] { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    .theme-btn[data-theme="slate"] { background: linear-gradient(135deg, #94a3b8, #64748b); }
+    .sidebar.collapsed .theme-switcher { justify-content: center; margin-bottom: 8px; }
 
     .main { 
       margin-left: 272px; 
@@ -825,7 +893,14 @@
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-magic-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
     <div class="sidebar-footer">
-      <button type="button" class="sidebar-toggle" id="sidebarCollapseBtn" aria-label="Recolher menu" title="Recolher menu"><i class="ri-sidebar-fold-line" id="sidebarCollapseIcon"></i></button>
+      <div class="theme-switcher">
+        <span class="theme-switcher-label">Tema</span>
+        <button type="button" class="theme-btn active" data-theme="teal" title="Teal" aria-label="Tema Teal"></button>
+        <button type="button" class="theme-btn" data-theme="violet" title="Violeta" aria-label="Tema Violeta"></button>
+        <button type="button" class="theme-btn" data-theme="amber" title="Âmbar" aria-label="Tema Âmbar"></button>
+        <button type="button" class="theme-btn" data-theme="slate" title="Slate" aria-label="Tema Slate"></button>
+      </div>
+      <button type="button" class="sidebar-toggle" id="sidebarCollapseBtn" aria-label="Recolher menu" title="Recolher menu"><i class="ri-menu-fold-line" id="sidebarCollapseIcon"></i></button>
       <button type="button" class="nav-link" style="width:100%; background:none; border:none; color: var(--text-secondary); cursor: pointer; text-align: left;" onclick="logout()" title="Sair"><i class="ri-logout-box-line"></i><span class="nav-link-text">Sair</span></button>
     </div>
   </aside>
@@ -840,7 +915,7 @@
       function closeMenu() { sidebar.classList.remove('open'); overlay.classList.remove('active'); toggle.setAttribute('aria-label', 'Abrir menu'); toggle.innerHTML = '<i class="ri-menu-line"></i>'; }
       function updateCollapseIcon() {
         if (!collapseIcon) return;
-        collapseIcon.className = sidebar.classList.contains('collapsed') ? 'ri-sidebar-unfold-line' : 'ri-sidebar-fold-line';
+        collapseIcon.className = sidebar.classList.contains('collapsed') ? 'ri-menu-unfold-line' : 'ri-menu-fold-line';
         collapseBtn.setAttribute('aria-label', sidebar.classList.contains('collapsed') ? 'Expandir menu' : 'Recolher menu');
         collapseBtn.setAttribute('title', sidebar.classList.contains('collapsed') ? 'Expandir menu' : 'Recolher menu');
       }
@@ -859,6 +934,20 @@
           updateCollapseIcon();
         }
       } catch (e) {}
+      var savedTheme = '';
+      try { savedTheme = localStorage.getItem('appTheme') || 'teal'; } catch (e) { savedTheme = 'teal'; }
+      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate');
+      if (savedTheme !== 'teal') document.body.classList.add('theme-' + savedTheme);
+      document.querySelectorAll('.theme-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-theme') === savedTheme);
+        btn.addEventListener('click', function() {
+          var t = btn.getAttribute('data-theme');
+          document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate');
+          if (t !== 'teal') document.body.classList.add('theme-' + t);
+          document.querySelectorAll('.theme-btn').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-theme') === t); });
+          try { localStorage.setItem('appTheme', t); } catch (e) {}
+        });
+      });
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('.nav-link').forEach(function(link) { link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); }); });
