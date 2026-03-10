@@ -101,7 +101,7 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 const sessionOpts = {
   secret: SESSION_SECRET,
   resave: false,
