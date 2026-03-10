@@ -3370,6 +3370,7 @@
                   '<div style="display: flex; justify-content: space-between; align-items: center;">' +
                     '<strong>' + name + '</strong>' +
                     '<div style="display: flex; gap: 8px;">' +
+                      '<button class="btn btn-sm btn-secondary" onclick="previewPage(\'' + pid + '\')" title="Ver como fica a página"><i class="ri-eye-line"></i> Ver</button>' +
                       '<button class="btn btn-sm btn-secondary" onclick="openPageModal(\'' + pid + '\')"><i class="ri-edit-line"></i></button>' +
                       '<button class="btn btn-sm btn-danger" onclick="deletePage(\'' + pid + '\')"><i class="ri-delete-bin-line"></i></button>' +
                     '</div>' +
@@ -3406,6 +3407,23 @@
     }
     function closePageModal() {
       document.getElementById('pageModal').classList.remove('active');
+    }
+    async function previewPage(id) {
+      if (!id) return;
+      try {
+        var res = await fetch('/api/pages/' + encodeURIComponent(id), { credentials: 'include' });
+        if (!res.ok) { alert('Não foi possível carregar a página.'); return; }
+        var p = await res.json();
+        var html = p.html_content || '';
+        if (!html.trim()) { alert('Esta página ainda não tem conteúdo HTML.'); return; }
+        var blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var w = window.open(url, '_blank', 'noopener');
+        if (w) w.addEventListener('load', function() { setTimeout(function() { URL.revokeObjectURL(url); }, 500); });
+        else { URL.revokeObjectURL(url); alert('Permita pop-ups para abrir a prévia em nova aba.'); }
+      } catch (e) {
+        alert('Erro ao abrir prévia.');
+      }
     }
     async function savePage() {
       const id = (document.getElementById('editPageId').value || '').trim();
