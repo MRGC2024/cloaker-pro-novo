@@ -1139,6 +1139,20 @@
           </div>
         </div>
       </div>
+      <div class="card" id="pathPoolCard" style="display: none;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-shield-keyhole-line"></i> Pool de prefixos de link (admin)</h3>
+        </div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Cada novo site recebe um prefixo aleatório desta lista. Assim os links não seguem um padrão único (ex: só /go/), o que reduz identificação em massa. Use prefixos com mais caracteres (ex: <code>visit</code>, <code>x7k2m</code>) para parecer mais natural.</p>
+          <div class="form-group">
+            <label class="form-label">Prefixos permitidos (um por linha ou separados por vírgula)</label>
+            <textarea class="form-input" id="pathPoolInput" rows="6" placeholder="go&#10;r&#10;visit&#10;link&#10;out&#10;gate&#10;x7k2m" style="font-family: monospace; font-size: 13px;"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="savePathPool()"><i class="ri-save-line"></i> Salvar pool</button>
+          <span id="pathPoolMsg" style="margin-left: 10px; font-size: 13px;"></span>
+        </div>
+      </div>
       <div class="card" id="dnsHelpCard">
         <div class="card-header"><h3 class="card-title"><i class="ri-information-line"></i> Instruções de configuração DNS</h3></div>
         <div class="card-body">
@@ -2949,7 +2963,44 @@
           const pathEl = document.getElementById('cloakerPath');
           if (pathEl) pathEl.value = cloakerPath;
         }
+        if (currentUser && currentUser.role === 'admin') {
+          const card = document.getElementById('pathPoolCard');
+          if (card) card.style.display = 'block';
+          loadPathPool();
+        } else {
+          const card = document.getElementById('pathPoolCard');
+          if (card) card.style.display = 'none';
+        }
       } catch (e) {}
+    }
+    async function loadPathPool() {
+      try {
+        const res = await apiGet('/api/settings/path-pool');
+        if (res && res.ok) {
+          const d = await res.json();
+          const arr = d.path_pool || [];
+          const el = document.getElementById('pathPoolInput');
+          if (el) el.value = Array.isArray(arr) ? arr.join('\n') : '';
+        }
+      } catch (e) {}
+    }
+    async function savePathPool() {
+      const el = document.getElementById('pathPoolInput');
+      const msg = document.getElementById('pathPoolMsg');
+      if (!el) return;
+      const raw = (el.value || '').trim().split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+      try {
+        const res = await fetch('/api/settings/path-pool', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ path_pool: raw })
+        });
+        if (!res.ok) throw new Error('Erro ao salvar');
+        if (msg) { msg.textContent = 'Pool salvo. Novos sites usarão prefixos desta lista.'; msg.style.color = 'var(--success)'; setTimeout(function() { msg.textContent = ''; }, 4000); }
+      } catch (e) {
+        if (msg) { msg.textContent = (e.message || 'Erro'); msg.style.color = 'var(--danger)'; }
+      }
     }
 
     async function saveCloakerSettings() {
@@ -3262,11 +3313,11 @@
       return qs ? path + '?' + qs : path;
     }
 
-    /** Domínio gerado: base + /PREFIX/code (go, r, l ou v – configurável) */
+    /** Domínio gerado: base + /PREFIX/code (cada site pode ter prefixo próprio para não padronizar) */
     function buildLinkBase(site, baseUrl) {
       if (!site || !site.link_code) return '';
       const base = (baseUrl || getBaseUrl()).replace(/\/$/, '');
-      const prefix = (cloakerPath && ['go','r','l','v'].includes(cloakerPath)) ? cloakerPath : 'go';
+      const prefix = (site.path_prefix && String(site.path_prefix).trim()) ? String(site.path_prefix).trim() : (cloakerPath || 'go');
       return base + '/' + prefix + '/' + site.link_code;
     }
 

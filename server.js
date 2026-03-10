@@ -81,11 +81,12 @@ function getBrasiliaRangeFromDates(fromDate, toDate) {
 // Railway: atrás de proxy HTTPS – precisa confiar no proxy para cookie e sessão
 if (isProduction) app.set('trust proxy', 1);
 
-// Só um domínio pode acessar o painel; os outros servem apenas /go/ e /t/ (links gerados)
+// Só um domínio pode acessar o painel; os outros servem apenas links (/:prefix/:code) e /t/
 const PANEL_DOMAIN = (process.env.PANEL_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').split(/[/:]/)[0];
 function isPanelRoute(path, method) {
-  if (path.startsWith('/go/') || path.startsWith('/r/') || path.startsWith('/l/') || path.startsWith('/v/') || path.startsWith('/t/')) return false;
+  if (path.startsWith('/t/')) return false;
   if (method === 'GET' && path.match(/^\/api\/config\/[^/]+$/)) return false;
+  if (path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/) && !path.startsWith('/api') && !path.startsWith('/login')) return false;
   return true;
 }
 // Em domínios que não são o do painel: não redirecionar para o painel; mostrar página em manutenção.
@@ -121,7 +122,8 @@ app.use(express.static('public'));
 // Autenticação: exige sessão para / e /api/* (exceto login, setup, config, go, t)
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
-  if (req.path === '/login' || req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/l/') || req.path.startsWith('/v/') || req.path.startsWith('/t/')) return next();
+  if (req.path === '/login' || req.path.startsWith('/t/')) return next();
+  if (req.path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/)) return next();
   if (req.path === '/api/login' || req.path === '/api/logout' || req.path === '/api/setup' || req.path === '/api/config/') return next();
   if (req.path.startsWith('/api/') && req.method === 'GET' && req.path === '/api/config/' + (req.params && req.params.siteId ? req.params.siteId : '')) return next();
   if (req.path.startsWith('/api/')) {
@@ -140,7 +142,7 @@ async function requireAdmin(req, res, next) {
 
 app.use((req, res, next) => {
   if (req.path === '/login' && req.method === 'GET') return next();
-  if (req.path.startsWith('/go/') || req.path.startsWith('/r/') || req.path.startsWith('/l/') || req.path.startsWith('/v/') || req.path.startsWith('/t/')) return next();
+  if (req.path.startsWith('/t/') || req.path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/)) return next();
   if (req.path.match(/^\/api\/config\//) && req.method === 'GET') return next();
   if (req.path === '/' && req.method === 'GET' && (!req.session || !req.session.userId)) return res.redirect('/login');
   if (req.path === '/api/login' || req.path === '/api/setup' || req.path === '/api/setup/check' || req.path === '/api/setup/promote-first-admin' || req.path === '/api/signup') return next();
@@ -241,6 +243,26 @@ app.put('/api/settings', async (req, res) => {
   const validPath = ['go', 'r', 'l', 'v'].includes(path) ? path : 'go';
   await db.run('UPDATE users SET cloaker_base_url = ?, cloaker_path = ? WHERE id = ?', [val, validPath, req.session.userId]);
   res.json({ success: true });
+});
+
+// API: Pool de prefixos de link (admin) – prefixos alternativos (visit, link, x7k2m, etc.) para não padronizar
+app.get('/api/settings/path-pool', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const pool = await getPathPrefixPool();
+  res.json({ path_pool: pool });
+});
+app.put('/api/settings/path-pool', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  const arr = Array.isArray(req.body.path_pool) ? req.body.path_pool : (typeof req.body.path_pool === 'string' ? req.body.path_pool.split(/[\s,]+/).filter(Boolean) : []);
+  const valid = arr.map(p => String(p).trim().toLowerCase()).filter(p => /^[a-z0-9_-]{1,32}$/.test(p));
+  const val = JSON.stringify(valid.length ? valid : DEFAULT_PATH_POOL);
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES ('cloaker_path_pool', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cloaker_path_pool', ?)", [val]);
+  res.json({ success: true, path_pool: JSON.parse(val) });
 });
 
 // API: Verificar propagação DNS e se o domínio responde (Configurações)
@@ -1190,8 +1212,10 @@ app.post('/api/sites', async (req, res) => {
   const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain, useFb]);
+    const pathPool = await getPathPrefixPool();
+    const pathPrefix = pathPool[Math.floor(Math.random() * pathPool.length)] || 'go';
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json(site);
   } catch (error) {
@@ -2321,7 +2345,8 @@ async function runFallbackHealthCheck() {
         if (isNewSwitch && (await canSendFallbackAlert(site.site_id))) {
           await setFallbackAlertCooldown(site.site_id);
           const base = site.selected_domain ? `https://${site.selected_domain}` : (process.env.PANEL_DOMAIN ? `https://${process.env.PANEL_DOMAIN}` : '');
-          const linkSuffix = base ? `${base}/go/${site.link_code}` : `/go/${site.link_code}`;
+          const pathSeg = (site.path_prefix || 'go').trim() || 'go';
+          const linkSuffix = base ? `${base}/${pathSeg}/${site.link_code}` : `/${pathSeg}/${site.link_code}`;
           await sendTelegramMessage(
             `⚠️ <b>Site offline – Fallback ativado</b>\n\n` +
             `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
@@ -2357,13 +2382,44 @@ function getEffectiveTargetUrl(site) {
   return override || primary || null;
 }
 
-// Handler compartilhado para /go/ e /r/ (rota alternativa para diversificar URLs)
+// Pool de prefixos de link – cada site usa um, dificulta identificação em massa pelo Meta
+const DEFAULT_PATH_POOL = ['go', 'r', 'l', 'v', 'visit', 'link', 'out', 'gate', 'lp', 'rd', 'view', 'entry', 'access', 'p', 'c', 'n', 'x7k2m', 'a9p4q', 'm5n8r', 'land', 'redir', 'go2', 'r2', 'v2', 'l2', 'entrar', 'acesso', 'pag'];
+const RESERVED_PREFIXES = new Set(['api', 'login', 'logout', 't', 'static', 'assets', 'favicon.ico', '']);
+
+async function getPathPrefixPool() {
+  try {
+    const row = await db.get("SELECT value FROM settings WHERE key = 'cloaker_path_pool'");
+    if (row && row.value) {
+      const arr = JSON.parse(row.value);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.filter(p => typeof p === 'string' && /^[a-z0-9_-]{1,32}$/i.test(p.trim())).map(p => p.trim().toLowerCase());
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_PATH_POOL;
+}
+
+// Handler compartilhado para links (/:prefix/:code) – prefix vem do pool para não padronizar
 async function handleLinkRedirect(req, res) {
+  const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
+  const pool = await getPathPrefixPool();
+  if (!pool.includes(prefix)) {
+    return res.status(404).send('Not Found');
+  }
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   const destUrl = getEffectiveTargetUrl(site);
   if (!site || !destUrl) {
     return redirectWithDelay(res, 'https://www.google.com/');
+  }
+  if (site.path_prefix) {
+    if (prefix !== (site.path_prefix || '').toLowerCase().trim()) {
+      return res.status(404).send('Not Found');
+    }
+  } else {
+    if (!['go', 'r', 'l', 'v'].includes(prefix)) {
+      return res.status(404).send('Not Found');
+    }
   }
 
   // Parâmetro de rastreamento (Meta Ads): se o site exige ref, só permite quem vier com ref=TOKEN
@@ -2506,8 +2562,6 @@ async function handleLinkRedirect(req, res) {
   return redirectWithDelay(res, dest);
 }
 
-app.get(['/go/:code', '/r/:code', '/l/:code', '/v/:code'], handleLinkRedirect);
-
 // Servir script dinâmico por site (opcional – modo antigo)
 app.get('/t/:siteId.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
@@ -2518,6 +2572,13 @@ app.get('/t/:siteId.js', (req, res) => {
 // Servir painel
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Rota dinâmica por último: /:prefix/:code – prefix no pool (evita padrão único identificável)
+app.get('/:prefix/:code', (req, res, next) => {
+  const prefix = (req.params.prefix || '').trim().toLowerCase();
+  if (RESERVED_PREFIXES.has(prefix) || prefix.includes('.')) return next();
+  handleLinkRedirect(req, res).catch(err => { console.error(err); redirectWithDelay(res, 'https://www.google.com/'); });
 });
 
 // Limpeza de visitantes antigos (reduz uso no Supabase: storage + bandwidth)
