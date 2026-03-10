@@ -11,6 +11,7 @@ const session = require('express-session');
 const db = require('./db');
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
@@ -1924,6 +1925,35 @@ function isLearnedBot(ua) {
   return learnedBotPatternsCache.some(p => u.includes((p || '').toLowerCase()));
 }
 
+// Padrões conhecidos do Meta/Facebook para bloquear – atualização semanal mantém a lista atualizada.
+const META_DEFENSE_PATTERNS = [
+  'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
+  'meta-externalagent', 'meta-inspector', 'whatsappbot', 'facebookplatform',
+  'fbinternal', 'fb_iab', 'fban', 'fbios', 'fb4a', 'messenger_lite'
+];
+const META_DEFENSE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function runMetaDefenseUpdate() {
+  try {
+    const now = new Date().toISOString();
+    for (const pattern of META_DEFENSE_PATTERNS) {
+      if (!pattern || pattern.length < 2) continue;
+      const exists = await db.get('SELECT 1 FROM learned_bot_patterns WHERE LOWER(TRIM(pattern)) = ?', [pattern.toLowerCase()]);
+      if (exists) continue;
+      try {
+        if (db.usePg) await db.run('INSERT INTO learned_bot_patterns (pattern, hit_count) VALUES (?, 0) ON CONFLICT (pattern) DO NOTHING', [pattern]);
+        else await db.run('INSERT OR IGNORE INTO learned_bot_patterns (pattern, hit_count) VALUES (?, 0)', [pattern]);
+      } catch (e) {}
+    }
+    await loadLearnedBotPatterns();
+    if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES ('meta_defense_last_run', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [now]);
+    else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('meta_defense_last_run', ?)", [now]);
+    console.log('[MetaDefense] Atualização semanal de padrões aplicada.');
+  } catch (e) {
+    console.warn('[MetaDefense] Erro:', e.message);
+  }
+}
+
 // Rate limit por IP – bloqueio temporário (excesso de requisições)
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;   // 5 min
 const RATE_LIMIT_MAX_REQUESTS = 25;            // máx requisições por janela
@@ -2078,8 +2108,10 @@ async function sendCustomPage(res, site) {
   return true;
 }
 
-// Delay mínimo para manter o redirect praticamente instantâneo.
+// Redirect com headers neutros (reduz assinatura que o Meta pode detectar).
 function redirectWithDelay(res, url, status = 302) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, private');
+  res.setHeader('Pragma', 'no-cache');
   const delay = Math.floor(Math.random() * 15);
   setTimeout(() => res.redirect(status, url), delay);
 }
@@ -2514,6 +2546,8 @@ db.initDb().then(async () => {
   runFallbackHealthCheck();
   setInterval(runFallbackHealthCheck, FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
   await cleanupOldVisitors();
+  setTimeout(runMetaDefenseUpdate, 60 * 1000);
+  setInterval(runMetaDefenseUpdate, META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
   if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(cleanupOldVisitors, 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
     console.log(`

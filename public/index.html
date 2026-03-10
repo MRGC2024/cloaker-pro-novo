@@ -3362,19 +3362,20 @@
           if (pagesList.length === 0) { listEl.innerHTML = ''; if (emptyEl) emptyEl.style.display = 'block'; }
           else {
             if (emptyEl) emptyEl.style.display = 'none';
-            listEl.innerHTML = pagesList.map(p => {
-              const name = (p.name || 'Página ' + p.id).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-              return `<div class="card" style="margin-bottom: 0;">
-                <div class="card-body" style="padding: 16px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <strong>${name}</strong>
-                    <div style="display: flex; gap: 8px;">
-                      <button class="btn btn-sm btn-secondary" onclick="openPageModal(${p.id})"><i class="ri-edit-line"></i></button>
-                      <button class="btn btn-sm btn-danger" onclick="deletePage(${p.id})"><i class="ri-delete-bin-line"></i></button>
-                    </div>
-                  </div>
-                </div>
-              </div>`;
+            listEl.innerHTML = pagesList.map(function(p) {
+              var pid = p.id;
+              var name = (p.name || 'Página ' + pid).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+              return '<div class="card" style="margin-bottom: 0;">' +
+                '<div class="card-body" style="padding: 16px;">' +
+                  '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                    '<strong>' + name + '</strong>' +
+                    '<div style="display: flex; gap: 8px;">' +
+                      '<button class="btn btn-sm btn-secondary" onclick="openPageModal(\'' + pid + '\')"><i class="ri-edit-line"></i></button>' +
+                      '<button class="btn btn-sm btn-danger" onclick="deletePage(\'' + pid + '\')"><i class="ri-delete-bin-line"></i></button>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
             }).join('');
           }
         }
@@ -3382,15 +3383,24 @@
       } catch (e) { pagesList = []; if (listEl) listEl.innerHTML = ''; if (emptyEl) emptyEl.style.display = 'block'; }
     }
     async function openPageModal(id) {
-      document.getElementById('pageModalTitle').textContent = id ? 'Editar página' : 'Nova página';
-      document.getElementById('editPageId').value = id || '';
-      document.getElementById('pageName').value = id ? (pagesList.find(p => p.id == id)?.name || '') : '';
+      var editId = (id !== undefined && id !== null && id !== '') ? String(id) : '';
+      document.getElementById('pageModalTitle').textContent = editId ? 'Editar página' : 'Nova página';
+      document.getElementById('editPageId').value = editId;
+      document.getElementById('pageName').value = editId ? (pagesList.find(function(p) { return String(p.id) === editId; })?.name || '') : '';
       document.getElementById('pageHtml').value = '';
-      if (id) {
+      if (editId) {
         try {
-          const res = await fetch('/api/pages/' + id, { credentials: 'include' });
-          if (res.ok) { const p = await res.json(); document.getElementById('pageName').value = p.name || ''; document.getElementById('pageHtml').value = p.html_content || ''; }
-        } catch (e) {}
+          const res = await fetch('/api/pages/' + encodeURIComponent(editId), { credentials: 'include' });
+          if (res.ok) {
+            const p = await res.json();
+            document.getElementById('pageName').value = p.name || '';
+            document.getElementById('pageHtml').value = p.html_content || '';
+          } else {
+            alert('Não foi possível carregar a página. Tente novamente.');
+          }
+        } catch (e) {
+          alert('Erro ao carregar a página.');
+        }
       }
       document.getElementById('pageModal').classList.add('active');
     }
@@ -3398,26 +3408,36 @@
       document.getElementById('pageModal').classList.remove('active');
     }
     async function savePage() {
-      const id = document.getElementById('editPageId').value;
-      const name = document.getElementById('pageName').value.trim();
-      const html_content = document.getElementById('pageHtml').value;
+      const id = (document.getElementById('editPageId').value || '').trim();
+      const name = (document.getElementById('pageName').value || '').trim();
+      const html_content = (document.getElementById('pageHtml').value || '');
       if (!name) { alert('Digite um nome para a página.'); return; }
       try {
+        var res;
         if (id) {
-          await fetch(`/api/pages/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name, html_content }) });
+          res = await fetch('/api/pages/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: name, html_content: html_content }) });
         } else {
-          await fetch('/api/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name, html_content }) });
+          res = await fetch('/api/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: name, html_content: html_content }) });
+        }
+        if (!res.ok) {
+          var msg = 'Erro ao salvar página.';
+          try { var err = await res.json(); if (err && err.error) msg = err.error; } catch (e) {}
+          alert(msg);
+          return;
         }
         closePageModal();
         loadPages();
-      } catch (e) { alert('Erro ao salvar página.'); }
+      } catch (e) {
+        alert('Erro ao salvar página. Verifique sua conexão.');
+      }
     }
     async function deletePage(id) {
-      const p = pagesList.find(x => x.id == id);
-      const name = p ? (p.name || 'Página ' + id) : '';
+      var p = pagesList.find(function(x) { return String(x.id) === String(id); });
+      var name = p ? (p.name || 'Página ' + id) : '';
       if (!confirm('Excluir a página "' + name + '"? Sites que usam ela voltarão a usar redirecionamento.')) return;
       try {
-        await fetch(`/api/pages/${id}`, { method: 'DELETE', credentials: 'include' });
+        var res = await fetch('/api/pages/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'include' });
+        if (!res.ok) { alert('Erro ao excluir. Tente novamente.'); return; }
         loadPages();
         loadSites();
       } catch (e) { alert('Erro ao excluir.'); }
