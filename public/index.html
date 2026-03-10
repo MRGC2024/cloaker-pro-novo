@@ -7,40 +7,40 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #0d1117;
-      --bg-secondary: #161b22;
-      --bg-card: #1c2128;
-      --bg-hover: #21262d;
-      --accent-primary: #58a6ff;
-      --accent-secondary: #7c3aed;
-      --accent-solid: #58a6ff;
-      --accent-gradient: linear-gradient(135deg, #58a6ff 0%, #7c3aed 100%);
-      --success: #3fb950;
-      --warning: #d29922;
-      --danger: #f85149;
-      --info: #58a6ff;
-      --text-primary: #f0f6fc;
-      --text-secondary: #8b949e;
-      --text-tertiary: #6e7681;
-      --border: rgba(48, 54, 61, 0.8);
-      --border-hover: rgba(88, 166, 255, 0.4);
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-      --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.7);
+      --bg-primary: #0a0e14;
+      --bg-secondary: #111820;
+      --bg-card: #161d26;
+      --bg-hover: #1c242e;
+      --accent-primary: #14b8a6;
+      --accent-secondary: #0d9488;
+      --accent-solid: #14b8a6;
+      --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --info: #22d3ee;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      --border: rgba(51, 65, 85, 0.9);
+      --border-hover: rgba(20, 184, 166, 0.35);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
+      --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6);
+      --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.65);
     }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       background-image: 
-        linear-gradient(135deg, rgba(88, 166, 255, 0.03) 0%, transparent 50%),
-        linear-gradient(225deg, rgba(124, 58, 237, 0.03) 0%, transparent 50%);
+        linear-gradient(160deg, rgba(20, 184, 166, 0.04) 0%, transparent 45%),
+        linear-gradient(260deg, rgba(13, 148, 136, 0.03) 0%, transparent 45%);
       color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.6;
@@ -54,8 +54,8 @@
       width: 100%;
       height: 100%;
       background: 
-        radial-gradient(circle at 20% 30%, rgba(88, 166, 255, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+        radial-gradient(ellipse 80% 50% at 15% 20%, rgba(20, 184, 166, 0.06) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 85% 80%, rgba(15, 118, 110, 0.05) 0%, transparent 55%);
       pointer-events: none;
       z-index: 0;
     }
@@ -64,15 +64,15 @@
       position: fixed; 
       left: 0; 
       top: 0; 
-      width: 280px; 
+      width: 272px; 
       height: 100vh; 
       background: var(--bg-secondary); 
       border-right: 1px solid var(--border); 
-      padding: 24px; 
+      padding: 22px 20px; 
       z-index: 100; 
       display: flex; 
       flex-direction: column; 
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+      box-shadow: 4px 0 28px rgba(0, 0, 0, 0.5);
     }
     .logo { 
       display: flex; 
@@ -122,7 +122,7 @@
       border-left-color: var(--accent-solid);
     }
     .nav-link.active { 
-      background: rgba(88, 166, 255, 0.1); 
+      background: rgba(20, 184, 166, 0.12); 
       color: var(--accent-solid); 
       border-left-color: var(--accent-solid);
       font-weight: 600;
@@ -130,8 +130,8 @@
     .nav-link i { font-size: 20px; }
 
     .main { 
-      margin-left: 280px; 
-      padding: 32px; 
+      margin-left: 272px; 
+      padding: 28px 32px 40px; 
       min-height: 100vh; 
       position: relative;
       z-index: 1;
@@ -157,14 +157,14 @@
     .btn:hover::before { width: 300px; height: 300px; }
     .btn-primary { 
       background: var(--accent-solid); 
-      color: white; 
-      box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3); 
+      color: #0a0e14; 
+      box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35); 
       border: 1px solid var(--accent-solid);
     }
     .btn-primary:hover { 
       transform: translateY(-2px); 
-      box-shadow: 0 6px 20px rgba(88, 166, 255, 0.4); 
-      background: #6ab0ff;
+      box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4); 
+      background: #0d9488;
     }
     .btn-secondary { 
       background: var(--bg-card); 
@@ -187,7 +187,7 @@
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 32px; }
     .stat-card { 
       background: var(--bg-card); 
-      border-radius: 12px; 
+      border-radius: 16px; 
       padding: 24px; 
       border: 1px solid var(--border); 
       position: relative; 
@@ -384,7 +384,7 @@
     }
     .copy-btn:hover { 
       transform: translateY(-2px); 
-      background: #6ab0ff;
+      background: #14b8a6;
       box-shadow: var(--shadow-md); 
     }
     .copy-btn.copied { background: var(--success); }
@@ -476,7 +476,7 @@
 
     .site-card { 
       background: var(--bg-card); 
-      border-radius: 12px; 
+      border-radius: 16px; 
       padding: 24px; 
       border: 1px solid var(--border); 
       margin-bottom: 16px; 
@@ -620,7 +620,7 @@
       box-shadow: var(--shadow-md) !important;
     }
     .neon-btn:hover {
-      background: #6ab0ff !important;
+      background: #14b8a6 !important;
       transform: translateY(-2px) !important;
       box-shadow: var(--shadow-lg) !important;
     }
@@ -638,7 +638,7 @@
       border-radius: 5px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #6ab0ff;
+      background: #14b8a6;
     }
     
     /* Melhorias gerais */
@@ -675,7 +675,7 @@
       box-shadow: var(--shadow-sm) !important;
     }
     .copy-btn:hover {
-      background: #6ab0ff !important;
+      background: #14b8a6 !important;
       box-shadow: var(--shadow-md) !important;
     }
     
@@ -703,19 +703,19 @@
       <h1>Cloaker Pro</h1>
     </div>
     <ul class="nav-menu">
-      <li class="nav-item"><a class="nav-link active" data-section="dashboard"><i class="ri-dashboard-3-line"></i> Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="sites"><i class="ri-global-line"></i> Meus Sites</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="fallbackstatus"><i class="ri-links-line"></i> Status dos links</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="visitors"><i class="ri-user-line"></i> Visitantes</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="reports"><i class="ri-file-chart-line"></i> Relatórios</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="script"><i class="ri-link"></i> Link para Ads</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="analytics"><i class="ri-bar-chart-box-line"></i> Análise</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="settings"><i class="ri-settings-3-line"></i> Configurações</a></li>
-      <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-section="users"><i class="ri-team-line"></i> Usuários</a></li>
-      <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" data-section="metaips"><i class="ri-shield-keyhole-line"></i> IPs Meta</a></li>
-      <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" data-section="autoimprove"><i class="ri-magic-line"></i> Melhorias Automáticas</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="domains"><i class="ri-global-line"></i> Domínios</a></li>
-      <li class="nav-item"><a class="nav-link" data-section="pages"><i class="ri-file-code-line"></i> Páginas</a></li>
+      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard"><i class="ri-dashboard-3-line"></i> Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites"><i class="ri-global-line"></i> Meus Sites</a></li>
+      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus"><i class="ri-links-line"></i> Status dos links</a></li>
+      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors"><i class="ri-user-line"></i> Visitantes</a></li>
+      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports"><i class="ri-file-chart-line"></i> Relatórios</a></li>
+      <li class="nav-item"><a class="nav-link" href="#script" data-section="script"><i class="ri-link"></i> Link para Ads</a></li>
+      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics"><i class="ri-bar-chart-box-line"></i> Análise</a></li>
+      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings"><i class="ri-settings-3-line"></i> Configurações</a></li>
+      <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users"><i class="ri-team-line"></i> Usuários</a></li>
+      <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips"><i class="ri-shield-keyhole-line"></i> IPs Meta</a></li>
+      <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove"><i class="ri-magic-line"></i> Melhorias Automáticas</a></li>
+      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains"><i class="ri-global-line"></i> Domínios</a></li>
+      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages"><i class="ri-file-code-line"></i> Páginas</a></li>
     </ul>
     <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
       <button type="button" class="nav-link" style="width:100%; background:none; border:none; color: var(--text-secondary); cursor: pointer;" onclick="logout()"><i class="ri-logout-box-line"></i> Sair</button>
@@ -859,7 +859,10 @@
     <!-- Visitors -->
     <section id="visitors" class="section">
       <div class="header">
-        <h2>Visitantes</h2>
+        <div>
+          <h2>Visitantes</h2>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Atualização automática a cada 30s.</p>
+        </div>
         <div class="header-actions">
           <select class="form-select site-selector" id="visitorsSiteFilter" onchange="loadVisitors()">
             <option value="all">Todos os Sites</option>
@@ -889,7 +892,7 @@
     <section id="reports" class="section">
       <div class="header">
         <h2>Relatórios</h2>
-        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Visualize requisições por link. Selecione um link para ver o relatório individual.</p>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Visualize requisições por link. Selecione um link para ver o relatório individual. Atualização automática a cada 30s.</p>
         <div class="header-actions">
           <select class="form-select site-selector" id="reportsSiteFilter" onchange="loadReports()" style="min-width: 200px;">
             <option value="all">Todos os Sites</option>
@@ -1275,7 +1278,7 @@
     <section id="analytics" class="section">
       <div class="header">
         <h2>Análise de Dados</h2>
-        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Dados coletados para identificar padrões do Meta e melhorar o cloaker.</p>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Dados coletados para identificar padrões do Meta e melhorar o cloaker. Atualização automática a cada 30s.</p>
         <div class="header-actions">
           <select class="form-select site-selector" id="analyticsSiteFilter" onchange="loadAnalytics()">
             <option value="all">Todos os Sites</option>
@@ -1825,27 +1828,38 @@
       return date ? date.toLocaleString('pt-BR', { timeZone: TZ_BR, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
     }
 
-    // Navigation
+    // Navegação com persistência no F5 (hash na URL)
+    function goToSection(sectionId) {
+      if (!sectionId || !document.getElementById(sectionId)) return;
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const link = document.querySelector('.nav-link[data-section="' + sectionId + '"]');
+      if (link) link.classList.add('active');
+      document.getElementById(sectionId).classList.add('active');
+      if (location.hash !== '#' + sectionId) location.hash = sectionId;
+      if (sectionId === 'dashboard') refreshStats();
+      if (sectionId === 'sites') { loadSites(); loadPages(); }
+      if (sectionId === 'fallbackstatus') loadFallbackStatus();
+      if (sectionId === 'visitors') loadVisitors();
+      if (sectionId === 'reports') loadReports();
+      if (sectionId === 'domains') loadDomains();
+      if (sectionId === 'pages') loadPages();
+      if (sectionId === 'script') loadScriptSection();
+      if (sectionId === 'analytics') loadAnalytics();
+      if (sectionId === 'settings') { loadSettings(); if (currentUser && currentUser.role === 'admin') loadFallbackSettings(); }
+      if (sectionId === 'users') loadUsers();
+      if (sectionId === 'metaips') loadMetaIPs();
+      if (sectionId === 'autoimprove') loadAutoImprove();
+    }
+    window.addEventListener('hashchange', function() {
+      const hash = (location.hash || '').replace(/^#/, '').toLowerCase();
+      if (hash && document.getElementById(hash)) goToSection(hash);
+    });
     document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', () => {
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        link.classList.add('active');
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
         const section = link.dataset.section;
-        document.getElementById(section).classList.add('active');
-        if (section === 'dashboard') refreshStats();
-        if (section === 'sites') { loadSites(); loadPages(); }
-        if (section === 'fallbackstatus') loadFallbackStatus();
-        if (section === 'visitors') loadVisitors();
-        if (section === 'reports') loadReports();
-        if (section === 'domains') loadDomains();
-        if (section === 'pages') loadPages();
-        if (section === 'script') loadScriptSection();
-        if (section === 'analytics') loadAnalytics();
-        if (section === 'settings') { loadSettings(); if (currentUser && currentUser.role === 'admin') loadFallbackSettings(); }
-        if (section === 'users') loadUsers();
-        if (section === 'metaips') loadMetaIPs();
-        if (section === 'autoimprove') loadAutoImprove();
+        if (section) goToSection(section);
       });
     });
 
@@ -3797,9 +3811,19 @@
       } catch (e) {}
       fillCountrySelects();
       loadSites();
-      refreshStats();
+      var hash = (location.hash || '').replace(/^#/, '').toLowerCase();
+      if (hash && document.getElementById(hash)) goToSection(hash);
+      else goToSection('dashboard');
     })();
-    setInterval(() => { if (document.getElementById('dashboard').classList.contains('active')) refreshStats(); }, 30000);
+    setInterval(function() {
+      var section = (location.hash || '').replace(/^#/, '') || 'dashboard';
+      if (document.getElementById(section) && document.getElementById(section).classList.contains('active')) {
+        if (section === 'dashboard') refreshStats();
+        else if (section === 'visitors') loadVisitors();
+        else if (section === 'reports') loadReports();
+        else if (section === 'analytics') loadAnalytics();
+      }
+    }, 30000);
 
     document.getElementById('visitorModal').addEventListener('click', e => { if (e.target.id === 'visitorModal') closeVisitorModal(); });
     document.getElementById('siteModal').addEventListener('click', e => { if (e.target.id === 'siteModal') closeSiteModal(); });
