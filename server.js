@@ -1199,7 +1199,7 @@ function generateRefToken() {
 // API: Criar site (padrão: apenas Brasil; gera link para usar nos Ads) – pertence ao usuário logado
 app.post('/api/sites', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const { name, domain, target_url, redirect_url, allowed_countries, block_behavior, landing_page_id, selected_domain, use_fallback } = req.body;
+  const { name, domain, target_url, redirect_url, allowed_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body;
   const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   const linkCode = await generateLinkCode();
   const refToken = generateRefToken();
@@ -1210,10 +1210,16 @@ app.post('/api/sites', async (req, res) => {
   const lpId = behavior === 'page' && landing_page_id ? parseInt(landing_page_id, 10) : null;
   const selDomain = (selected_domain || '').trim() || null;
   const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
+  const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
+  let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
+  if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
+    const pathPool = await getPathPrefixPool();
+    pathPrefix = pathPool[Math.floor(Math.random() * pathPool.length)] || 'go';
+  } else {
+    pathPrefix = pathPrefix.toLowerCase();
+  }
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
-    const pathPool = await getPathPrefixPool();
-    const pathPrefix = pathPool[Math.floor(Math.random() * pathPool.length)] || 'go';
     await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
       [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
@@ -1244,12 +1250,15 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const targetChanged = ((existing.target_url || '').trim() || null) !== newTarget;
     const useFb = data.use_fallback === false || data.use_fallback === 0 ? 0 : 1;
     const clearFallback = (targetChanged || useFb === 0) ? ', fallback_override_url = NULL' : '';
+    const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
+    let pathPrefix = (data.path_prefix != null && typeof data.path_prefix === 'string') ? data.path_prefix.trim().toLowerCase() : null;
+    if (pathPrefix !== null && (!pathPrefix || !pathPrefixRegex.test(pathPrefix))) pathPrefix = null;
     const sql = `
       UPDATE sites SET
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
-        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, use_fallback = ?${clearFallback}
+        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, use_fallback = ?, path_prefix = ?${clearFallback}
       WHERE site_id = ?
     `;
     await db.run(sql, [
@@ -1257,7 +1266,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_desktop ? 1 : 0, data.block_facebook_library ? 1 : 0, data.block_bots ? 1 : 0,
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       data.allowed_countries || '', data.blocked_countries || '', data.is_active ? 1 : 0, refToken,
-      selDomain, lpId, useFb,
+      selDomain, lpId, useFb, pathPrefix,
       req.params.siteId
     ]);
     res.json({ success: true });

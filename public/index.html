@@ -2029,6 +2029,12 @@
           <small style="color: var(--text-secondary); font-size: 12px;">Salve o site para manter este domínio; não volta para o padrão ao atualizar.</small>
         </div>
         <div class="form-group">
+          <label class="form-label">Prefixo do link (o que aparece na URL)</label>
+          <input type="text" class="form-input" id="sitePathPrefix" placeholder="Ex: go, visit, out, x7k2m" list="sitePathPrefixSuggestions" maxlength="32" pattern="[a-zA-Z0-9_-]{0,32}" autocomplete="off">
+          <datalist id="sitePathPrefixSuggestions"></datalist>
+          <small style="color: var(--text-secondary); font-size: 12px;">Escolha o prefixo do link (ex: <strong>visit</strong> → seulink.com/<strong>visit</strong>/abc123). Deixe em branco para sortear automaticamente do pool. Só letras, números, _ e - (até 32 caracteres).</small>
+        </div>
+        <div class="form-group">
           <label class="form-label">URL de Redirecionamento (quando bloquear)</label>
           <input type="text" class="form-input" id="siteRedirectUrl" value="https://www.google.com/" placeholder="Para onde mandar quem for bloqueado">
           <div class="form-group" style="margin-top: 12px;">
@@ -2445,6 +2451,8 @@
       regenerateRefOnSave = false;
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
       document.getElementById('siteUseFallback').checked = true;
+      document.getElementById('sitePathPrefix').value = '';
+      fillSitePathPrefixSuggestions();
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -2496,8 +2504,23 @@
         document.getElementById('siteRefTokenValue').textContent = '(nenhum – marque "Exigir" e salve para gerar)';
       }
       document.getElementById('siteDefaultLinkParams').value = (site.default_link_params || '').trim();
+      document.getElementById('sitePathPrefix').value = (site.path_prefix || '').trim();
+      fillSitePathPrefixSuggestions();
       regenerateRefOnSave = false;
       document.getElementById('siteModal').classList.add('active');
+    }
+
+    async function fillSitePathPrefixSuggestions() {
+      const list = document.getElementById('sitePathPrefixSuggestions');
+      if (!list) return;
+      try {
+        const res = await apiGet('/api/settings/path-pool');
+        if (res && res.ok) {
+          const d = await res.json();
+          const arr = d.path_pool || [];
+          list.innerHTML = Array.isArray(arr) ? arr.map(function(p) { return '<option value="' + String(p).replace(/"/g, '&quot;') + '">'; }).join('') : '';
+        }
+      } catch (e) {}
     }
 
     function setRegenerateRefOnSave(v) { regenerateRefOnSave = v; }
@@ -2530,7 +2553,8 @@
         allowed_countries: getCountrySelectValue('siteAllowedCountries') || 'BR',
         blocked_countries: getCountrySelectValue('siteBlockedCountries') || '',
         is_active: true,
-        use_fallback: document.getElementById('siteUseFallback').checked
+        use_fallback: document.getElementById('siteUseFallback').checked,
+        path_prefix: (document.getElementById('sitePathPrefix').value || '').trim()
       };
       if (siteId) {
         if (!requireRef) data.required_ref_token = '';
