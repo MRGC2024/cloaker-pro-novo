@@ -2408,14 +2408,10 @@ async function getPathPrefixPool() {
   return DEFAULT_PATH_POOL;
 }
 
-// Handler compartilhado para links (/:prefix/:code) – prefix vem do pool para não padronizar
+// Handler compartilhado para links (/:prefix/:code)
 async function handleLinkRedirect(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
-  const pool = await getPathPrefixPool();
-  if (!pool.includes(prefix)) {
-    return res.status(404).send('Not Found');
-  }
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   const destUrl = getEffectiveTargetUrl(site);
   if (!site || !destUrl) {
@@ -2426,7 +2422,9 @@ async function handleLinkRedirect(req, res) {
       return res.status(404).send('Not Found');
     }
   } else {
-    if (!['go', 'r', 'l', 'v'].includes(prefix)) {
+    const pool = await getPathPrefixPool();
+    const legacy = new Set(['go', 'r', 'l', 'v']);
+    if (!pool.includes(prefix) && !legacy.has(prefix)) {
       return res.status(404).send('Not Found');
     }
   }
