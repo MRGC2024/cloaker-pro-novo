@@ -764,7 +764,7 @@ function fetchDomainStatusFromRailway(domainId) {
 app.get('/api/domains', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
-  const list = await db.all('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE user_id = ? OR user_id IS NULL ORDER BY domain ASC', [userId]);
+  const list = await db.all('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC, id DESC', [userId]);
   const cnameTarget = getCnameTarget(req);
   res.json({ domains: list, cnameTarget });
 });
