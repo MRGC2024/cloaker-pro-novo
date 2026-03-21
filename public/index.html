@@ -2006,12 +2006,17 @@
           <label class="form-label">Nome do Site</label>
           <input type="text" class="form-input" id="siteName" placeholder="Ex: Landing Page Produto X">
         </div>
+        <div class="form-group" id="siteEffectiveTargetWrap">
+          <label class="form-label"><i class="ri-external-link-line"></i> Onde o cloaker manda o visitante agora</label>
+          <div id="siteEffectiveTargetDisplay" class="code-block" style="font-size: 12px; padding: 10px; word-break: break-all; min-height: 2.5em;">—</div>
+          <small id="siteEffectiveTargetHint" style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 6px;"></small>
+        </div>
         <div class="form-group">
-          <label class="form-label">URL do seu site (landing page)</label>
+          <label class="form-label">URL principal da landing (cadastro)</label>
           <input type="url" class="form-input" id="siteTargetUrl" placeholder="https://meusite.com/landing" required>
-          <small style="color: var(--text-secondary); font-size: 12px;">Link real da sua página. Quem for permitido vai para esse link.</small>
+          <small style="color: var(--text-secondary); font-size: 12px;">Sua página alvo oficial. <strong>Não é apagada</strong> quando o fallback entra: o sistema guarda a URL de contingência à parte e continua mostrando a principal aqui.</small>
           <div id="siteFallbackOverrideStatus" style="display:none; margin-top:8px; padding:10px; background:rgba(210,153,34,0.15); border-radius:8px; font-size:13px; color:var(--warning);">
-            <i class="ri-alert-line"></i> Usando URL de contingência: <code id="siteFallbackOverrideUrl" style="font-size:12px; word-break:break-all;"></code>
+            <i class="ri-alert-line"></i> <strong>Contingência ativa.</strong> Quem clica no link do anúncio vai para o endereço do bloco <strong>acima</strong>; este campo é só a sua URL principal salva.
           </div>
           <div class="form-group" style="margin-top: 12px;">
             <label class="radio-label"><input type="checkbox" id="siteUseFallback" checked> <strong>Usar fallback ao cair</strong> — quando este site ficar offline, substituir o link pela URL de contingência (standby). Desmarque para sites que não devem receber substituição.</label>
@@ -2378,12 +2383,19 @@
         container.innerHTML = `<div class="empty-state"><i class="ri-global-line"></i><h3>Nenhum site cadastrado</h3><p>Clique em "Novo Site" para começar</p></div>`;
         return;
       }
-      container.innerHTML = sites.map(s => `
+      container.innerHTML = sites.map(s => {
+        const effUrl = ((s.fallback_override_url || s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const primUrl = ((s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const destinoCard = (s.fallback_override_url || '').trim()
+          ? `<div style="margin-top:10px;padding:10px 12px;background:rgba(210,153,34,0.12);border-radius:8px;border:1px solid rgba(210,153,34,0.35);font-size:12px;line-height:1.45;"><div style="font-weight:600;color:var(--warning);margin-bottom:6px;"><i class="ri-arrow-right-circle-line"></i> Destino agora (link do anúncio)</div><code style="font-size:11px;word-break:break-all;display:block;">${effUrl || '—'}</code><div style="margin-top:8px;color:var(--text-secondary);font-size:11px;">URL principal cadastrada (não é alterada pelo fallback):<br><code style="word-break:break-all;">${primUrl || '—'}</code></div></div>`
+          : (primUrl ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">Landing: <code style="word-break:break-all;font-size:11px;">${primUrl}</code></div>` : '');
+        return `
         <div class="site-card">
           <div class="site-card-header">
             <div>
               <div class="site-card-title">${s.name} ${s.fallback_override_url ? '<span class="badge badge-warning" style="font-size:10px;margin-left:6px;" title="Usando URL de contingência">Fallback ativo</span>' : ''} ${(s.use_fallback !== 0 && s.use_fallback !== false) ? '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--primary);opacity:0.9;" title="Substituição de link ativa ao cair">Fallback</span>' : '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--text-secondary);" title="Sem substituição ao cair">Sem fallback</span>'}</div>
               <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
+              ${destinoCard}
             </div>
             <div style="display: flex; gap: 10px;">
               <button class="btn btn-primary btn-sm" onclick="openReport('${s.site_id}')" title="Ver relatório individual"><i class="ri-file-chart-line"></i> Relatório</button>
@@ -2418,10 +2430,29 @@
             <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Copie o <strong>domínio gerado</strong> e os <strong>parâmetros</strong> separadamente, ou use o link completo nos anúncios.</p>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     let regenerateRefOnSave = false;
+
+    function setSiteEffectiveTargetUI(siteOrNull) {
+      const disp = document.getElementById('siteEffectiveTargetDisplay');
+      const hint = document.getElementById('siteEffectiveTargetHint');
+      if (!disp) return;
+      if (!siteOrNull) {
+        disp.textContent = 'Após salvar, será a URL principal que você informar abaixo.';
+        if (hint) hint.textContent = '';
+        return;
+      }
+      const eff = (siteOrNull.fallback_override_url || siteOrNull.target_url || '').trim() || '—';
+      disp.textContent = eff;
+      if (hint) {
+        hint.textContent = (siteOrNull.fallback_override_url || '').trim()
+          ? 'Contingência ativa: o visitante vai para a URL acima. A URL principal continua no campo abaixo (restauração manual ou quando você salvar uma nova principal).'
+          : 'Sem contingência: o visitante vai para a URL principal abaixo.';
+      }
+    }
 
     function openNewSiteModal() {
       document.getElementById('siteModalTitle').textContent = 'Novo Site';
@@ -2450,6 +2481,7 @@
       document.getElementById('siteDefaultLinkParams').value = '';
       regenerateRefOnSave = false;
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
+      setSiteEffectiveTargetUI(null);
       document.getElementById('siteUseFallback').checked = true;
       document.getElementById('sitePathPrefix').value = '';
       fillSitePathPrefixSuggestions();
@@ -2472,7 +2504,7 @@
       document.getElementById('siteDomain').value = site.domain || '';
       document.getElementById('siteTargetUrl').value = site.target_url || '';
       document.getElementById('siteFallbackOverrideStatus').style.display = site.fallback_override_url ? 'block' : 'none';
-      if (site.fallback_override_url) document.getElementById('siteFallbackOverrideUrl').textContent = site.fallback_override_url;
+      setSiteEffectiveTargetUI(site);
       document.getElementById('siteUseFallback').checked = site.use_fallback !== 0 && site.use_fallback !== false;
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
       const behavior = site.block_behavior || 'redirect';
