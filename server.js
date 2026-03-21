@@ -1173,14 +1173,24 @@ async function getMySiteIds(userId) {
 app.get('/api/sites', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
-  const sites = await db.all(`
-    SELECT s.*, 
-           (SELECT COUNT(*) FROM visitors WHERE site_id = s.site_id) as total_visits,
-           (SELECT COUNT(*) FROM visitors WHERE site_id = s.site_id AND was_blocked = 1) as blocked_visits
-    FROM sites s 
-    WHERE s.user_id = ?
-    ORDER BY s.created_at DESC
-  `, [userId]);
+  // Uma agregação por site_id (evita subconsultas correlacionadas = scan em visitors por cada linha de site)
+  const sites = await db.all(
+    `SELECT s.*,
+            COALESCE(t.total_visits, 0) AS total_visits,
+            COALESCE(t.blocked_visits, 0) AS blocked_visits
+     FROM sites s
+     LEFT JOIN (
+       SELECT v.site_id,
+              COUNT(*) AS total_visits,
+              SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) AS blocked_visits
+       FROM visitors v
+       WHERE v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?)
+       GROUP BY v.site_id
+     ) t ON t.site_id = s.site_id
+     WHERE s.user_id = ?
+     ORDER BY s.created_at DESC`,
+    [userId, userId]
+  );
   res.json(sites);
 });
 
@@ -1482,20 +1492,41 @@ app.get('/api/stats', async (req, res) => {
   const baseWhere = `FROM visitors v WHERE v.created_at >= ? AND v.created_at < ? AND ${userSites}${siteFilter}`;
   const hourExpr = db.usePg ? "to_char(date_trunc('hour', v.created_at), 'YYYY-MM-DD HH24:00')" : "strftime('%Y-%m-%d %H:00', v.created_at)";
 
+  const num = (v) => (v == null || v === '' ? 0 : Number(v)) || 0;
+  const [agg, byBrowser, byOS, byCountry, byReferrer, byHour, blockReasons, bySite] = await Promise.all([
+    db.get(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked,
+              SUM(CASE WHEN v.was_blocked = 0 THEN 1 ELSE 0 END) as allowed,
+              SUM(CASE WHEN v.is_bot = 1 THEN 1 ELSE 0 END) as bots,
+              SUM(CASE WHEN v.device_type IN ('mobile', 'tablet') THEN 1 ELSE 0 END) as mobile,
+              SUM(CASE WHEN (v.device_type = 'desktop' OR v.device_type IS NULL) THEN 1 ELSE 0 END) as desktop
+       ${baseWhere}`,
+      params
+    ),
+    db.all(`SELECT v.browser as browser, COUNT(*) as count ${baseWhere} AND v.browser IS NOT NULL GROUP BY v.browser ORDER BY count DESC LIMIT 10`, params),
+    db.all(`SELECT v.os as os, COUNT(*) as count ${baseWhere} AND v.os IS NOT NULL GROUP BY v.os ORDER BY count DESC LIMIT 10`, params),
+    db.all(`SELECT v.country as country, COUNT(*) as count ${baseWhere} AND v.country IS NOT NULL GROUP BY v.country ORDER BY count DESC LIMIT 10`, params),
+    db.all(`SELECT v.referrer as referrer, COUNT(*) as count ${baseWhere} AND v.referrer IS NOT NULL AND v.referrer != '' GROUP BY v.referrer ORDER BY count DESC LIMIT 10`, params),
+    db.all(`SELECT ${hourExpr} as hour, COUNT(*) as total, SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked, SUM(CASE WHEN v.was_blocked = 0 THEN 1 ELSE 0 END) as allowed ${baseWhere} GROUP BY hour ORDER BY hour DESC LIMIT 24`, params),
+    db.all(`SELECT v.block_reason as block_reason, COUNT(*) as count ${baseWhere} AND v.was_blocked = 1 AND v.block_reason IS NOT NULL GROUP BY v.block_reason ORDER BY count DESC`, params),
+    db.all(`SELECT v.site_id as site_id, COUNT(*) as count FROM visitors v WHERE v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?) AND v.created_at >= ? AND v.created_at < ? GROUP BY v.site_id ORDER BY count DESC`, [userId, start, end])
+  ]);
+
   const stats = {
-    total: (await db.get(`SELECT COUNT(*) as count ${baseWhere}`, params))?.count || 0,
-    blocked: (await db.get(`SELECT COUNT(*) as count ${baseWhere} AND v.was_blocked = 1`, params))?.count || 0,
-    allowed: (await db.get(`SELECT COUNT(*) as count ${baseWhere} AND v.was_blocked = 0`, params))?.count || 0,
-    bots: (await db.get(`SELECT COUNT(*) as count ${baseWhere} AND v.is_bot = 1`, params))?.count || 0,
-    mobile: (await db.get(`SELECT COUNT(*) as count ${baseWhere} AND v.device_type IN ('mobile', 'tablet')`, params))?.count || 0,
-    desktop: (await db.get(`SELECT COUNT(*) as count ${baseWhere} AND (v.device_type = 'desktop' OR v.device_type IS NULL)`, params))?.count || 0,
-    byBrowser: await db.all(`SELECT v.browser as browser, COUNT(*) as count ${baseWhere} AND v.browser IS NOT NULL GROUP BY v.browser ORDER BY count DESC LIMIT 10`, params),
-    byOS: await db.all(`SELECT v.os as os, COUNT(*) as count ${baseWhere} AND v.os IS NOT NULL GROUP BY v.os ORDER BY count DESC LIMIT 10`, params),
-    byCountry: await db.all(`SELECT v.country as country, COUNT(*) as count ${baseWhere} AND v.country IS NOT NULL GROUP BY v.country ORDER BY count DESC LIMIT 10`, params),
-    byReferrer: await db.all(`SELECT v.referrer as referrer, COUNT(*) as count ${baseWhere} AND v.referrer IS NOT NULL AND v.referrer != '' GROUP BY v.referrer ORDER BY count DESC LIMIT 10`, params),
-    byHour: await db.all(`SELECT ${hourExpr} as hour, COUNT(*) as total, SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked, SUM(CASE WHEN v.was_blocked = 0 THEN 1 ELSE 0 END) as allowed ${baseWhere} GROUP BY hour ORDER BY hour DESC LIMIT 24`, params),
-    blockReasons: await db.all(`SELECT v.block_reason as block_reason, COUNT(*) as count ${baseWhere} AND v.was_blocked = 1 AND v.block_reason IS NOT NULL GROUP BY v.block_reason ORDER BY count DESC`, params),
-    bySite: await db.all(`SELECT v.site_id as site_id, COUNT(*) as count FROM visitors v WHERE v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?) AND v.created_at >= ? AND v.created_at < ? GROUP BY v.site_id ORDER BY count DESC`, [userId, start, end])
+    total: num(agg?.total),
+    blocked: num(agg?.blocked),
+    allowed: num(agg?.allowed),
+    bots: num(agg?.bots),
+    mobile: num(agg?.mobile),
+    desktop: num(agg?.desktop),
+    byBrowser: byBrowser || [],
+    byOS: byOS || [],
+    byCountry: byCountry || [],
+    byReferrer: byReferrer || [],
+    byHour: byHour || [],
+    blockReasons: blockReasons || [],
+    bySite: bySite || []
   };
 
   res.json(stats);

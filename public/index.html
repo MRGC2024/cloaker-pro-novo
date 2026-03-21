@@ -2343,13 +2343,13 @@
     // Sites
     async function loadSites() {
       try {
-        const res = await apiGet('/api/sites');
+        const [res, dr] = await Promise.all([apiGet('/api/sites'), apiGet('/api/domains')]);
         if (!res) return;
         const data = await res.json();
         sites = Array.isArray(data) ? data : [];
         try {
-          const dr = await apiGet('/api/domains');
-          if (dr) { const ddata = await dr.json(); domainsList = ddata.domains || []; }
+          if (dr && dr.ok) { const ddata = await dr.json(); domainsList = ddata.domains || []; }
+          else domainsList = [];
         } catch (e) { domainsList = []; }
         updateSiteSelectors();
         renderSitesList();
@@ -2828,7 +2828,10 @@
     async function refreshStats() {
       const siteId = document.getElementById('dashboardSiteFilter') ? document.getElementById('dashboardSiteFilter').value : 'all';
       try {
-        const res = await apiGet(`/api/stats?period=${currentPeriod}&site=${siteId}`);
+        const [res, resVis] = await Promise.all([
+          apiGet(`/api/stats?period=${currentPeriod}&site=${siteId}`),
+          apiGet(`/api/visitors?page=1&limit=10&filter=all&site=${siteId}`)
+        ]);
         if (!res) return;
         const stats = await res.json();
         if (!stats || typeof stats !== 'object') return;
@@ -2840,26 +2843,22 @@
         document.getElementById('statMobile').textContent = (n(stats.mobile)).toLocaleString();
         document.getElementById('statDesktop').textContent = (n(stats.desktop)).toLocaleString();
         updateCharts(stats);
-        loadLastVisits();
+        if (resVis && resVis.ok) renderLastVisitsFromData(await resVis.json());
+        else loadLastVisits();
         var lastEl = document.getElementById('dashboardLastUpdate');
         if (lastEl) lastEl.textContent = 'Última atualização: ' + new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'medium' }) + ' (Brasília)';
       } catch (e) { }
     }
 
-    async function loadLastVisits() {
-      const siteId = document.getElementById('dashboardSiteFilter') ? document.getElementById('dashboardSiteFilter').value : 'all';
+    function renderLastVisitsFromData(data) {
       const tbody = document.getElementById('lastVisitsTable');
       if (!tbody) return;
-      try {
-        const res = await apiGet(`/api/visitors?page=1&limit=10&filter=all&site=${siteId}`);
-        if (!res) return;
-        const data = await res.json();
-        const list = Array.isArray(data && data.visitors) ? data.visitors : [];
-        if (list.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-secondary)">Nenhum acesso ainda</td></tr>';
-          return;
-        }
-        tbody.innerHTML = list.map(v => `
+      const list = Array.isArray(data && data.visitors) ? data.visitors : [];
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-secondary)">Nenhum acesso ainda</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(v => `
           <tr>
             <td>${formatDateTimeBR(v.created_at)}</td>
             <td><code style="font-size:11px">${v.ip || '-'}</code></td>
@@ -2871,6 +2870,17 @@
             <td><button class="btn btn-secondary btn-sm" onclick="viewVisitor(${v.id})"><i class="ri-eye-line"></i></button></td>
           </tr>
         `).join('');
+    }
+
+    async function loadLastVisits() {
+      const siteId = document.getElementById('dashboardSiteFilter') ? document.getElementById('dashboardSiteFilter').value : 'all';
+      const tbody = document.getElementById('lastVisitsTable');
+      if (!tbody) return;
+      try {
+        const res = await apiGet(`/api/visitors?page=1&limit=10&filter=all&site=${siteId}`);
+        if (!res) return;
+        const data = await res.json();
+        renderLastVisitsFromData(data);
       } catch (e) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--danger)">Erro ao carregar</td></tr>'; }
     }
 
