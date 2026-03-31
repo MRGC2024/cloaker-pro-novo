@@ -2262,6 +2262,8 @@ async function getFallbackFailCount(siteId) {
 
 const FALLBACK_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 h – não reenviar aviso de site off para o mesmo site
 const TELEGRAM_PREFIX = '🔔 <b>Painel Cloaker</b>\n\n';
+const DAILY_LINK_REPORT_CHECK_MS = 15 * 60 * 1000; // verifica de 15 em 15 min se já pode enviar o resumo do dia
+const DAILY_LINK_REPORT_HOUR_BR = Math.max(0, Math.min(23, parseInt(process.env.DAILY_LINK_REPORT_HOUR_BR, 10) || 9)); // padrão: 09:00 BRT
 
 async function getFallbackAlertCooldowns() {
   const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_alert_cooldown'");
@@ -2318,6 +2320,172 @@ async function sendTelegramMessage(text) {
     });
   } catch (e) {
     console.error('Telegram send error:', e.message);
+  }
+}
+
+function escapeHtml(text) {
+  return String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function getDailyLinkReportMeta() {
+  const row = await db.get("SELECT value FROM settings WHERE key = 'daily_link_report_meta'");
+  if (!row || !row.value) return {};
+  try {
+    const meta = JSON.parse(row.value);
+    return (meta && typeof meta === 'object') ? meta : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function setDailyLinkReportMeta(meta) {
+  const val = JSON.stringify(meta || {});
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['daily_link_report_meta', val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['daily_link_report_meta', val]);
+}
+
+function getTodayBrKeyAndHour() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+  const map = {};
+  for (const p of parts) map[p.type] = p.value;
+  return {
+    dayKey: `${map.year}-${map.month}-${map.day}`,
+    hour: Number(map.hour || 0)
+  };
+}
+
+function buildSitePanelLink(site) {
+  const pathSeg = (site.path_prefix || 'go').trim() || 'go';
+  let base = '';
+  if (site.selected_domain) base = `https://${site.selected_domain}`;
+  else if (process.env.PANEL_DOMAIN) base = `https://${process.env.PANEL_DOMAIN}`;
+  return base ? `${base}/${pathSeg}/${site.link_code}` : `/${pathSeg}/${site.link_code}`;
+}
+
+async function checkUrlReachableFast(url) {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim();
+  if (!u.startsWith('http://') && !u.startsWith('https://')) return false;
+  const controller = new AbortController();
+  const to = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(u, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    });
+    clearTimeout(to);
+    return res.status >= 200 && res.status < 400;
+  } catch (e) {
+    clearTimeout(to);
+    return false;
+  }
+}
+
+async function runDailyLinksSummary(force = false) {
+  try {
+    const { token, chatId } = await getTelegramConfig();
+    if (!token || !chatId) return;
+
+    const nowBr = getTodayBrKeyAndHour();
+    const meta = await getDailyLinkReportMeta();
+    if (!force) {
+      if (meta.last_sent_day_key === nowBr.dayKey) return;
+      if (nowBr.hour < DAILY_LINK_REPORT_HOUR_BR) return;
+    }
+
+    const sites = await db.all(`
+      SELECT site_id, name, link_code, target_url, fallback_override_url, selected_domain, path_prefix, is_active, use_fallback
+      FROM sites
+      ORDER BY created_at DESC
+    `);
+    const globalFallbacks = await getGlobalFallbacks();
+
+    let totalSites = 0;
+    let activeSites = 0;
+    let fallbackEnabled = 0;
+    let fallbackActive = 0;
+    let runningLinks = 0;
+    const lines = [];
+
+    const reachCache = new Map();
+    const workerCount = Math.max(1, Math.min(6, parseInt(process.env.DAILY_LINK_REPORT_CONCURRENCY || '4', 10)));
+    let idx = 0;
+    const checkWorkers = Array.from({ length: workerCount }).map(async () => {
+      while (idx < sites.length) {
+        const i = idx++;
+        const s = sites[i];
+        const isActive = s.is_active !== 0 && s.is_active !== false;
+        const effectiveUrl = getEffectiveTargetUrl(s);
+        if (!isActive || !effectiveUrl) {
+          reachCache.set(i, false);
+          continue;
+        }
+        reachCache.set(i, await checkUrlReachableFast(effectiveUrl));
+      }
+    });
+    await Promise.all(checkWorkers);
+
+    for (let i = 0; i < sites.length; i++) {
+      const site = sites[i];
+      totalSites += 1;
+      const isActive = site.is_active !== 0 && site.is_active !== false;
+      const useFb = site.use_fallback !== 0 && site.use_fallback !== false;
+      const hasOverride = !!(site.fallback_override_url || '').trim();
+      const effectiveUrl = getEffectiveTargetUrl(site);
+      if (isActive) activeSites += 1;
+      if (useFb) fallbackEnabled += 1;
+      if (hasOverride) fallbackActive += 1;
+
+      const isRunning = !!reachCache.get(i);
+      if (isRunning) runningLinks += 1;
+
+      const panelLink = buildSitePanelLink(site);
+      const status = !isActive
+        ? 'PAUSADO'
+        : hasOverride
+          ? (isRunning ? 'FALLBACK-ONLINE' : 'FALLBACK-OFFLINE')
+          : (isRunning ? 'ONLINE' : 'OFFLINE');
+
+      lines.push(
+        `• <b>${escapeHtml(site.name || site.site_id)}</b> [${status}]` +
+        `\nLink: <code>${escapeHtml(panelLink)}</code>` +
+        `\nDestino: <code>${escapeHtml(effectiveUrl || '(sem URL configurada)')}</code>`
+      );
+    }
+
+    const maxLines = 20;
+    const shown = lines.slice(0, maxLines);
+    const hidden = Math.max(0, lines.length - shown.length);
+    const msg =
+      `📌 <b>Resumo diário dos links</b>\n` +
+      `Data (Brasília): <b>${escapeHtml(nowBr.dayKey)}</b>\n\n` +
+      `• Sites cadastrados: <b>${totalSites}</b>\n` +
+      `• Sites ativos no painel: <b>${activeSites}</b>\n` +
+      `• Links online (checagem real): <b>${runningLinks}</b>\n` +
+      `• Sites com fallback habilitado: <b>${fallbackEnabled}</b>\n` +
+      `• Sites em contingência agora: <b>${fallbackActive}</b>\n` +
+      `• URLs globais de fallback cadastradas: <b>${globalFallbacks.length}</b>\n\n` +
+      `🔎 <b>Detalhe dos links (${shown.length}${hidden ? ` de ${lines.length}` : ''})</b>\n` +
+      (shown.join('\n\n') || 'Nenhum link gerado ainda.') +
+      (hidden ? `\n\n... e mais <b>${hidden}</b> links.` : '');
+
+    await sendTelegramMessage(msg);
+    await setDailyLinkReportMeta({ last_sent_day_key: nowBr.dayKey, sent_at: new Date().toISOString() });
+  } catch (e) {
+    console.error('Daily links summary error:', e.message);
   }
 }
 
@@ -2644,6 +2812,8 @@ db.initDb().then(async () => {
   setInterval(runAutoImprovementJob, 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
   runFallbackHealthCheck();
   setInterval(runFallbackHealthCheck, FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
+  runDailyLinksSummary();
+  setInterval(runDailyLinksSummary, DAILY_LINK_REPORT_CHECK_MS); // envia 1x por dia (horário BR configurável)
   await cleanupOldVisitors();
   setTimeout(runMetaDefenseUpdate, 60 * 1000);
   setInterval(runMetaDefenseUpdate, META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
