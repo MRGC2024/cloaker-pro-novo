@@ -1438,6 +1438,44 @@ app.post('/api/admin/fallback-settings/test-telegram', async (req, res) => {
   }
 });
 
+// API: Configuração do resumo diário de links (admin)
+app.get('/api/admin/daily-link-report', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const hourBr = await getDailyLinkReportHourBr();
+  const meta = await getDailyLinkReportMeta();
+  res.json({
+    hour_br: hourBr,
+    default_hour_br: DAILY_LINK_REPORT_DEFAULT_HOUR_BR,
+    last_sent_day_key: meta.last_sent_day_key || null,
+    last_sent_at: meta.sent_at || null
+  });
+});
+
+app.put('/api/admin/daily-link-report', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const hour = parseInt(req.body?.hour_br, 10);
+  if (Number.isNaN(hour) || hour < 0 || hour > 23) return res.status(400).json({ error: 'hour_br deve ser entre 0 e 23' });
+  const val = String(hour);
+  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['daily_link_report_hour_br', val]);
+  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['daily_link_report_hour_br', val]);
+  res.json({ success: true, hour_br: hour });
+});
+
+app.post('/api/admin/daily-link-report/test-telegram', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  const result = await runDailyLinksSummary(true);
+  if (!result || !result.sent) {
+    return res.status(400).json({ error: 'Não foi possível enviar o teste', reason: result?.reason || 'unknown' });
+  }
+  res.json({ success: true, message: 'Resumo diário enviado no Telegram (teste).' });
+});
+
 // API: Listar visitantes (apenas dos sites do usuário)
 app.get('/api/visitors', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -2263,7 +2301,7 @@ async function getFallbackFailCount(siteId) {
 const FALLBACK_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 h – não reenviar aviso de site off para o mesmo site
 const TELEGRAM_PREFIX = '🔔 <b>Painel Cloaker</b>\n\n';
 const DAILY_LINK_REPORT_CHECK_MS = 15 * 60 * 1000; // verifica de 15 em 15 min se já pode enviar o resumo do dia
-const DAILY_LINK_REPORT_HOUR_BR = Math.max(0, Math.min(23, parseInt(process.env.DAILY_LINK_REPORT_HOUR_BR, 10) || 9)); // padrão: 09:00 BRT
+const DAILY_LINK_REPORT_DEFAULT_HOUR_BR = Math.max(0, Math.min(23, parseInt(process.env.DAILY_LINK_REPORT_HOUR_BR, 10) || 9)); // padrão: 09:00 BRT
 
 async function getFallbackAlertCooldowns() {
   const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_alert_cooldown'");
@@ -2344,6 +2382,13 @@ async function setDailyLinkReportMeta(meta) {
   else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['daily_link_report_meta', val]);
 }
 
+async function getDailyLinkReportHourBr() {
+  const row = await db.get("SELECT value FROM settings WHERE key = 'daily_link_report_hour_br'");
+  const fromDb = parseInt((row && row.value) ? String(row.value).trim() : '', 10);
+  if (!Number.isNaN(fromDb) && fromDb >= 0 && fromDb <= 23) return fromDb;
+  return DAILY_LINK_REPORT_DEFAULT_HOUR_BR;
+}
+
 function getTodayBrKeyAndHour() {
   const now = new Date();
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -2397,13 +2442,14 @@ async function checkUrlReachableFast(url) {
 async function runDailyLinksSummary(force = false) {
   try {
     const { token, chatId } = await getTelegramConfig();
-    if (!token || !chatId) return;
+    if (!token || !chatId) return { sent: false, reason: 'telegram_not_configured' };
 
     const nowBr = getTodayBrKeyAndHour();
+    const reportHourBr = await getDailyLinkReportHourBr();
     const meta = await getDailyLinkReportMeta();
     if (!force) {
-      if (meta.last_sent_day_key === nowBr.dayKey) return;
-      if (nowBr.hour < DAILY_LINK_REPORT_HOUR_BR) return;
+      if (meta.last_sent_day_key === nowBr.dayKey) return { sent: false, reason: 'already_sent_today' };
+      if (nowBr.hour < reportHourBr) return { sent: false, reason: 'before_scheduled_hour' };
     }
 
     const sites = await db.all(`
@@ -2412,6 +2458,13 @@ async function runDailyLinksSummary(force = false) {
       ORDER BY created_at DESC
     `);
     const globalFallbacks = await getGlobalFallbacks();
+    const fallbackChecks = await Promise.all(
+      globalFallbacks.map(async (u) => ({
+        url: u,
+        online: await checkUrlReachableFast(u)
+      }))
+    );
+    const fallbackOnlineCount = fallbackChecks.filter(f => f.online).length;
 
     let totalSites = 0;
     let activeSites = 0;
@@ -2469,6 +2522,11 @@ async function runDailyLinksSummary(force = false) {
     const maxLines = 20;
     const shown = lines.slice(0, maxLines);
     const hidden = Math.max(0, lines.length - shown.length);
+    const fallbackLines = fallbackChecks.map(f =>
+      `• [${f.online ? 'ONLINE' : 'OFFLINE'}] <code>${escapeHtml(f.url)}</code>`
+    );
+    const fallbackShown = fallbackLines.slice(0, 10);
+    const fallbackHidden = Math.max(0, fallbackLines.length - fallbackShown.length);
     const msg =
       `📌 <b>Resumo diário dos links</b>\n` +
       `Data (Brasília): <b>${escapeHtml(nowBr.dayKey)}</b>\n\n` +
@@ -2477,15 +2535,21 @@ async function runDailyLinksSummary(force = false) {
       `• Links online (checagem real): <b>${runningLinks}</b>\n` +
       `• Sites com fallback habilitado: <b>${fallbackEnabled}</b>\n` +
       `• Sites em contingência agora: <b>${fallbackActive}</b>\n` +
-      `• URLs globais de fallback cadastradas: <b>${globalFallbacks.length}</b>\n\n` +
+      `• URLs globais de fallback cadastradas: <b>${globalFallbacks.length}</b>\n` +
+      `• Fallbacks globais online: <b>${fallbackOnlineCount}</b>\n\n` +
       `🔎 <b>Detalhe dos links (${shown.length}${hidden ? ` de ${lines.length}` : ''})</b>\n` +
       (shown.join('\n\n') || 'Nenhum link gerado ainda.') +
-      (hidden ? `\n\n... e mais <b>${hidden}</b> links.` : '');
+      (hidden ? `\n\n... e mais <b>${hidden}</b> links.` : '') +
+      `\n\n🛟 <b>Fallbacks globais (${fallbackShown.length}${fallbackHidden ? ` de ${fallbackLines.length}` : ''})</b>\n` +
+      (fallbackShown.join('\n') || 'Nenhuma URL global de fallback cadastrada.') +
+      (fallbackHidden ? `\n... e mais <b>${fallbackHidden}</b> URLs de fallback.` : '');
 
     await sendTelegramMessage(msg);
     await setDailyLinkReportMeta({ last_sent_day_key: nowBr.dayKey, sent_at: new Date().toISOString() });
+    return { sent: true };
   } catch (e) {
     console.error('Daily links summary error:', e.message);
+    return { sent: false, reason: e.message || 'unknown_error' };
   }
 }
 
