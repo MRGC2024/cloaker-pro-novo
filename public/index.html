@@ -1609,6 +1609,27 @@
           </div>
           <button type="button" class="btn btn-secondary btn-sm" onclick="testTelegram()"><i class="ri-send-plane-line"></i> Enviar teste</button>
           <span id="telegramTestMsg" style="margin-left: 10px; font-size: 13px;"></span>
+          <h4 style="margin: 25px 0 10px; font-size: 14px;">Resumo diário de links (Telegram)</h4>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Você recebe 1 aviso por dia no Telegram com status dos links, fallback ativo e fallbacks globais online/offline.</p>
+          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Hora do envio (Brasília)</label>
+              <select class="form-select" id="dailyLinkReportHourBr" style="min-width: 160px;">
+                <option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option>
+                <option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7">07:00</option>
+                <option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option>
+                <option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option>
+                <option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option>
+                <option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="saveDailyLinkReportSettings()"><i class="ri-save-line"></i> Salvar horário</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testDailyLinkReportNow()"><i class="ri-send-plane-line"></i> Enviar resumo agora (teste)</button>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+            Último envio diário: <span id="dailyLinkReportLastSent">—</span>
+          </div>
+          <span id="dailyLinkReportMsg" style="display:block; margin-top:8px; font-size:13px;"></span>
           <h4 style="margin: 25px 0 10px; font-size: 14px;">URLs de contingência (fallback global)</h4>
           <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Lista única para todos os sites. Só troca após <strong>5 minutos</strong> de falha confirmada + verificação final dupla (evita falsos positivos).</p>
           <div id="globalFallbacksList" style="margin-bottom: 12px;"></div>
@@ -2769,13 +2790,24 @@
 
     let globalFallbacksCache = [];
     async function loadFallbackSettings() {
-      const res = await apiGet('/api/admin/fallback-settings');
-      if (!res || !res.ok) return;
-      const d = await res.json();
-      document.getElementById('telegramBotToken').value = d.telegram_bot_token || '';
-      document.getElementById('telegramChatId').value = d.telegram_chat_id || '';
-      globalFallbacksCache = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
-      renderGlobalFallbacksList();
+      const [res, dailyRes] = await Promise.all([
+        apiGet('/api/admin/fallback-settings'),
+        apiGet('/api/admin/daily-link-report')
+      ]);
+      if (res && res.ok) {
+        const d = await res.json();
+        document.getElementById('telegramBotToken').value = d.telegram_bot_token || '';
+        document.getElementById('telegramChatId').value = d.telegram_chat_id || '';
+        globalFallbacksCache = Array.isArray(d.global_fallbacks) ? d.global_fallbacks : [];
+        renderGlobalFallbacksList();
+      }
+      if (dailyRes && dailyRes.ok) {
+        const d = await dailyRes.json();
+        const hourEl = document.getElementById('dailyLinkReportHourBr');
+        if (hourEl) hourEl.value = String(d.hour_br ?? 9);
+        const lastEl = document.getElementById('dailyLinkReportLastSent');
+        if (lastEl) lastEl.textContent = d.last_sent_at ? formatDateTimeBR(d.last_sent_at) : 'Ainda não enviado';
+      }
     }
     function renderGlobalFallbacksList() {
       const listEl = document.getElementById('globalFallbacksList');
@@ -2854,6 +2886,51 @@
         msg.textContent = e.message || 'Erro ao salvar';
         msg.style.color = 'var(--danger)';
       }
+    }
+
+    async function saveDailyLinkReportSettings() {
+      const msg = document.getElementById('dailyLinkReportMsg');
+      const hour = parseInt(document.getElementById('dailyLinkReportHourBr').value || '9', 10);
+      msg.textContent = 'Salvando...';
+      msg.style.color = 'var(--text-secondary)';
+      try {
+        const res = await fetch('/api/admin/daily-link-report', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ hour_br: hour })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao salvar horário');
+        msg.textContent = '✓ Horário salvo: ' + String(data.hour_br).padStart(2, '0') + ':00 (Brasília)';
+        msg.style.color = 'var(--success)';
+      } catch (e) {
+        msg.textContent = '✗ ' + (e.message || 'Erro');
+        msg.style.color = 'var(--danger)';
+      }
+      setTimeout(() => { msg.textContent = ''; }, 5000);
+    }
+
+    async function testDailyLinkReportNow() {
+      const msg = document.getElementById('dailyLinkReportMsg');
+      msg.textContent = 'Enviando resumo de teste...';
+      msg.style.color = 'var(--text-secondary)';
+      try {
+        const res = await fetch('/api/admin/daily-link-report/test-telegram', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || data.reason || 'Erro ao enviar teste');
+        msg.textContent = '✓ Resumo de teste enviado ao Telegram.';
+        msg.style.color = 'var(--success)';
+        const lastEl = document.getElementById('dailyLinkReportLastSent');
+        if (lastEl) lastEl.textContent = formatDateTimeBR(new Date().toISOString());
+      } catch (e) {
+        msg.textContent = '✗ ' + (e.message || 'Erro');
+        msg.style.color = 'var(--danger)';
+      }
+      setTimeout(() => { msg.textContent = ''; }, 6000);
     }
 
     // Stats
