@@ -392,6 +392,29 @@
       color: var(--text-tertiary);
       padding: 16px 16px 8px;
       transition: opacity 0.2s, width 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+    .nav-group-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(148,163,184,0.25), transparent);
+      margin-left: 4px;
+    }
+    .nav-group-title i {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .nav-group-title.group-operacao i { color: #22c55e; }
+    .nav-group-title.group-dados i { color: #38bdf8; }
+    .nav-group-title.group-campanhas i { color: #f59e0b; }
+    .nav-group-title.group-sistema i { color: #a78bfa; }
+    .nav-group-title.group-admin i { color: #fb7185; }
+    .nav-item + .nav-group-title {
+      margin-top: 6px;
     }
     .nav-item { margin-bottom: 4px; }
     .nav-link { 
@@ -414,11 +437,40 @@
       color: var(--text-primary); 
       border-left-color: var(--accent-solid);
     }
-    .nav-link.active { 
-      background: rgba(20, 184, 166, 0.12); 
-      color: var(--accent-solid); 
-      border-left-color: var(--accent-solid);
+    .nav-link.active {
+      color: var(--accent-solid);
       font-weight: 600;
+      box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.2);
+    }
+    .nav-link[data-group="operacao"].active {
+      background: rgba(34, 197, 94, 0.14);
+      border-left-color: #22c55e;
+      color: #4ade80;
+      box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.22);
+    }
+    .nav-link[data-group="dados"].active {
+      background: rgba(56, 189, 248, 0.14);
+      border-left-color: #38bdf8;
+      color: #67e8f9;
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.22);
+    }
+    .nav-link[data-group="campanhas"].active {
+      background: rgba(245, 158, 11, 0.14);
+      border-left-color: #f59e0b;
+      color: #fbbf24;
+      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.22);
+    }
+    .nav-link[data-group="sistema"].active {
+      background: rgba(167, 139, 250, 0.16);
+      border-left-color: #a78bfa;
+      color: #c4b5fd;
+      box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.24);
+    }
+    .nav-link[data-group="admin"].active {
+      background: rgba(251, 113, 133, 0.16);
+      border-left-color: #fb7185;
+      color: #fda4af;
+      box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.24);
     }
     .sidebar-footer {
       margin-top: auto;
@@ -1045,26 +1097,26 @@
       <h1>Cloaker Pro</h1>
     </div>
     <ul class="nav-menu">
-      <li class="nav-group-title">Operação</li>
-      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Dashboard"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Dashboard</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" title="Meus Sites"><i class="ri-global-line"></i><span class="nav-link-text">Meus Sites</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Status dos links"><i class="ri-links-line"></i><span class="nav-link-text">Status dos links</span></a></li>
-      <li class="nav-group-title">Tráfego e Dados</li>
-      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Visitantes"><i class="ri-user-line"></i><span class="nav-link-text">Visitantes</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-bar-chart-box-line"></i><span class="nav-link-text">Análise</span></a></li>
-      <li class="nav-group-title">Campanhas</li>
-      <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link para Ads"><i class="ri-link"></i><span class="nav-link-text">Link para Ads</span></a></li>
-      <li class="nav-group-title">Conteúdo e Sistema</li>
-      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-file-code-line"></i><span class="nav-link-text">Páginas</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#appearance" data-section="appearance" title="Aparência"><i class="ri-palette-line"></i><span class="nav-link-text">Aparência</span></a></li>
-      <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Admin</li>
-      <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
-      <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-team-line"></i><span class="nav-link-text">Usuários</span></a></li>
-      <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
-      <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-magic-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
+      <li class="nav-group-title group-operacao"><i class="ri-compass-3-line"></i>Operação</li>
+      <li class="nav-item"><a class="nav-link active" data-group="operacao" href="#dashboard" data-section="dashboard" title="Dashboard"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Dashboard</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="operacao" href="#sites" data-section="sites" title="Meus Sites"><i class="ri-global-line"></i><span class="nav-link-text">Meus Sites</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="operacao" href="#fallbackstatus" data-section="fallbackstatus" title="Status dos links"><i class="ri-links-line"></i><span class="nav-link-text">Status dos links</span></a></li>
+      <li class="nav-group-title group-dados"><i class="ri-bar-chart-grouped-line"></i>Tráfego e Dados</li>
+      <li class="nav-item"><a class="nav-link" data-group="dados" href="#visitors" data-section="visitors" title="Visitantes"><i class="ri-user-line"></i><span class="nav-link-text">Visitantes</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="dados" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="dados" href="#analytics" data-section="analytics" title="Análise"><i class="ri-bar-chart-box-line"></i><span class="nav-link-text">Análise</span></a></li>
+      <li class="nav-group-title group-campanhas"><i class="ri-megaphone-line"></i>Campanhas</li>
+      <li class="nav-item"><a class="nav-link" data-group="campanhas" href="#script" data-section="script" title="Link para Ads"><i class="ri-link"></i><span class="nav-link-text">Link para Ads</span></a></li>
+      <li class="nav-group-title group-sistema"><i class="ri-settings-4-line"></i>Conteúdo e Sistema</li>
+      <li class="nav-item"><a class="nav-link" data-group="sistema" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="sistema" href="#domains" data-section="domains" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="sistema" href="#pages" data-section="pages" title="Páginas"><i class="ri-file-code-line"></i><span class="nav-link-text">Páginas</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-group="sistema" href="#appearance" data-section="appearance" title="Aparência"><i class="ri-palette-line"></i><span class="nav-link-text">Aparência</span></a></li>
+      <li class="nav-group-title nav-admin group-admin" id="navGroupAdmin" style="display:none"><i class="ri-admin-line"></i>Admin</li>
+      <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" data-group="admin" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
+      <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-group="admin" href="#users" data-section="users" title="Usuários"><i class="ri-team-line"></i><span class="nav-link-text">Usuários</span></a></li>
+      <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" data-group="admin" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
+      <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" data-group="admin" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-magic-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
     <div class="sidebar-footer">
       <button type="button" class="sidebar-toggle" id="sidebarCollapseBtn" aria-label="Recolher menu" title="Recolher menu"><i class="ri-menu-fold-line" id="sidebarCollapseIcon"></i></button>
