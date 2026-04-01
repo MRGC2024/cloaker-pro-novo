@@ -119,6 +119,39 @@ if (sessionStore) sessionOpts.store = sessionStore;
 app.use(session(sessionOpts));
 app.use(express.static('public'));
 
+// Observabilidade básica de jobs internos (sem dependência externa)
+const jobHealth = {};
+function markJobStart(name) {
+  jobHealth[name] = jobHealth[name] || { runs: 0, success: 0, fail: 0, avg_ms: 0 };
+  jobHealth[name].running = true;
+  jobHealth[name].last_start_at = new Date().toISOString();
+  jobHealth[name]._start_ms = Date.now();
+}
+function markJobDone(name, ok, errMsg) {
+  jobHealth[name] = jobHealth[name] || { runs: 0, success: 0, fail: 0, avg_ms: 0 };
+  const j = jobHealth[name];
+  j.running = false;
+  j.runs += 1;
+  if (ok) j.success += 1;
+  else j.fail += 1;
+  j.last_finish_at = new Date().toISOString();
+  if (!ok) j.last_error = errMsg || 'Erro desconhecido';
+  const elapsed = Math.max(0, Date.now() - (j._start_ms || Date.now()));
+  j.last_duration_ms = elapsed;
+  j.avg_ms = j.avg_ms ? Math.round((j.avg_ms * 0.8) + (elapsed * 0.2)) : elapsed;
+  delete j._start_ms;
+}
+async function runMonitoredJob(name, fn) {
+  markJobStart(name);
+  try {
+    await fn();
+    markJobDone(name, true);
+  } catch (e) {
+    markJobDone(name, false, e.message);
+    throw e;
+  }
+}
+
 // Autenticação: exige sessão para / e /api/* (exceto login, setup, config, go, t)
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
@@ -1476,6 +1509,17 @@ app.post('/api/admin/daily-link-report/test-telegram', async (req, res) => {
   res.json({ success: true, message: 'Resumo diário enviado no Telegram (teste).' });
 });
 
+app.get('/api/admin/system-health', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
+  res.json({
+    now: new Date().toISOString(),
+    uptime_seconds: Math.floor(process.uptime()),
+    jobs: jobHealth
+  });
+});
+
 // API: Listar visitantes (apenas dos sites do usuário)
 app.get('/api/visitors', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -2579,6 +2623,24 @@ async function runFallbackHealthCheck() {
       }
       const primary = (site.target_url || '').trim();
       const override = (site.fallback_override_url || '').trim();
+
+      // Se está em contingência e a URL principal voltou, restaura automaticamente.
+      if (override && primary) {
+        const primaryOk = await checkUrlReachable(primary);
+        if (primaryOk) {
+          await db.run('UPDATE sites SET fallback_override_url = NULL WHERE site_id = ?', [site.site_id]);
+          await setFallbackFailCount(site.site_id, 0);
+          await clearFallbackAlertCooldown(site.site_id);
+          await sendTelegramMessage(
+            `✅ <b>Site recuperado – contingência removida</b>\n\n` +
+            `Site: <b>${(site.name || site.site_id || '').replace(/</g, '&lt;')}</b>\n` +
+            `URL principal voltou a responder:\n<code>${primary.replace(/</g, '&lt;')}</code>\n` +
+            `\nO sistema voltou automaticamente para a URL principal.`
+          );
+          continue;
+        }
+      }
+
       const currentUrl = override || primary;
       if (!currentUrl) continue;
 
@@ -2868,20 +2930,20 @@ async function cleanupOldVisitors() {
 
 // Iniciar servidor
 db.initDb().then(async () => {
-  await loadMetaReviewerIPs();
-  await loadLearnedBotPatterns();
-  setInterval(loadMetaReviewerIPs, 5 * 60 * 1000);
-  setInterval(loadLearnedBotPatterns, 10 * 60 * 1000);
-  runAutoImprovementJob();
-  setInterval(runAutoImprovementJob, 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
-  runFallbackHealthCheck();
-  setInterval(runFallbackHealthCheck, FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
-  runDailyLinksSummary();
-  setInterval(runDailyLinksSummary, DAILY_LINK_REPORT_CHECK_MS); // envia 1x por dia (horário BR configurável)
-  await cleanupOldVisitors();
+  await runMonitoredJob('meta_ips_load', loadMetaReviewerIPs);
+  await runMonitoredJob('learned_bots_load', loadLearnedBotPatterns);
+  setInterval(() => runMonitoredJob('meta_ips_load', loadMetaReviewerIPs).catch(() => {}), 5 * 60 * 1000);
+  setInterval(() => runMonitoredJob('learned_bots_load', loadLearnedBotPatterns).catch(() => {}), 10 * 60 * 1000);
+  runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {});
+  setInterval(() => runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {}), 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
+  runMonitoredJob('fallback_health_check', runFallbackHealthCheck).catch(() => {});
+  setInterval(() => runMonitoredJob('fallback_health_check', runFallbackHealthCheck).catch(() => {}), FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
+  runMonitoredJob('daily_links_summary', () => runDailyLinksSummary()).catch(() => {});
+  setInterval(() => runMonitoredJob('daily_links_summary', () => runDailyLinksSummary()).catch(() => {}), DAILY_LINK_REPORT_CHECK_MS); // envia 1x por dia (horário BR configurável)
+  await runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors);
   setTimeout(runMetaDefenseUpdate, 60 * 1000);
-  setInterval(runMetaDefenseUpdate, META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
-  if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(cleanupOldVisitors, 24 * 60 * 60 * 1000);
+  setInterval(() => runMonitoredJob('meta_defense_update', runMetaDefenseUpdate).catch(() => {}), META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
+  if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(() => runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors).catch(() => {}), 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗

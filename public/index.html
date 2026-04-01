@@ -1045,22 +1045,23 @@
       <h1>Cloaker Pro</h1>
     </div>
     <ul class="nav-menu">
-      <li class="nav-group-title">Principal</li>
+      <li class="nav-group-title">Operação</li>
       <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Dashboard"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Dashboard</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" title="Meus Sites"><i class="ri-global-line"></i><span class="nav-link-text">Meus Sites</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Status dos links"><i class="ri-links-line"></i><span class="nav-link-text">Status dos links</span></a></li>
-      <li class="nav-group-title">Dados</li>
+      <li class="nav-group-title">Tráfego e Dados</li>
       <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Visitantes"><i class="ri-user-line"></i><span class="nav-link-text">Visitantes</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-bar-chart-box-line"></i><span class="nav-link-text">Análise</span></a></li>
       <li class="nav-group-title">Campanhas</li>
       <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link para Ads"><i class="ri-link"></i><span class="nav-link-text">Link para Ads</span></a></li>
-      <li class="nav-group-title">Sistema</li>
+      <li class="nav-group-title">Conteúdo e Sistema</li>
       <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#appearance" data-section="appearance" title="Aparência"><i class="ri-palette-line"></i><span class="nav-link-text">Aparência</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-file-code-line"></i><span class="nav-link-text">Páginas</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#appearance" data-section="appearance" title="Aparência"><i class="ri-palette-line"></i><span class="nav-link-text">Aparência</span></a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Admin</li>
+      <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-team-line"></i><span class="nav-link-text">Usuários</span></a></li>
       <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-magic-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
@@ -1724,6 +1725,32 @@
       </div>
     </section>
 
+    <!-- Saúde do Sistema (admin) -->
+    <section id="systemhealth" class="section">
+      <div class="header">
+        <h2>Saúde do Sistema</h2>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Monitoramento interno dos jobs automáticos (execução, sucesso/falha e duração).</p>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="loadSystemHealth()"><i class="ri-refresh-line"></i> Atualizar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 13px;">Uptime: <strong id="systemHealthUptime">-</strong> | Última leitura: <strong id="systemHealthNow">-</strong></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>Job</th><th>Execuções</th><th>Sucesso</th><th>Falha</th><th>Última duração</th><th>Última execução</th><th>Status</th></tr>
+              </thead>
+              <tbody id="systemHealthTable">
+                <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Análise (dados para melhorar o cloaker) -->
     <section id="analytics" class="section">
       <div class="header">
@@ -2290,8 +2317,8 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', appearance: 'Aparência', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas' };
-    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-global-line', fallbackstatus: 'ri-links-line', visitors: 'ri-user-line', reports: 'ri-file-chart-line', script: 'ri-link', analytics: 'ri-bar-chart-box-line', settings: 'ri-settings-3-line', appearance: 'ri-palette-line', users: 'ri-team-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-magic-line', domains: 'ri-global-line', pages: 'ri-file-code-line' };
+    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', appearance: 'Aparência', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas', systemhealth: 'Saúde do Sistema' };
+    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-global-line', fallbackstatus: 'ri-links-line', visitors: 'ri-user-line', reports: 'ri-file-chart-line', script: 'ri-link', analytics: 'ri-bar-chart-box-line', settings: 'ri-settings-3-line', appearance: 'ri-palette-line', users: 'ri-team-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-magic-line', domains: 'ri-global-line', pages: 'ri-file-code-line', systemhealth: 'ri-pulse-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
       var titleEl = document.getElementById('pageTopBarTitle');
@@ -2318,6 +2345,7 @@
       if (sectionId === 'users') loadUsers();
       if (sectionId === 'metaips') loadMetaIPs();
       if (sectionId === 'autoimprove') loadAutoImprove();
+      if (sectionId === 'systemhealth') loadSystemHealth();
     }
     var THEME_IDS = ['teal', 'minimal', 'neon', 'light', 'glass', 'compact', 'warm'];
     function applyTheme(themeId) {
@@ -2931,6 +2959,56 @@
         msg.style.color = 'var(--danger)';
       }
       setTimeout(() => { msg.textContent = ''; }, 6000);
+    }
+
+    function formatDurationShort(ms) {
+      const v = Number(ms || 0);
+      if (!v) return '-';
+      if (v < 1000) return v + ' ms';
+      return (v / 1000).toFixed(2) + ' s';
+    }
+
+    function formatUptime(seconds) {
+      const s = Number(seconds || 0);
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+
+    async function loadSystemHealth() {
+      const tbody = document.getElementById('systemHealthTable');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>';
+      try {
+        const res = await apiGet('/api/admin/system-health');
+        if (!res || !res.ok) throw new Error('Erro ao carregar saúde do sistema');
+        const data = await res.json();
+        const jobs = data.jobs || {};
+        const entries = Object.entries(jobs);
+        document.getElementById('systemHealthUptime').textContent = formatUptime(data.uptime_seconds || 0);
+        document.getElementById('systemHealthNow').textContent = formatDateTimeBR(data.now);
+        if (entries.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary);">Sem dados de jobs ainda.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = entries.map(([name, j]) => {
+          const status = j.running ? '<span class="badge badge-info">Executando</span>' : ((j.fail || 0) > 0 ? '<span class="badge badge-warning">Com falhas</span>' : '<span class="badge badge-success">OK</span>');
+          return `<tr>
+            <td><code>${name}</code></td>
+            <td>${j.runs || 0}</td>
+            <td style="color: var(--success)">${j.success || 0}</td>
+            <td style="color: var(--danger)">${j.fail || 0}</td>
+            <td>${formatDurationShort(j.last_duration_ms)}</td>
+            <td>${j.last_finish_at ? formatDateTimeBR(j.last_finish_at) : '-'}</td>
+            <td>${status}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);padding:16px;">${(e && e.message) ? e.message : 'Erro ao carregar'}</td></tr>`;
+      }
     }
 
     // Stats
@@ -4387,6 +4465,8 @@
             if (nga) nga.style.display = 'block';
             var nu = document.getElementById('navUsers');
             if (nu) nu.style.display = 'block';
+            var nsh = document.getElementById('navSystemHealth');
+            if (nsh) nsh.style.display = 'block';
             var nmi = document.getElementById('navMetaIPs');
             if (nmi) nmi.style.display = 'block';
             var nai = document.getElementById('navAutoImprove');
@@ -4419,6 +4499,7 @@
         else if (section === 'visitors') loadVisitors();
         else if (section === 'reports') loadReports();
         else if (section === 'analytics') loadAnalytics();
+        else if (section === 'systemhealth') loadSystemHealth();
       }
     }, 30000);
 
