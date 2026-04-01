@@ -175,6 +175,15 @@ async function initPg() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_visitors_created ON visitors(created_at)
     `).catch(() => {});
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_visitors_site_blocked_created ON visitors(site_id, was_blocked, created_at)
+    `).catch(() => {});
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_visitors_site_bot_created ON visitors(site_id, is_bot, created_at)
+    `).catch(() => {});
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_visitors_site_reviewer_created ON visitors(site_id, is_suspected_reviewer, created_at)
+    `).catch(() => {});
 
     const r = await client.query("SELECT 1 FROM settings WHERE key = 'cloaker_base_url' LIMIT 1");
     if (r.rows.length === 0) {
@@ -387,6 +396,9 @@ async function initSqlite() {
   }
   try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_site_created ON visitors(site_id, created_at)'); } catch (e) {}
   try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_created ON visitors(created_at)'); } catch (e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_site_blocked_created ON visitors(site_id, was_blocked, created_at)'); } catch (e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_site_bot_created ON visitors(site_id, is_bot, created_at)'); } catch (e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_site_reviewer_created ON visitors(site_id, is_suspected_reviewer, created_at)'); } catch (e) {}
   try { db.run('CREATE TABLE IF NOT EXISTS meta_reviewer_ips (id INTEGER PRIMARY KEY AUTOINCREMENT, ip_or_cidr TEXT UNIQUE NOT NULL, description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
   try { db.run('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer INTEGER DEFAULT 0'); } catch (e) {}

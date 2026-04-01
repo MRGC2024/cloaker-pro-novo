@@ -2124,6 +2124,7 @@ const fallbackService = createFallbackService({
   sendTelegramMessage: (text) => telegramService.sendTelegramMessage(text),
   getGlobalFallbacks: () => telegramService.getGlobalFallbacks()
 });
+const inFlightJobs = new Set();
 
 async function getTelegramConfig() {
   return telegramService.getTelegramConfig();
@@ -2330,6 +2331,14 @@ async function getGlobalFallbacks() {
 
 async function runFallbackHealthCheck() {
   return fallbackService.runFallbackHealthCheck();
+}
+
+function runMonitoredJobNoOverlap(name, fn) {
+  if (inFlightJobs.has(name)) return;
+  inFlightJobs.add(name);
+  runMonitoredJob(name, fn)
+    .catch(() => {})
+    .finally(() => inFlightJobs.delete(name));
 }
 
 // URL efetiva: fallback_override_url (quando site caiu) ou target_url
@@ -2560,10 +2569,10 @@ db.initDb().then(async () => {
   setInterval(() => runMonitoredJob('learned_bots_load', loadLearnedBotPatterns).catch(() => {}), 10 * 60 * 1000);
   runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {});
   setInterval(() => runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {}), 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
-  runMonitoredJob('fallback_health_check', runFallbackHealthCheck).catch(() => {});
-  setInterval(() => runMonitoredJob('fallback_health_check', runFallbackHealthCheck).catch(() => {}), FALLBACK_CHECK_MS); // a cada 1 min: verifica URLs e ativa fallback se site offline
-  runMonitoredJob('daily_links_summary', () => runDailyLinksSummary()).catch(() => {});
-  setInterval(() => runMonitoredJob('daily_links_summary', () => runDailyLinksSummary()).catch(() => {}), DAILY_LINK_REPORT_CHECK_MS); // envia 1x por dia (horário BR configurável)
+  runMonitoredJobNoOverlap('fallback_health_check', runFallbackHealthCheck);
+  setInterval(() => runMonitoredJobNoOverlap('fallback_health_check', runFallbackHealthCheck), FALLBACK_CHECK_MS); // evita sobreposição de ciclos
+  runMonitoredJobNoOverlap('daily_links_summary', () => runDailyLinksSummary());
+  setInterval(() => runMonitoredJobNoOverlap('daily_links_summary', () => runDailyLinksSummary()), DAILY_LINK_REPORT_CHECK_MS); // evita múltiplos envios concorrentes
   await runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors);
   setTimeout(runMetaDefenseUpdate, 60 * 1000);
   setInterval(() => runMonitoredJob('meta_defense_update', runMetaDefenseUpdate).catch(() => {}), META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
