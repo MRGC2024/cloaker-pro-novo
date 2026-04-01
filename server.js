@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const UAParser = require('ua-parser-js');
 const path = require('path');
 const fs = require('fs');
@@ -9,12 +10,16 @@ const https = require('https');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const db = require('./db');
+const { parseAllowedOrigins, corsOriginResolver } = require('./utils/security');
+const { createApiRateLimit } = require('./middleware/apiRateLimit');
+const { createJobMonitor } = require('./utils/jobMonitor');
 
 const app = express();
 app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = parseAllowedOrigins();
 
 // Sessão em PostgreSQL quando DATABASE_URL existe (múltiplas réplicas compartilham o mesmo login)
 let sessionStore = undefined;
@@ -101,8 +106,15 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors({ origin: true, credentials: true }));
+app.use(helmet({
+  contentSecurityPolicy: false // painel atual usa scripts inline
+}));
+app.use(cors({ origin: corsOriginResolver(allowedOrigins), credentials: true }));
 app.use(express.json({ limit: '10mb' }));
+app.use(createApiRateLimit({
+  windowMs: parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '60000', 10),
+  max: parseInt(process.env.API_RATE_LIMIT_MAX || '240', 10)
+}));
 const sessionOpts = {
   secret: SESSION_SECRET,
   resave: false,
@@ -118,39 +130,9 @@ const sessionOpts = {
 if (sessionStore) sessionOpts.store = sessionStore;
 app.use(session(sessionOpts));
 app.use(express.static('public'));
-
-// Observabilidade básica de jobs internos (sem dependência externa)
-const jobHealth = {};
-function markJobStart(name) {
-  jobHealth[name] = jobHealth[name] || { runs: 0, success: 0, fail: 0, avg_ms: 0 };
-  jobHealth[name].running = true;
-  jobHealth[name].last_start_at = new Date().toISOString();
-  jobHealth[name]._start_ms = Date.now();
-}
-function markJobDone(name, ok, errMsg) {
-  jobHealth[name] = jobHealth[name] || { runs: 0, success: 0, fail: 0, avg_ms: 0 };
-  const j = jobHealth[name];
-  j.running = false;
-  j.runs += 1;
-  if (ok) j.success += 1;
-  else j.fail += 1;
-  j.last_finish_at = new Date().toISOString();
-  if (!ok) j.last_error = errMsg || 'Erro desconhecido';
-  const elapsed = Math.max(0, Date.now() - (j._start_ms || Date.now()));
-  j.last_duration_ms = elapsed;
-  j.avg_ms = j.avg_ms ? Math.round((j.avg_ms * 0.8) + (elapsed * 0.2)) : elapsed;
-  delete j._start_ms;
-}
-async function runMonitoredJob(name, fn) {
-  markJobStart(name);
-  try {
-    await fn();
-    markJobDone(name, true);
-  } catch (e) {
-    markJobDone(name, false, e.message);
-    throw e;
-  }
-}
+const monitor = createJobMonitor();
+const jobHealth = monitor.jobs;
+const runMonitoredJob = monitor.runMonitoredJob;
 
 // Autenticação: exige sessão para / e /api/* (exceto login, setup, config, go, t)
 function requireAuth(req, res, next) {
