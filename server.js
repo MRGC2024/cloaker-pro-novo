@@ -15,7 +15,10 @@ const { createApiRateLimit } = require('./middleware/apiRateLimit');
 const { createJobMonitor } = require('./utils/jobMonitor');
 const { createAdminRoutes } = require('./routes/adminRoutes');
 const { createSiteBulkRoutes } = require('./routes/siteBulkRoutes');
+const { createMetricsRoutes } = require('./routes/metricsRoutes');
 const { normalizeAllowedBlockedCountries } = require('./services/siteService');
+const { createMetricsService } = require('./services/metricsService');
+const { createTelegramService } = require('./services/telegramService');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1498,60 +1501,6 @@ app.get('/api/visitors', async (req, res) => {
   });
 });
 
-// API: Estatísticas (apenas dos sites do usuário) – filtro por horário de Brasília
-app.get('/api/stats', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const userId = req.session.userId;
-  const period = req.query.period || 'today';
-  const siteId = req.query.site || null;
-
-  const { start, end } = getBrasiliaDateRange(period);
-
-  const userSites = "v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?)";
-  const siteFilter = siteId && siteId !== 'all' ? " AND v.site_id = ?" : '';
-  const params = siteId && siteId !== 'all' ? [start, end, userId, siteId] : [start, end, userId];
-  const baseWhere = `FROM visitors v WHERE v.created_at >= ? AND v.created_at < ? AND ${userSites}${siteFilter}`;
-  const hourExpr = db.usePg ? "to_char(date_trunc('hour', v.created_at), 'YYYY-MM-DD HH24:00')" : "strftime('%Y-%m-%d %H:00', v.created_at)";
-
-  const num = (v) => (v == null || v === '' ? 0 : Number(v)) || 0;
-  const [agg, byBrowser, byOS, byCountry, byReferrer, byHour, blockReasons, bySite] = await Promise.all([
-    db.get(
-      `SELECT COUNT(*) as total,
-              SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked,
-              SUM(CASE WHEN v.was_blocked = 0 THEN 1 ELSE 0 END) as allowed,
-              SUM(CASE WHEN v.is_bot = 1 THEN 1 ELSE 0 END) as bots,
-              SUM(CASE WHEN v.device_type IN ('mobile', 'tablet') THEN 1 ELSE 0 END) as mobile,
-              SUM(CASE WHEN (v.device_type = 'desktop' OR v.device_type IS NULL) THEN 1 ELSE 0 END) as desktop
-       ${baseWhere}`,
-      params
-    ),
-    db.all(`SELECT v.browser as browser, COUNT(*) as count ${baseWhere} AND v.browser IS NOT NULL GROUP BY v.browser ORDER BY count DESC LIMIT 10`, params),
-    db.all(`SELECT v.os as os, COUNT(*) as count ${baseWhere} AND v.os IS NOT NULL GROUP BY v.os ORDER BY count DESC LIMIT 10`, params),
-    db.all(`SELECT v.country as country, COUNT(*) as count ${baseWhere} AND v.country IS NOT NULL GROUP BY v.country ORDER BY count DESC LIMIT 10`, params),
-    db.all(`SELECT v.referrer as referrer, COUNT(*) as count ${baseWhere} AND v.referrer IS NOT NULL AND v.referrer != '' GROUP BY v.referrer ORDER BY count DESC LIMIT 10`, params),
-    db.all(`SELECT ${hourExpr} as hour, COUNT(*) as total, SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked, SUM(CASE WHEN v.was_blocked = 0 THEN 1 ELSE 0 END) as allowed ${baseWhere} GROUP BY hour ORDER BY hour DESC LIMIT 24`, params),
-    db.all(`SELECT v.block_reason as block_reason, COUNT(*) as count ${baseWhere} AND v.was_blocked = 1 AND v.block_reason IS NOT NULL GROUP BY v.block_reason ORDER BY count DESC`, params),
-    db.all(`SELECT v.site_id as site_id, COUNT(*) as count FROM visitors v WHERE v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?) AND v.created_at >= ? AND v.created_at < ? GROUP BY v.site_id ORDER BY count DESC`, [userId, start, end])
-  ]);
-
-  const stats = {
-    total: num(agg?.total),
-    blocked: num(agg?.blocked),
-    allowed: num(agg?.allowed),
-    bots: num(agg?.bots),
-    mobile: num(agg?.mobile),
-    desktop: num(agg?.desktop),
-    byBrowser: byBrowser || [],
-    byOS: byOS || [],
-    byCountry: byCountry || [],
-    byReferrer: byReferrer || [],
-    byHour: byHour || [],
-    blockReasons: blockReasons || [],
-    bySite: bySite || []
-  };
-
-  res.json(stats);
-});
 
 // API: Detalhes de um visitante (apenas se o visitante for de um site do usuário)
 app.get('/api/visitors/:id', async (req, res) => {
@@ -1617,47 +1566,6 @@ app.get('/api/export', async (req, res) => {
   }
 });
 
-// API: Analytics para dashboard de análise (User-Agents bloqueados, motivos, IPs, etc.)
-app.get('/api/analytics', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const userId = req.session.userId;
-  const period = req.query.period || '7d';
-  const siteId = req.query.site || null;
-  const { start, end } = getBrasiliaDateRange(period);
-  const siteFilter = siteId && siteId !== 'all' ? ' AND v.site_id = ?' : '';
-  const params = siteId && siteId !== 'all' ? [start, end, userId, siteId] : [start, end, userId];
-  const baseWhere = `v.created_at >= ? AND v.created_at < ? AND v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?)${siteFilter}`;
-
-  const hourExpr = db.usePg ? "to_char(date_trunc('hour', v.created_at), 'YYYY-MM-DD HH24:00')" : "strftime('%Y-%m-%d %H:00', v.created_at)";
-
-  const [
-    byUserAgentBlocked,
-    byBlockReason,
-    byIp,
-    byReferrer,
-    timeline,
-    suspectedReviewers,
-    topBots
-  ] = await Promise.all([
-    db.all(`SELECT v.user_agent as ua, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.user_agent IS NOT NULL GROUP BY v.user_agent ORDER BY c DESC LIMIT 30`, params),
-    db.all(`SELECT v.block_reason as reason, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.block_reason IS NOT NULL GROUP BY v.block_reason ORDER BY c DESC`, params),
-    db.all(`SELECT v.ip as ip, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.was_blocked = 1 AND v.ip != 'unknown' GROUP BY v.ip ORDER BY c DESC LIMIT 20`, params),
-    db.all(`SELECT v.referrer as ref, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.referrer IS NOT NULL AND v.referrer != '' GROUP BY v.referrer ORDER BY c DESC LIMIT 15`, params),
-    db.all(`SELECT ${hourExpr} as h, COUNT(*) as total, SUM(CASE WHEN v.was_blocked = 1 THEN 1 ELSE 0 END) as blocked, SUM(CASE WHEN v.is_suspected_reviewer = 1 THEN 1 ELSE 0 END) as reviewers FROM visitors v WHERE ${baseWhere} GROUP BY h ORDER BY h`, params),
-    db.all(`SELECT v.ip, v.user_agent, v.referrer, v.block_reason, v.created_at FROM visitors v WHERE ${baseWhere} AND v.is_suspected_reviewer = 1 ORDER BY v.created_at DESC LIMIT 50`, params),
-    db.all(`SELECT v.user_agent as ua, COUNT(*) as c FROM visitors v WHERE ${baseWhere} AND v.is_bot = 1 GROUP BY v.user_agent ORDER BY c DESC LIMIT 20`, params)
-  ]);
-
-  res.json({
-    byUserAgentBlocked: (byUserAgentBlocked || []).map(r => ({ ua: r.ua, count: r.c })),
-    byBlockReason: (byBlockReason || []).map(r => ({ reason: r.reason, count: r.c })),
-    byIp: (byIp || []).map(r => ({ ip: r.ip, count: r.c })),
-    byReferrer: (byReferrer || []).map(r => ({ ref: r.ref, count: r.c })),
-    timeline: timeline || [],
-    suspectedReviewers: suspectedReviewers || [],
-    topBots: (topBots || []).map(r => ({ ua: r.ua, count: r.c }))
-  });
-});
 
 // API: IPs de revisão do Meta (admin)
 app.get('/api/meta-ips', async (req, res) => {
@@ -2285,6 +2193,8 @@ const FALLBACK_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 h – não reenvia
 const TELEGRAM_PREFIX = '🔔 <b>Painel Cloaker</b>\n\n';
 const DAILY_LINK_REPORT_CHECK_MS = 15 * 60 * 1000; // verifica de 15 em 15 min se já pode enviar o resumo do dia
 const DAILY_LINK_REPORT_DEFAULT_HOUR_BR = Math.max(0, Math.min(23, parseInt(process.env.DAILY_LINK_REPORT_HOUR_BR, 10) || 9)); // padrão: 09:00 BRT
+const telegramService = createTelegramService({ db, usePg: db.usePg, prefix: TELEGRAM_PREFIX });
+const metricsService = createMetricsService({ db, getBrasiliaDateRange });
 
 async function getFallbackAlertCooldowns() {
   const row = await db.get("SELECT value FROM settings WHERE key = 'fallback_alert_cooldown'");
@@ -2321,27 +2231,11 @@ async function clearFallbackAlertCooldown(siteId) {
 }
 
 async function getTelegramConfig() {
-  const tokenRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_bot_token'");
-  const chatRow = await db.get("SELECT value FROM settings WHERE key = 'telegram_chat_id'");
-  const token = (tokenRow?.value || process.env.TELEGRAM_BOT_TOKEN || '').trim();
-  const chatId = (chatRow?.value || process.env.TELEGRAM_CHAT_ID || '').trim();
-  return { token, chatId };
+  return telegramService.getTelegramConfig();
 }
 
 async function sendTelegramMessage(text) {
-  const { token, chatId } = await getTelegramConfig();
-  if (!token || !chatId) return;
-  const fullText = TELEGRAM_PREFIX + text + '\n\n— <i>Notificação enviada pelo Painel Cloaker</i>';
-  try {
-    const u = `https://api.telegram.org/bot${token}/sendMessage`;
-    await fetch(u, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: fullText, parse_mode: 'HTML', disable_web_page_preview: true })
-    });
-  } catch (e) {
-    console.error('Telegram send error:', e.message);
-  }
+  return telegramService.sendTelegramMessage(text);
 }
 
 function escapeHtml(text) {
@@ -2349,30 +2243,19 @@ function escapeHtml(text) {
 }
 
 async function getDailyLinkReportMeta() {
-  const row = await db.get("SELECT value FROM settings WHERE key = 'daily_link_report_meta'");
-  if (!row || !row.value) return {};
-  try {
-    const meta = JSON.parse(row.value);
-    return (meta && typeof meta === 'object') ? meta : {};
-  } catch (e) {
-    return {};
-  }
+  return telegramService.getDailyLinkReportMeta();
 }
 
 async function setDailyLinkReportMeta(meta) {
-  const val = JSON.stringify(meta || {});
-  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['daily_link_report_meta', val]);
-  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['daily_link_report_meta', val]);
+  return telegramService.setDailyLinkReportMeta(meta);
 }
 
 async function getDailyLinkReportHourBr() {
-  const row = await db.get("SELECT value FROM settings WHERE key = 'daily_link_report_hour_br'");
-  const fromDb = parseInt((row && row.value) ? String(row.value).trim() : '', 10);
-  if (!Number.isNaN(fromDb) && fromDb >= 0 && fromDb <= 23) return fromDb;
-  return DAILY_LINK_REPORT_DEFAULT_HOUR_BR;
+  return telegramService.getDailyLinkReportHourBr(DAILY_LINK_REPORT_DEFAULT_HOUR_BR);
 }
 
 app.use(createSiteBulkRoutes({ db }));
+app.use(createMetricsRoutes({ metricsService }));
 app.use(createAdminRoutes({
   db,
   getDailyLinkReportHourBr,
@@ -2547,14 +2430,7 @@ async function runDailyLinksSummary(force = false) {
 }
 
 async function getGlobalFallbacks() {
-  const row = await db.get("SELECT value FROM settings WHERE key = 'global_fallbacks'");
-  if (!row || !row.value) return [];
-  try {
-    const arr = JSON.parse(row.value);
-    return Array.isArray(arr) ? arr.filter(u => u && typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))) : [];
-  } catch (e) {
-    return [];
-  }
+  return telegramService.getGlobalFallbacks();
 }
 
 async function runFallbackHealthCheck() {
