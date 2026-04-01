@@ -13,6 +13,9 @@ const db = require('./db');
 const { parseAllowedOrigins, corsOriginResolver } = require('./utils/security');
 const { createApiRateLimit } = require('./middleware/apiRateLimit');
 const { createJobMonitor } = require('./utils/jobMonitor');
+const { createAdminRoutes } = require('./routes/adminRoutes');
+const { createSiteBulkRoutes } = require('./routes/siteBulkRoutes');
+const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1228,8 +1231,9 @@ app.post('/api/sites', async (req, res) => {
   const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   const linkCode = await generateLinkCode();
   const refToken = generateRefToken();
-  const countries = allowed_countries !== undefined ? allowed_countries : 'BR';
-  const blockedCountries = blocked_countries !== undefined ? blocked_countries : '';
+  const countriesRaw = allowed_countries !== undefined ? allowed_countries : 'BR';
+  const blockedRaw = blocked_countries !== undefined ? blocked_countries : '';
+  const countriesNorm = normalizeAllowedBlockedCountries(countriesRaw, blockedRaw);
   const target = (target_url || '').trim() || null;
   const userId = req.session.userId;
   const behavior = block_behavior === 'page' ? 'page' : (block_behavior === 'embed' ? 'embed' : 'redirect');
@@ -1247,34 +1251,12 @@ app.post('/api/sites', async (req, res) => {
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
     await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, blockedCountries, refToken, lpId, selDomain, useFb, pathPrefix]);
+      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json(site);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-app.put('/api/sites/bulk/status', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const ids = Array.isArray(req.body?.site_ids) ? req.body.site_ids.filter(Boolean) : [];
-  const isActive = req.body?.is_active ? 1 : 0;
-  if (ids.length === 0) return res.status(400).json({ error: 'Selecione ao menos um site' });
-  const placeholders = ids.map(() => '?').join(',');
-  const sql = `UPDATE sites SET is_active = ? WHERE user_id = ? AND site_id IN (${placeholders})`;
-  await db.run(sql, [isActive, req.session.userId, ...ids]);
-  res.json({ success: true, updated: ids.length });
-});
-
-app.put('/api/sites/bulk/fallback', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const ids = Array.isArray(req.body?.site_ids) ? req.body.site_ids.filter(Boolean) : [];
-  const useFallback = req.body?.use_fallback ? 1 : 0;
-  if (ids.length === 0) return res.status(400).json({ error: 'Selecione ao menos um site' });
-  const placeholders = ids.map(() => '?').join(',');
-  const sql = `UPDATE sites SET use_fallback = ?${useFallback ? '' : ', fallback_override_url = NULL'} WHERE user_id = ? AND site_id IN (${placeholders})`;
-  await db.run(sql, [useFallback, req.session.userId, ...ids]);
-  res.json({ success: true, updated: ids.length });
 });
 
 // API: Atualizar site (apenas se o site pertencer ao usuário)
@@ -1309,11 +1291,12 @@ app.put('/api/sites/:siteId', async (req, res) => {
         allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, use_fallback = ?, path_prefix = ?${clearFallback}
       WHERE site_id = ?
     `;
+    const countriesNorm = normalizeAllowedBlockedCountries(data.allowed_countries, data.blocked_countries);
     await db.run(sql, [
       data.name, data.domain, linkCode, newTarget, data.redirect_url, blockBehavior, defaultParams,
       data.block_desktop ? 1 : 0, data.block_facebook_library ? 1 : 0, data.block_bots ? 1 : 0,
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
-      data.allowed_countries || '', data.blocked_countries || '', data.is_active ? 1 : 0, refToken,
+      countriesNorm.allowed, countriesNorm.blocked, data.is_active ? 1 : 0, refToken,
       selDomain, lpId, useFb, pathPrefix,
       req.params.siteId
     ]);
@@ -1474,55 +1457,6 @@ app.post('/api/admin/fallback-settings/test-telegram', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message || 'Erro ao enviar' });
   }
-});
-
-// API: Configuração do resumo diário de links (admin)
-app.get('/api/admin/daily-link-report', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
-  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
-  const hourBr = await getDailyLinkReportHourBr();
-  const meta = await getDailyLinkReportMeta();
-  res.json({
-    hour_br: hourBr,
-    default_hour_br: DAILY_LINK_REPORT_DEFAULT_HOUR_BR,
-    last_sent_day_key: meta.last_sent_day_key || null,
-    last_sent_at: meta.sent_at || null
-  });
-});
-
-app.put('/api/admin/daily-link-report', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
-  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
-  const hour = parseInt(req.body?.hour_br, 10);
-  if (Number.isNaN(hour) || hour < 0 || hour > 23) return res.status(400).json({ error: 'hour_br deve ser entre 0 e 23' });
-  const val = String(hour);
-  if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", ['daily_link_report_hour_br', val]);
-  else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ['daily_link_report_hour_br', val]);
-  res.json({ success: true, hour_br: hour });
-});
-
-app.post('/api/admin/daily-link-report/test-telegram', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
-  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
-  const result = await runDailyLinksSummary(true);
-  if (!result || !result.sent) {
-    return res.status(400).json({ error: 'Não foi possível enviar o teste', reason: result?.reason || 'unknown' });
-  }
-  res.json({ success: true, message: 'Resumo diário enviado no Telegram (teste).' });
-});
-
-app.get('/api/admin/system-health', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
-  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Apenas admin' });
-  res.json({
-    now: new Date().toISOString(),
-    uptime_seconds: Math.floor(process.uptime()),
-    jobs: jobHealth
-  });
 });
 
 // API: Listar visitantes (apenas dos sites do usuário)
@@ -2437,6 +2371,16 @@ async function getDailyLinkReportHourBr() {
   if (!Number.isNaN(fromDb) && fromDb >= 0 && fromDb <= 23) return fromDb;
   return DAILY_LINK_REPORT_DEFAULT_HOUR_BR;
 }
+
+app.use(createSiteBulkRoutes({ db }));
+app.use(createAdminRoutes({
+  db,
+  getDailyLinkReportHourBr,
+  getDailyLinkReportMeta,
+  DAILY_LINK_REPORT_DEFAULT_HOUR_BR,
+  runDailyLinksSummary,
+  jobHealth
+}));
 
 function getTodayBrKeyAndHour() {
   const now = new Date();
