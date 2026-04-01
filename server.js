@@ -1242,11 +1242,12 @@ function generateRefToken() {
 // API: Criar site (padrão: apenas Brasil; gera link para usar nos Ads) – pertence ao usuário logado
 app.post('/api/sites', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const { name, domain, target_url, redirect_url, allowed_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body;
+  const { name, domain, target_url, redirect_url, allowed_countries, blocked_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body;
   const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   const linkCode = await generateLinkCode();
   const refToken = generateRefToken();
   const countries = allowed_countries !== undefined ? allowed_countries : 'BR';
+  const blockedCountries = blocked_countries !== undefined ? blocked_countries : '';
   const target = (target_url || '').trim() || null;
   const userId = req.session.userId;
   const behavior = block_behavior === 'page' ? 'page' : (block_behavior === 'embed' ? 'embed' : 'redirect');
@@ -1263,13 +1264,35 @@ app.post('/api/sites', async (req, res) => {
   }
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, refToken, lpId, selDomain, useFb, pathPrefix]);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countries, blockedCountries, refToken, lpId, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json(site);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.put('/api/sites/bulk/status', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const ids = Array.isArray(req.body?.site_ids) ? req.body.site_ids.filter(Boolean) : [];
+  const isActive = req.body?.is_active ? 1 : 0;
+  if (ids.length === 0) return res.status(400).json({ error: 'Selecione ao menos um site' });
+  const placeholders = ids.map(() => '?').join(',');
+  const sql = `UPDATE sites SET is_active = ? WHERE user_id = ? AND site_id IN (${placeholders})`;
+  await db.run(sql, [isActive, req.session.userId, ...ids]);
+  res.json({ success: true, updated: ids.length });
+});
+
+app.put('/api/sites/bulk/fallback', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const ids = Array.isArray(req.body?.site_ids) ? req.body.site_ids.filter(Boolean) : [];
+  const useFallback = req.body?.use_fallback ? 1 : 0;
+  if (ids.length === 0) return res.status(400).json({ error: 'Selecione ao menos um site' });
+  const placeholders = ids.map(() => '?').join(',');
+  const sql = `UPDATE sites SET use_fallback = ?${useFallback ? '' : ', fallback_override_url = NULL'} WHERE user_id = ? AND site_id IN (${placeholders})`;
+  await db.run(sql, [useFallback, req.session.userId, ...ids]);
+  res.json({ success: true, updated: ids.length });
 });
 
 // API: Atualizar site (apenas se o site pertencer ao usuário)
