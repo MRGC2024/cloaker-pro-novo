@@ -1310,21 +1310,40 @@ app.put('/api/sites/:siteId', async (req, res) => {
   }
 });
 
-// API: Definir mesma URL principal para sites em contingência do usuário
+// API: Definir mesma URL principal — sites selecionados OU só quem está em contingência
 app.put('/api/sites/bulk/primary-url', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const url = (req.body?.url || '').trim();
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return res.status(400).json({ error: 'URL inválida' });
+  const userId = req.session.userId;
+  const siteIdsRaw = req.body?.site_ids;
   try {
+    if (Array.isArray(siteIdsRaw) && siteIdsRaw.length > 0) {
+      const siteIds = [...new Set(siteIdsRaw.map((id) => String(id || '').trim()).filter(Boolean))];
+      if (siteIds.length === 0) return res.status(400).json({ error: 'Selecione ao menos um site' });
+      const placeholders = siteIds.map(() => '?').join(',');
+      const owned = await db.all(
+        `SELECT site_id FROM sites WHERE user_id = ? AND site_id IN (${placeholders})`,
+        [userId, ...siteIds]
+      );
+      if (owned.length !== siteIds.length) {
+        return res.status(400).json({ error: 'Um ou mais links são inválidos ou não pertencem à sua conta' });
+      }
+      await db.run(
+        `UPDATE sites SET target_url = ?, fallback_override_url = NULL WHERE user_id = ? AND site_id IN (${placeholders})`,
+        [url, userId, ...siteIds]
+      );
+      return res.json({ success: true, updated: siteIds.length, mode: 'selected' });
+    }
     const affected = await db.get(
       "SELECT COUNT(*) as count FROM sites WHERE user_id = ? AND fallback_override_url IS NOT NULL AND TRIM(fallback_override_url) != ''",
-      [req.session.userId]
+      [userId]
     );
     await db.run(
       "UPDATE sites SET target_url = ?, fallback_override_url = NULL WHERE user_id = ? AND fallback_override_url IS NOT NULL AND TRIM(fallback_override_url) != ''",
-      [url, req.session.userId]
+      [url, userId]
     );
-    res.json({ success: true, updated: affected?.count || 0 });
+    res.json({ success: true, updated: Number(affected?.count) || 0, mode: 'contingency_only' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -2212,16 +2231,22 @@ async function checkUrlReachableFast(url) {
 }
 
 async function runDailyLinksSummary(force = false) {
+  let claimedDailySlot = false;
+  let dayKeyForClaim = null;
   try {
     const { token, chatId } = await getTelegramConfig();
     if (!token || !chatId) return { sent: false, reason: 'telegram_not_configured' };
 
     const nowBr = getTodayBrKeyAndHour();
+    dayKeyForClaim = nowBr.dayKey;
     const reportHourBr = await getDailyLinkReportHourBr();
     const meta = await getDailyLinkReportMeta();
     if (!force) {
       if (meta.last_sent_day_key === nowBr.dayKey) return { sent: false, reason: 'already_sent_today' };
       if (nowBr.hour < reportHourBr) return { sent: false, reason: 'before_scheduled_hour' };
+      // Uma linha por dia em `settings`: só uma réplica do app ganha (evita N Telegrams com várias instâncias).
+      claimedDailySlot = await telegramService.tryClaimDailyLinkReportDay(nowBr.dayKey);
+      if (!claimedDailySlot) return { sent: false, reason: 'already_claimed_other_instance' };
     }
 
     const sites = await db.all(`
@@ -2320,6 +2345,11 @@ async function runDailyLinksSummary(force = false) {
     await setDailyLinkReportMeta({ last_sent_day_key: nowBr.dayKey, sent_at: new Date().toISOString() });
     return { sent: true };
   } catch (e) {
+    if (claimedDailySlot && dayKeyForClaim) {
+      try {
+        await telegramService.releaseDailyLinkReportClaim(dayKeyForClaim);
+      } catch (releaseErr) {}
+    }
     console.error('Daily links summary error:', e.message);
     return { sent: false, reason: e.message || 'unknown_error' };
   }

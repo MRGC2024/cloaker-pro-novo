@@ -1292,11 +1292,12 @@
         <div class="card-body">
           <div id="fallbackStatusSummary" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 14px;"></div>
           <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 10px;">
-            <h4 style="margin: 0 0 10px; font-size: 14px;"><i class="ri-link"></i> Trocar manualmente os sites em contingência</h4>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Aplica a URL abaixo somente nos sites que estão usando fallback neste momento e remove a contingência deles.</p>
+            <h4 style="margin: 0 0 10px; font-size: 14px;"><i class="ri-link"></i> Nova URL de landing (principal)</h4>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Marque na tabela abaixo quais links devem passar a usar esta URL. Isso atualiza a <strong>URL principal</strong> e remove contingência (override) nos selecionados. Ou use o botão secundário para atualizar <strong>só</strong> quem já está em contingência, sem marcar nada.</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
               <input type="url" class="form-input" id="bulkPrimaryUrlInput" placeholder="https://nova-url.com/landing" style="flex: 1; min-width: 260px;">
-              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetPrimaryUrl()"><i class="ri-links-line"></i> Aplicar nos links com fallback</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetPrimaryUrlSelected()"><i class="ri-checkbox-multiple-line"></i> Aplicar nos selecionados</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="bulkSetPrimaryUrlContingencyOnly()" title="Somente sites com URL de contingência ativa no momento"><i class="ri-alert-line"></i> Só em contingência</button>
             </div>
             <span id="bulkPrimaryUrlMsg" style="margin-left: 10px; font-size: 13px;"></span>
           </div>
@@ -1304,6 +1305,7 @@
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px;" title="Selecionar para nova URL"><input type="checkbox" id="fallbackStatusSelectAll" onchange="toggleAllFallbackStatusSelection(this.checked)"></th>
                   <th>Site</th>
                   <th>Fallback</th>
                   <th>Status</th>
@@ -1312,7 +1314,7 @@
                   <th>Ação</th>
                 </tr>
               </thead>
-              <tbody id="fallbackStatusTable"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
+              <tbody id="fallbackStatusTable"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -2290,6 +2292,8 @@
     let charts = {};
     let sites = [];
     let selectedSiteIds = new Set();
+    /** Seleção na aba Status dos links (nova URL em massa) */
+    let fallbackStatusSelectedIds = new Set();
     let currentUser = null;
     let baseUrlOrOrigin = window.location.origin;
     let cloakerPath = 'go';
@@ -2877,16 +2881,18 @@
       const standbyCard = document.getElementById('fallbackStandbyCard');
       const standbyList = document.getElementById('fallbackStandbyList');
       if (!tableEl) return;
-      tableEl.innerHTML = '<tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>';
       if (summaryEl) summaryEl.textContent = '';
       try {
         const res = await apiGet('/api/sites');
         if (!res || !res.ok) {
-          tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+          tableEl.innerHTML = '<tr><td colspan="7" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
           return;
         }
         const list = await res.json();
         const sitesWithUrl = Array.isArray(list) ? list.filter(s => (s.target_url || '').trim()) : [];
+        const idSet = new Set(sitesWithUrl.map(s => s.site_id));
+        fallbackStatusSelectedIds = new Set(Array.from(fallbackStatusSelectedIds).filter(id => idSet.has(id)));
         let onPrincipal = 0, onContingencia = 0;
         sitesWithUrl.forEach(s => {
           if ((s.fallback_override_url || '').trim()) onContingencia++;
@@ -2900,7 +2906,7 @@
             ' · Sites com fallback ativo: marque em Meus Sites → Editar → "Usar fallback ao cair".';
         }
         if (sitesWithUrl.length === 0) {
-          tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--text-secondary);padding:20px;text-align:center;">Nenhum site com URL de landing configurada. Configure em Meus Sites.</td></tr>';
+          tableEl.innerHTML = '<tr><td colspan="7" style="color:var(--text-secondary);padding:20px;text-align:center;">Nenhum site com URL de landing configurada. Configure em Meus Sites.</td></tr>';
         } else {
           tableEl.innerHTML = sitesWithUrl.map(s => {
             const useFb = s.use_fallback !== 0 && s.use_fallback !== false;
@@ -2912,7 +2918,10 @@
             const statusClass = override ? 'warning' : 'success';
             const fallbackLabel = useFb ? 'Sim' : 'Não';
             const fallbackTitle = useFb ? 'Substituição de link ao cair ativa' : 'Sem substituição ao cair';
+            const sidAttr = String(s.site_id || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            const checked = fallbackStatusSelectedIds.has(s.site_id) ? ' checked' : '';
             return '<tr>' +
+              '<td><input type="checkbox" data-site-id="' + sidAttr + '"' + checked + ' onchange="toggleFallbackStatusSelectionFromEl(this)"></td>' +
               '<td><strong>' + (s.name || s.site_id || '').replace(/</g, '&lt;') + '</strong></td>' +
               '<td><span class="badge ' + (useFb ? 'badge-primary' : '') + '" style="' + (useFb ? '' : 'background:var(--text-secondary);') + '" title="' + fallbackTitle + '">' + fallbackLabel + '</span></td>' +
               '<td><span class="badge badge-' + statusClass + '">' + statusLabel + '</span></td>' +
@@ -2921,6 +2930,7 @@
               '<td><button type="button" class="btn btn-secondary btn-sm" onclick="editSite(\'' + s.site_id + '\')"><i class="ri-edit-line"></i> Editar</button></td>' +
               '</tr>';
           }).join('');
+          syncFallbackStatusSelectAll();
         }
         if (currentUser && currentUser.role === 'admin' && standbyCard && standbyList) {
           const setRes = await apiGet('/api/admin/fallback-settings');
@@ -2936,8 +2946,42 @@
           standbyCard.style.display = 'none';
         }
       } catch (e) {
-        tableEl.innerHTML = '<tr><td colspan="6" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
+        tableEl.innerHTML = '<tr><td colspan="7" style="color:var(--danger);padding:20px;">Erro ao carregar.</td></tr>';
       }
+    }
+
+    function toggleFallbackStatusSelectionFromEl(el) {
+      const sid = el.getAttribute('data-site-id');
+      if (!sid) return;
+      if (el.checked) fallbackStatusSelectedIds.add(sid);
+      else fallbackStatusSelectedIds.delete(sid);
+      syncFallbackStatusSelectAll();
+    }
+
+    function toggleAllFallbackStatusSelection(checked) {
+      document.querySelectorAll('#fallbackStatusTable tbody input[type="checkbox"]').forEach(function (cb) {
+        cb.checked = checked;
+        var sid = cb.getAttribute('data-site-id');
+        if (sid) {
+          if (checked) fallbackStatusSelectedIds.add(sid);
+          else fallbackStatusSelectedIds.delete(sid);
+        }
+      });
+      var sel = document.getElementById('fallbackStatusSelectAll');
+      if (sel) sel.indeterminate = false;
+    }
+
+    function syncFallbackStatusSelectAll() {
+      var all = document.querySelectorAll('#fallbackStatusTable tbody input[type="checkbox"]');
+      var sel = document.getElementById('fallbackStatusSelectAll');
+      if (!sel || all.length === 0) {
+        if (sel) { sel.checked = false; sel.indeterminate = false; }
+        return;
+      }
+      var n = 0;
+      for (var i = 0; i < all.length; i++) { if (all[i].checked) n++; }
+      sel.checked = n === all.length;
+      sel.indeterminate = n > 0 && n < all.length;
     }
 
     function renderFallbackStandbyList() {
@@ -2988,13 +3032,44 @@
       } catch (e) {}
     }
 
-    async function bulkSetPrimaryUrl() {
+    async function bulkSetPrimaryUrlSelected() {
+      const input = document.getElementById('bulkPrimaryUrlInput');
+      const msg = document.getElementById('bulkPrimaryUrlMsg');
+      const url = (input && input.value || '').trim();
+      const ids = Array.from(fallbackStatusSelectedIds);
+      if (ids.length === 0) {
+        if (msg) { msg.textContent = 'Marque na tabela quais links devem receber a nova URL.'; msg.style.color = 'var(--warning)'; }
+        return;
+      }
+      if (!url) { if (msg) msg.textContent = 'Digite uma URL'; msg.style.color = 'var(--danger)'; return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
+      if (!confirm('Definir esta URL como principal em ' + ids.length + ' link(s) selecionado(s)? A contingência (override) desses links será removida.')) return;
+      try {
+        const res = await fetch('/api/sites/bulk/primary-url', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ url, site_ids: ids })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao aplicar');
+        if (msg) {
+          msg.textContent = 'Nova URL aplicada em ' + (data.updated || ids.length) + ' link(s).';
+          msg.style.color = 'var(--success)';
+          setTimeout(() => { msg.textContent = ''; }, 3500);
+        }
+        loadFallbackStatus();
+        loadSites();
+      } catch (e) { if (msg) { msg.textContent = e.message || 'Erro ao aplicar'; msg.style.color = 'var(--danger)'; } }
+    }
+
+    async function bulkSetPrimaryUrlContingencyOnly() {
       const input = document.getElementById('bulkPrimaryUrlInput');
       const msg = document.getElementById('bulkPrimaryUrlMsg');
       const url = (input && input.value || '').trim();
       if (!url) { if (msg) msg.textContent = 'Digite uma URL'; msg.style.color = 'var(--danger)'; return; }
       if (!url.startsWith('http://') && !url.startsWith('https://')) { if (msg) msg.textContent = 'URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; return; }
-      if (!confirm('Aplicar esta URL somente nos sites que estão em contingência agora? O fallback ativo deles será removido.')) return;
+      if (!confirm('Aplicar esta URL somente nos sites que estão em contingência agora? A contingência ativa deles será removida. (Links na URL principal não serão alterados.)')) return;
       try {
         const res = await fetch('/api/sites/bulk/primary-url', {
           method: 'PUT',
@@ -3006,7 +3081,7 @@
         if (!res.ok) throw new Error(data.error || 'Erro ao aplicar');
         if (msg) {
           msg.textContent = (data.updated > 0)
-            ? ('Aplicado em ' + data.updated + ' site(s) com fallback ativo.')
+            ? ('Aplicado em ' + data.updated + ' site(s) em contingência.')
             : 'Nenhum site estava em contingência para atualizar.';
           msg.style.color = data.updated > 0 ? 'var(--success)' : 'var(--warning)';
           setTimeout(() => { msg.textContent = ''; }, 3500);
