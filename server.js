@@ -284,6 +284,7 @@ app.put('/api/settings/path-pool', async (req, res) => {
   const val = JSON.stringify(valid.length ? valid : DEFAULT_PATH_POOL);
   if (db.usePg) await db.run("INSERT INTO settings (key, value) VALUES ('cloaker_path_pool', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [val]);
   else await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cloaker_path_pool', ?)", [val]);
+  invalidatePathPrefixPoolCache();
   res.json({ success: true, path_pool: JSON.parse(val) });
 });
 
@@ -1892,6 +1893,7 @@ app.put('/api/settings/allow-meta-reviewers', async (req, res) => {
   } else {
     await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('allow_meta_reviewers', ?)", [val]);
   }
+  invalidateAllowMetaReviewersCache();
   res.json({ success: true });
 });
 
@@ -2036,6 +2038,8 @@ async function fetchGeoJson(url, parser, headers) {
   return parsed;
 }
 
+// Geolocalização: sem país nos headers (ex.: cf-ipcountry atrás do Cloudflare), o servidor consulta APIs
+// externas em paralelo (timeout ~1,5s por provedor). CDN com country no header costuma cortar centenas de ms no clique dos Ads.
 // Helper: geolocalização por IP – rápida, com cache e provedores em paralelo
 async function getGeoByIP(ip) {
   const out = { country: null, city: null, region: null, isp: null };
@@ -2383,16 +2387,41 @@ function getEffectiveTargetUrl(site) {
 const DEFAULT_PATH_POOL = ['go', 'r', 'l', 'v', 'visit', 'link', 'out', 'gate', 'lp', 'rd', 'view', 'entry', 'access', 'p', 'c', 'n', 'x7k2m', 'a9p4q', 'm5n8r', 'land', 'redir', 'go2', 'r2', 'v2', 'l2', 'entrar', 'acesso', 'pag'];
 const RESERVED_PREFIXES = new Set(['api', 'login', 'logout', 't', 'static', 'assets', 'favicon.ico', '']);
 
+const PATH_PREFIX_POOL_CACHE_MS = 60 * 1000;
+let pathPrefixPoolMemo = { pool: null, expiresAt: 0 };
+function invalidatePathPrefixPoolCache() {
+  pathPrefixPoolMemo = { pool: null, expiresAt: 0 };
+}
+
+const ALLOW_META_REVIEWERS_CACHE_MS = 60 * 1000;
+let allowMetaReviewersMemo = { value: false, expiresAt: 0 };
+function invalidateAllowMetaReviewersCache() {
+  allowMetaReviewersMemo = { value: false, expiresAt: 0 };
+}
+async function getAllowMetaReviewersEnabled() {
+  const now = Date.now();
+  if (allowMetaReviewersMemo.expiresAt > now) return allowMetaReviewersMemo.value;
+  const row = await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'");
+  const v = row?.value === '1';
+  allowMetaReviewersMemo = { value: v, expiresAt: now + ALLOW_META_REVIEWERS_CACHE_MS };
+  return v;
+}
+
 async function getPathPrefixPool() {
+  const now = Date.now();
+  if (pathPrefixPoolMemo.pool && pathPrefixPoolMemo.expiresAt > now) return pathPrefixPoolMemo.pool;
   try {
     const row = await db.get("SELECT value FROM settings WHERE key = 'cloaker_path_pool'");
     if (row && row.value) {
       const arr = JSON.parse(row.value);
       if (Array.isArray(arr) && arr.length > 0) {
-        return arr.filter(p => typeof p === 'string' && /^[a-z0-9_-]{1,32}$/i.test(p.trim())).map(p => p.trim().toLowerCase());
+        const pool = arr.filter(p => typeof p === 'string' && /^[a-z0-9_-]{1,32}$/i.test(p.trim())).map(p => p.trim().toLowerCase());
+        pathPrefixPoolMemo = { pool, expiresAt: now + PATH_PREFIX_POOL_CACHE_MS };
+        return pool;
       }
     }
   } catch (e) {}
+  pathPrefixPoolMemo = { pool: DEFAULT_PATH_POOL, expiresAt: now + PATH_PREFIX_POOL_CACHE_MS };
   return DEFAULT_PATH_POOL;
 }
 
@@ -2466,7 +2495,7 @@ async function handleLinkRedirect(req, res) {
 
   // Só libera bypass quando há IP suspeito E sinais reais de revisão Meta.
   // Isso evita que um IP marcado por engano faça o cloaker "deixar passar tudo".
-  const allowMetaReviewers = (await db.get("SELECT value FROM settings WHERE key = 'allow_meta_reviewers'"))?.value === '1';
+  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
   if (allowMetaReviewers && seemsActualReviewer && destUrl) {
     let dest = destUrl;
     const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
@@ -2540,10 +2569,11 @@ async function handleLinkRedirect(req, res) {
   const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
 
   const suspectedRev = suspectedReviewer ? 1 : 0;
-  await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-    [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBot() ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev]);
+  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
+  const visitorParams = [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBot() ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev];
 
   if (wasBlocked) {
+    await db.run(visitorSql, visitorParams);
     const blockUrl = site.redirect_url || 'https://www.google.com/';
     if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
     if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
@@ -2554,7 +2584,8 @@ async function handleLinkRedirect(req, res) {
   let dest = destUrl;
   const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
   if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
-  return redirectWithDelay(res, dest);
+  redirectWithDelay(res, dest);
+  void db.run(visitorSql, visitorParams).catch((err) => console.error('[visitor] insert (clique liberado):', err.message));
 }
 
 // Servir script dinâmico por site (opcional – modo antigo)
