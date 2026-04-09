@@ -1,12 +1,11 @@
 /**
- * Script de proteção – cole como primeira tag no <head> do seu site.
- * Uso: <script src="https://SERVIDOR_URL/t/SEU_SITE_ID.js"></script>
+ * Load from: <script src="https://YOUR_HOST/t/SITE_ID.js"></script> (first in <head>).
+ * Config is fetched from /api/config/SITE_ID (no sensitive fields).
  */
-
 (function() {
   'use strict';
 
-  // 🚨 IMEDIATO: esconde a página ANTES de qualquer coisa (visitante não vê o site)
+  // Hide document until filters run (reduces flash of unwanted content)
   (function hidePageNow() {
     var d = document.documentElement;
     if (d) {
@@ -15,7 +14,7 @@
     }
   })();
 
-  // ⚙️ CONFIGURAÇÃO - O script detecta automaticamente pelo URL ou use os valores abaixo
+  // Origin + site id from script URL
   const SCRIPT_SRC = document.currentScript?.src || '';
   const URL_MATCH = SCRIPT_SRC.match(/\/t\/([^.]+)\.js/);
   
@@ -23,7 +22,7 @@
     SERVER_URL: SCRIPT_SRC ? new URL(SCRIPT_SRC).origin : 'http://localhost:3000',
     SITE_ID: URL_MATCH ? URL_MATCH[1] : 'default',
     
-    // Fallback - caso não carregue do servidor
+    // Defaults if /api/config fails
     REDIRECT_URL: 'https://www.google.com/',
     BLOCK_DESKTOP: true,
     BLOCK_FACEBOOK_LIBRARY: true,
@@ -36,7 +35,7 @@
 
   let serverConfig = null;
 
-  // 👁️ Mostrar a página (só chamar quando visitante for permitido)
+  // Reveal page when allowed
   function showPage() {
     var d = document.documentElement;
     if (d) {
@@ -45,26 +44,24 @@
     }
   }
 
-  // 🔄 Carregar configurações do servidor
   async function loadConfig() {
     try {
-      const res = await fetch(`${CONFIG.SERVER_URL}/api/config/${CONFIG.SITE_ID}`, { timeout: 3000 });
+      const res = await fetch(`${CONFIG.SERVER_URL}/api/config/${CONFIG.SITE_ID}`);
       if (res.ok) {
         serverConfig = await res.json();
         CONFIG.REDIRECT_URL = serverConfig.redirect_url || CONFIG.REDIRECT_URL;
-        CONFIG.BLOCK_DESKTOP = serverConfig.block_desktop;
-        CONFIG.BLOCK_FACEBOOK_LIBRARY = serverConfig.block_facebook_library;
-        CONFIG.BLOCK_BOTS = serverConfig.block_bots;
-        CONFIG.BLOCK_DEVTOOLS = serverConfig.block_devtools;
-        CONFIG.ALLOWED_COUNTRIES = serverConfig.allowed_countries ? serverConfig.allowed_countries.split(',').filter(c => c) : [];
-        CONFIG.BLOCKED_COUNTRIES = serverConfig.blocked_countries ? serverConfig.blocked_countries.split(',').filter(c => c) : [];
+        CONFIG.BLOCK_DESKTOP = !!serverConfig.block_desktop;
+        CONFIG.BLOCK_FACEBOOK_LIBRARY = !!serverConfig.block_facebook_library;
+        CONFIG.BLOCK_BOTS = !!serverConfig.block_bots;
+        CONFIG.BLOCK_DEVTOOLS = !!serverConfig.block_devtools;
+        CONFIG.ALLOWED_COUNTRIES = serverConfig.allowed_countries ? serverConfig.allowed_countries.split(',').map(c => c.trim()).filter(Boolean) : [];
+        CONFIG.BLOCKED_COUNTRIES = serverConfig.blocked_countries ? serverConfig.blocked_countries.split(',').map(c => c.trim()).filter(Boolean) : [];
       }
     } catch (e) {
       console.debug('Config load error:', e);
     }
   }
 
-  // 🆔 Gerar ID único do visitante
   function generateVisitorId() {
     try {
       const stored = localStorage.getItem('_vid');
@@ -77,7 +74,6 @@
     }
   }
 
-  // 📱 Detectar tipo de dispositivo
   function getDeviceInfo() {
     const ua = navigator.userAgent.toLowerCase();
     
@@ -99,13 +95,14 @@
 
   function detectBot() {
     const ua = navigator.userAgent.toLowerCase();
+    // Do not match bare "instagram"/"whatsapp" — real in-app browsers often include those strings (same idea as server-side filters).
     const botPatterns = [
       'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'slurp', 'baiduspider', 'sogou',
-      'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'whatsapp', 'instagram',
+      'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot', 'whatsappbot',
       'ia_archiver', 'linkedinbot', 'twitterbot', 'pinterest', 'semrushbot', 'ahrefsbot',
       'dotbot', 'rogerbot', 'screaming frog', 'proximic', 'adsbot', 'mediapartners',
       'chrome-lighthouse', 'headlesschrome', 'phantomjs', 'selenium', 'puppeteer', 'playwright',
-      'webdriver', 'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests', 'java', 'perl', 'go-http-client', 'php/'
+      'webdriver', 'crawler', 'spider', 'scraper', 'curl/', 'wget', 'python-requests', 'go-http-client', 'php/'
     ];
 
     for (const pattern of botPatterns) {

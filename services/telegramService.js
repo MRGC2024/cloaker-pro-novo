@@ -18,7 +18,7 @@ function createTelegramService(deps) {
   async function sendTelegramMessage(text) {
     const { token, chatId } = await getTelegramConfig();
     if (!token || !chatId) return;
-    const fullText = prefix + text + '\n\n— <i>Notificação enviada pelo Painel Cloaker</i>';
+    const fullText = prefix + text + '\n\n— <i>Notificação automática</i>';
     try {
       const u = `https://api.telegram.org/bot${token}/sendMessage`;
       await fetch(u, {
@@ -57,6 +57,37 @@ function createTelegramService(deps) {
     await upsertSetting('daily_link_report_meta', JSON.stringify(meta || {}));
   }
 
+  /** Chave única por dia para garantir um único envio entre várias réplicas (INSERT atômico). */
+  function dailyLinkReportClaimKey(dayKey) {
+    const dk = String(dayKey || '').trim();
+    return dk ? `daily_link_report_claim_${dk}` : '';
+  }
+
+  /**
+   * Tenta reservar o envio do resumo para o dia (uma réplica ganha; as outras falham).
+   * @returns {Promise<boolean>} true se esta instância deve enviar
+   */
+  async function tryClaimDailyLinkReportDay(dayKey) {
+    const key = dailyLinkReportClaimKey(dayKey);
+    if (!key) return false;
+    if (usePg) {
+      const row = await db.get(
+        "INSERT INTO settings (key, value) VALUES (?, '1') ON CONFLICT (key) DO NOTHING RETURNING key",
+        [key]
+      );
+      return !!(row && row.key);
+    }
+    const existing = await db.get('SELECT 1 AS x FROM settings WHERE key = ?', [key]);
+    if (existing) return false;
+    const ok = await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, '1']);
+    return !!ok;
+  }
+
+  async function releaseDailyLinkReportClaim(dayKey) {
+    const key = dailyLinkReportClaimKey(dayKey);
+    await db.run('DELETE FROM settings WHERE key = ?', [key]);
+  }
+
   async function getDailyLinkReportHourBr(defaultHour) {
     const row = await db.get("SELECT value FROM settings WHERE key = 'daily_link_report_hour_br'");
     const fromDb = parseInt((row && row.value) ? String(row.value).trim() : '', 10);
@@ -71,6 +102,8 @@ function createTelegramService(deps) {
     getGlobalFallbacks,
     getDailyLinkReportMeta,
     setDailyLinkReportMeta,
+    tryClaimDailyLinkReportDay,
+    releaseDailyLinkReportClaim,
     getDailyLinkReportHourBr
   };
 }

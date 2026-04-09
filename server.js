@@ -104,6 +104,8 @@ function isPanelRoute(path, method) {
 // Em domínios que não são o do painel: não redirecionar para o painel; mostrar página em manutenção.
 // Assim quem acessar só o domínio (ex.: https://iniictranfi.sbs/) não vê nada útil — só /go/ e /t/ funcionam.
 const MAINTENANCE_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Página indisponível</title><style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#94a3b8;margin:0;padding:2rem;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}h1{font-size:1.25rem;color:#e2e8f0;}</style></head><body><div><h1>Página indisponível</h1><p>Este endereço não está em uso no momento.</p></div></body></html>';
+/** Resposta HTML genérica para prefixo/código inválido (evita texto cru tipo "Not Found"). */
+const LINK_PUBLIC_404_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>404</title><style>body{font-family:system-ui,sans-serif;background:#fafafa;color:#666;margin:0;padding:2rem;text-align:center;}h1{font-size:1rem;font-weight:500;}</style></head><body><h1>Not found</h1></body></html>';
 app.use((req, res, next) => {
   if (!PANEL_DOMAIN) return next();
   const host = (req.hostname || (req.get('host') || '').split(':')[0] || '').toLowerCase();
@@ -1040,6 +1042,30 @@ if (process.env.BACKUP_WEBHOOK_URL) {
   }, BACKUP_INTERVAL_MS);
 }
 
+/** JSON público para /api/config — apenas flags do script; nunca a linha inteira do site (URL de oferta, tokens, etc.). */
+function toPublicTrackerApiConfig(siteRow) {
+  const defaults = {
+    redirect_url: 'https://www.google.com/',
+    block_desktop: true,
+    block_facebook_library: true,
+    block_bots: true,
+    block_devtools: true,
+    allowed_countries: 'BR',
+    blocked_countries: ''
+  };
+  if (!siteRow) return { ...defaults };
+  const truthy = (v) => v !== 0 && v !== false && v !== '0' && v != null && String(v).toLowerCase() !== 'false';
+  return {
+    redirect_url: ((siteRow.redirect_url || defaults.redirect_url) + '').trim() || defaults.redirect_url,
+    block_desktop: truthy(siteRow.block_desktop),
+    block_facebook_library: truthy(siteRow.block_facebook_library),
+    block_bots: truthy(siteRow.block_bots),
+    block_devtools: truthy(siteRow.block_devtools),
+    allowed_countries: ((siteRow.allowed_countries != null ? String(siteRow.allowed_countries) : 'BR') || 'BR').trim() || 'BR',
+    blocked_countries: (siteRow.blocked_countries != null ? String(siteRow.blocked_countries) : '').trim()
+  };
+}
+
 // Rate limit para /api/config (proteção contra crawlers)
 const configRateLimit = new Map();
 const CONFIG_RATE_LIMIT_WINDOW = 60000; // 1 min
@@ -1061,18 +1087,7 @@ app.get('/api/config/:siteId', async (req, res) => {
   if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
   if (!checkConfigRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
   const site = await db.get('SELECT * FROM sites WHERE site_id = ? AND is_active = 1', [req.params.siteId]);
-  if (!site) {
-    return res.json({
-      redirect_url: 'https://www.google.com/',
-      block_desktop: 1,
-      block_facebook_library: 1,
-      block_bots: 1,
-      block_devtools: 1,
-      allowed_countries: 'BR',
-      blocked_countries: ''
-    });
-  }
-  res.json(site);
+  return res.json(toPublicTrackerApiConfig(site || null));
 });
 
 // API: Registrar visita
@@ -2436,13 +2451,13 @@ async function handleLinkRedirect(req, res) {
   }
   if (site.path_prefix) {
     if (prefix !== (site.path_prefix || '').toLowerCase().trim()) {
-      return res.status(404).send('Not Found');
+      return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
     }
   } else {
     const pool = await getPathPrefixPool();
     const legacy = new Set(['go', 'r', 'l', 'v']);
     if (!pool.includes(prefix) && !legacy.has(prefix)) {
-      return res.status(404).send('Not Found');
+      return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
     }
   }
 
@@ -2639,6 +2654,9 @@ db.initDb().then(async () => {
   setInterval(() => runMonitoredJob('meta_defense_update', runMetaDefenseUpdate).catch(() => {}), META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
   if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(() => runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors).catch(() => {}), 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
+    if (isProduction && SESSION_SECRET === 'cloaker-pro-secret-change-in-production') {
+      console.warn('[segurança] Defina SESSION_SECRET forte nas variáveis de ambiente (produção).');
+    }
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║           🔒 CLOAKER PRO - Painel de Controle             ║
