@@ -28,6 +28,13 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = parseAllowedOrigins();
 
+function getClientIp(req) {
+  const h = req.headers || {};
+  const raw = (h['cf-connecting-ip'] || h['true-client-ip'] || h['x-forwarded-for'] || h['x-real-ip'] || req.socket?.remoteAddress || '').toString();
+  const ip = raw.split(',')[0].trim();
+  return ip || 'unknown';
+}
+
 // Sessão em PostgreSQL quando DATABASE_URL existe (múltiplas réplicas compartilham o mesmo login)
 let sessionStore = undefined;
 if (process.env.DATABASE_URL) {
@@ -97,6 +104,7 @@ if (isProduction) app.set('trust proxy', 1);
 const PANEL_DOMAIN = (process.env.PANEL_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').split(/[/:]/)[0];
 function isPanelRoute(path, method) {
   if (path.startsWith('/t/')) return false;
+  if (path === '/api/track') return false; // script da landing + beacon (qualquer domínio / CORS)
   if (method === 'GET' && path.match(/^\/api\/config\/[^/]+$/)) return false;
   if (path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/) && !path.startsWith('/api') && !path.startsWith('/login')) return false;
   return true;
@@ -116,7 +124,10 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false // painel atual usa scripts inline
+  contentSecurityPolicy: false, // painel usa scripts inline
+  crossOriginEmbedderPolicy: false,
+  // Permite /api/track e /api/config a partir de landings em outro domínio (CORS + leitura da resposta)
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 app.use(cors({ origin: corsOriginResolver(allowedOrigins), credentials: true }));
 app.use(express.json({ limit: '10mb' }));
@@ -137,7 +148,18 @@ const sessionOpts = {
   }
 };
 if (sessionStore) sessionOpts.store = sessionStore;
-app.use(session(sessionOpts));
+const sessionMiddleware = session(sessionOpts);
+function shouldAttachSession(req) {
+  if (req.path === '/api/track') return false;
+  if (req.method === 'GET' && /^\/api\/config\/[^/]+$/.test(req.path)) return false;
+  if (req.method === 'GET' && req.path.startsWith('/t/') && /\.js$/i.test(req.path)) return false;
+  if (req.method === 'GET' && /^\/[\w-]{1,32}\/[\w-]{1,64}$/.test(req.path) && !req.path.startsWith('/api')) return false;
+  return true;
+}
+app.use((req, res, next) => {
+  if (!shouldAttachSession(req)) return next();
+  sessionMiddleware(req, res, next);
+});
 app.use(express.static('public'));
 const monitor = createJobMonitor();
 const jobHealth = monitor.jobs;
@@ -168,6 +190,7 @@ app.use((req, res, next) => {
   if (req.path === '/login' && req.method === 'GET') return next();
   if (req.path.startsWith('/t/') || req.path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/)) return next();
   if (req.path.match(/^\/api\/config\//) && req.method === 'GET') return next();
+  if (req.path === '/api/track') return next();
   if (req.path === '/' && req.method === 'GET' && (!req.session || !req.session.userId)) return res.redirect('/login');
   if (req.path === '/api/login' || req.path === '/api/setup' || req.path === '/api/setup/check' || req.path === '/api/setup/promote-first-admin' || req.path === '/api/signup') return next();
   if (req.path.startsWith('/api/') && !req.session?.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -1080,9 +1103,23 @@ function checkConfigRateLimit(ip) {
   return true;
 }
 
+const TRACK_RL_WINDOW_MS = parseInt(process.env.TRACK_RATE_LIMIT_WINDOW_MS || '60000', 10);
+const TRACK_RL_MAX = parseInt(process.env.TRACK_RATE_LIMIT_MAX || '480', 10);
+const trackPostRateMap = new Map();
+function checkTrackPostRateLimit(ip) {
+  const now = Date.now();
+  let e = trackPostRateMap.get(ip);
+  if (!e || e.resetAt <= now) {
+    trackPostRateMap.set(ip, { count: 1, resetAt: now + TRACK_RL_WINDOW_MS });
+    return true;
+  }
+  e.count += 1;
+  return e.count <= TRACK_RL_MAX;
+}
+
 // API: Buscar configurações do site (para o script) – protegido contra scraping
 app.get('/api/config/:siteId', async (req, res) => {
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+  const ip = getClientIp(req);
   const ua = req.headers['user-agent'] || '';
   if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
   if (!checkConfigRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
@@ -1093,8 +1130,12 @@ app.get('/api/config/:siteId', async (req, res) => {
 // API: Registrar visita
 app.post('/api/track', async (req, res) => {
   try {
+    const ip = getClientIp(req);
+    if (!checkTrackPostRateLimit(ip)) {
+      res.setHeader('Retry-After', '60');
+      return res.status(429).json({ error: 'Too many requests' });
+    }
     const data = req.body;
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     
     const parser = new UAParser(data.userAgent);
     const ua = parser.getResult();
@@ -1197,7 +1238,7 @@ app.post('/api/track', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Erro ao registrar visita:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: isProduction ? 'Erro ao registrar' : error.message });
   }
 });
 
@@ -2620,6 +2661,18 @@ app.get('/:prefix/:code', (req, res, next) => {
   const prefix = (req.params.prefix || '').trim().toLowerCase();
   if (RESERVED_PREFIXES.has(prefix) || prefix.includes('.')) return next();
   handleLinkRedirect(req, res).catch(err => { console.error(err); redirectWithDelay(res, 'https://www.google.com/'); });
+});
+
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Não encontrado' });
+  res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+});
+
+app.use((err, req, res, next) => {
+  console.error('[http]', err && err.stack ? err.stack : err);
+  if (res.headersSent) return next(err);
+  if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'Erro interno' });
+  res.status(500).type('html').send(LINK_PUBLIC_404_HTML);
 });
 
 // Limpeza de visitantes antigos (reduz uso no Supabase: storage + bandwidth)
