@@ -2229,7 +2229,7 @@ async function getDailyLinkReportHourBr() {
   return telegramService.getDailyLinkReportHourBr(DAILY_LINK_REPORT_DEFAULT_HOUR_BR);
 }
 
-app.use(createSiteBulkRoutes({ db }));
+app.use(createSiteBulkRoutes({ db, usePg: db.usePg }));
 app.use(createMetricsRoutes({ metricsService }));
 app.use(createAdminRoutes({
   db,
