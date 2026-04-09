@@ -1272,6 +1272,7 @@
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(false)"><i class="ri-pause-circle-line"></i> Pausar selecionados</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(true)"><i class="ri-links-line"></i> Habilitar fallback</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(false)"><i class="ri-links-line"></i> Desabilitar fallback</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteAllSites()" title="Remove todos os seus links e dados de visitantes de cada um"><i class="ri-delete-bin-2-line"></i> Deletar todos os sites</button>
           <span id="sitesBulkMsg" style="margin-left: 8px; font-size: 13px;"></span>
         </div>
       </div>
@@ -2804,6 +2805,32 @@
         await fetch(`/api/sites/${siteId}`, { method: 'DELETE', credentials: 'include' });
         loadSites();
       } catch (e) { alert('Erro ao deletar site'); }
+    }
+
+    async function bulkDeleteAllSites() {
+      const msg = document.getElementById('sitesBulkMsg');
+      if (!confirm('Isso vai APAGAR TODOS os seus sites e TODOS os visitantes ligados a eles. Esta ação não pode ser desfeita. Continuar?')) return;
+      if (!confirm('Confirma de novo: deletar todos os sites da sua conta?')) return;
+      try {
+        const res = await fetch('/api/sites/bulk/delete-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ confirm_delete_all: true })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao remover sites');
+        selectedSiteIds.clear();
+        if (msg) {
+          msg.textContent = data.deleted ? (data.deleted + ' site(s) removido(s).') : 'Nenhum site para remover.';
+          msg.style.color = 'var(--success)';
+        }
+        await loadSites();
+      } catch (e) {
+        if (msg) { msg.textContent = e.message || 'Erro ao remover sites'; msg.style.color = 'var(--danger)'; }
+        else alert(e.message || 'Erro ao remover sites');
+      }
+      setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
     }
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
