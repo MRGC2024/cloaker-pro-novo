@@ -1498,14 +1498,14 @@
             </div>
             <div style="display: grid; gap: 12px;">
               <div>
-                <div class="form-label" style="margin-bottom: 8px;">Meta Ads</div>
+                <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Meta Ads</div>
                 <div class="code-block" style="margin-bottom: 10px;">
                   <button class="copy-btn" onclick="copyGeneratedMetaLink()"><i class="ri-file-copy-line"></i> Copiar</button>
                   <pre id="generatedMetaLinkText"></pre>
                 </div>
               </div>
               <div>
-                <div class="form-label" style="margin-bottom: 8px;">TikTok Ads</div>
+                <div class="form-label" style="margin-bottom: 8px;"><i class="ri-tiktok-fill"></i> TikTok Ads</div>
                 <div class="code-block" style="margin-bottom: 10px;">
                   <button class="copy-btn" onclick="copyGeneratedTikTokLink()"><i class="ri-file-copy-line"></i> Copiar</button>
                   <pre id="generatedTikTokLinkText"></pre>
@@ -1552,24 +1552,24 @@
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 15px;">
             <div>
-              <label class="form-label" style="font-size: 12px;">Parâmetros pré-definidos (Meta Ads)</label>
+              <label class="form-label" style="font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Parâmetros pré-definidos (Meta Ads)</label>
               <input type="text" class="form-input" id="scriptMetaParams" placeholder="utm_source=meta&utm_medium=cpc" oninput="handleAdsParamsInput()">
             </div>
             <div>
-              <label class="form-label" style="font-size: 12px;">Parâmetros pré-definidos (TikTok Ads)</label>
+              <label class="form-label" style="font-size: 12px;"><i class="ri-tiktok-fill"></i> Parâmetros pré-definidos (TikTok Ads)</label>
               <input type="text" class="form-input" id="scriptTikTokParams" placeholder="utm_source=tiktok&utm_medium=cpc" oninput="handleAdsParamsInput()">
             </div>
           </div>
           <div class="code-block" id="scriptCodeBlock" style="display: none;">
             <div style="margin-bottom: 15px;">
-              <div class="form-label" style="margin-bottom: 8px;">Link completo para Meta Ads</div>
+              <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Link completo para Meta Ads</div>
               <div class="code-block" style="margin: 0;">
                 <button class="copy-btn" onclick="copyScriptMetaLink()"><i class="ri-file-copy-line"></i> Copiar Meta</button>
                 <pre id="scriptMetaCode"></pre>
               </div>
             </div>
             <div>
-              <div class="form-label" style="margin-bottom: 8px;">Link completo para TikTok Ads</div>
+              <div class="form-label" style="margin-bottom: 8px;"><i class="ri-tiktok-fill"></i> Link completo para TikTok Ads</div>
               <div class="code-block" style="margin: 0;">
                 <button class="copy-btn" onclick="copyScriptTikTokLink()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
                 <pre id="scriptTikTokCode"></pre>
@@ -1667,11 +1667,11 @@
         <div class="card-body">
           <p style="color: var(--text-secondary); margin-bottom: 15px;">Defina aqui os parâmetros que você mais usa. Eles aparecem automaticamente em `Link para Ads` e como base para novos sites.</p>
           <div class="form-group">
-            <label class="form-label">UTMs globais (Meta Ads)</label>
+            <label class="form-label"><i class="ri-facebook-circle-fill"></i> UTMs globais (Meta Ads)</label>
             <input type="text" class="form-input" id="settingsAdsMetaParams" placeholder="utm_source=meta&utm_medium=cpc&utm_campaign=minha_campanha_meta">
           </div>
           <div class="form-group">
-            <label class="form-label">UTMs globais (TikTok Ads)</label>
+            <label class="form-label"><i class="ri-tiktok-fill"></i> UTMs globais (TikTok Ads)</label>
             <input type="text" class="form-input" id="settingsAdsTikTokParams" placeholder="utm_source=tiktok&utm_medium=cpc&utm_campaign=minha_campanha_tiktok">
           </div>
           <button class="btn btn-primary" onclick="saveAdsGlobalSettings()"><i class="ri-save-line"></i> Salvar UTMs padrão</button>
@@ -2672,33 +2672,28 @@
             </div>
             <div style="margin: 10px 0 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
               <div>
-                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;">UTMs Meta Ads</label>
+                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;"><i class="ri-facebook-circle-fill"></i> UTMs Meta Ads</label>
                 <input type="text" class="form-input" id="siteMetaParams-${s.site_id}" value="${(getParamsForSite(s.site_id, s).meta || '').replace(/"/g, '&quot;')}" placeholder="utm_source=meta&utm_medium=cpc" style="font-size: 12px; padding: 8px 10px;" oninput="updateSiteLinkDisplays('${s.site_id}')">
               </div>
               <div>
-                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;">UTMs TikTok Ads</label>
+                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;"><i class="ri-tiktok-fill"></i> UTMs TikTok Ads</label>
                 <input type="text" class="form-input" id="siteTikTokParams-${s.site_id}" value="${(getParamsForSite(s.site_id, s).tiktok || '').replace(/"/g, '&quot;')}" placeholder="utm_source=tiktok&utm_medium=cpc" style="font-size: 12px; padding: 8px 10px;" oninput="updateSiteLinkDisplays('${s.site_id}')">
               </div>
             </div>
             <div style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
               <button class="btn btn-secondary btn-sm" onclick="saveSiteAdsParamsFromCard('${s.site_id}')"><i class="ri-save-line"></i> Salvar UTMs</button>
             </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link completo (Meta Ads)</div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Link completo (Meta Ads)</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkMetaFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta') : '—'}</span>
             </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link completo (TikTok Ads)</div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-fill"></i> Link completo (TikTok Ads)</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
             </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Parâmetros comuns</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkParams('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkParams-${s.site_id}">${s.link_code ? (buildLinkParams(s) || '—') : '—'}</span>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Copie o <strong>domínio gerado</strong> e os <strong>parâmetros</strong> separadamente, ou use o link completo nos anúncios.</p>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Use os links completos por plataforma nos anúncios.</p>
           </div>
         </div>
       `;
