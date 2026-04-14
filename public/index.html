@@ -1492,10 +1492,30 @@
           <button class="btn btn-primary" onclick="generateLinkFromUrl()"><i class="ri-link"></i> Gerar link para Ads</button>
           <div id="generatedLinkBox" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--success);">
             <div class="form-label" style="margin-bottom: 8px;">✅ Links gerados para Ads:</div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleGeneratedFullLinks()"><i class="ri-eye-line"></i> Mostrar/Ocultar links completos</button>
+            </div>
             <div id="generatedRefParamBox" style="display: none; margin-bottom: 12px;">
               <div class="form-label" style="margin-bottom: 6px;">ID da ref para validação:</div>
               <code id="generatedRefParamValue" style="padding: 8px 12px; background: var(--bg-primary); border-radius: 8px; font-size: 13px; word-break: break-all;"></code>
             </div>
+            <div style="display: grid; gap: 12px; margin-bottom: 12px;">
+              <div>
+                <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Referência + UTMs (Meta Ads)</div>
+                <div class="code-block" style="margin-bottom: 10px;">
+                  <button class="copy-btn" onclick="copyGeneratedMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <pre id="generatedMetaRefOnlyText"></pre>
+                </div>
+              </div>
+              <div>
+                <div class="form-label" style="margin-bottom: 8px;"><i class="ri-tiktok-fill"></i> Referência + UTMs (TikTok Ads)</div>
+                <div class="code-block" style="margin-bottom: 10px;">
+                  <button class="copy-btn" onclick="copyGeneratedTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <pre id="generatedTikTokRefOnlyText"></pre>
+                </div>
+              </div>
+            </div>
+            <div id="generatedFullLinksWrap" style="display: none; border-top: 1px solid var(--border); padding-top: 12px;">
             <div style="display: grid; gap: 12px;">
               <div>
                 <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Meta Ads</div>
@@ -1511,6 +1531,7 @@
                   <pre id="generatedTikTokLinkText"></pre>
                 </div>
               </div>
+            </div>
             </div>
             <p style="color: var(--text-secondary); font-size: 12px;">Use o link de cada bloco como URL de destino da campanha correspondente.</p>
           </div>
@@ -1551,7 +1572,25 @@
             </select>
           </div>
           <p style="margin-bottom: 15px; color: var(--text-secondary); font-size: 12px;">As UTMs são configuradas em <strong>Configurações</strong> e por site no modal de edição.</p>
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleScriptFullLinks()"><i class="ri-eye-line"></i> Mostrar/Ocultar links completos</button>
+          </div>
           <div class="code-block" id="scriptCodeBlock" style="display: none;">
+            <div style="margin-bottom: 15px;">
+              <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Referência + UTMs (Meta Ads)</div>
+              <div class="code-block" style="margin: 0;">
+                <button class="copy-btn" onclick="copyScriptMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar Meta</button>
+                <pre id="scriptMetaRefOnlyCode"></pre>
+              </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <div class="form-label" style="margin-bottom: 8px;"><i class="ri-tiktok-fill"></i> Referência + UTMs (TikTok Ads)</div>
+              <div class="code-block" style="margin: 0;">
+                <button class="copy-btn" onclick="copyScriptTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
+                <pre id="scriptTikTokRefOnlyCode"></pre>
+              </div>
+            </div>
+            <div id="scriptFullLinksWrap" style="display: none; border-top: 1px solid var(--border); padding-top: 12px;">
             <div style="margin-bottom: 15px;">
               <div class="form-label" style="margin-bottom: 8px;"><i class="ri-facebook-circle-fill"></i> Link completo para Meta Ads</div>
               <div class="code-block" style="margin: 0;">
@@ -1565,6 +1604,7 @@
                 <button class="copy-btn" onclick="copyScriptTikTokLink()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
                 <pre id="scriptTikTokCode"></pre>
               </div>
+            </div>
             </div>
             <div id="scriptRefParamBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
               <div class="form-label" style="margin-bottom: 8px;">ID da ref do link (para validação de clique de anúncio):</div>
@@ -2662,6 +2702,20 @@
               <span id="linkBase-${s.site_id}">${s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—'}</span>
             </div>
             <p style="margin: 10px 0 8px; color: var(--text-secondary); font-size: 12px;">UTMs configuradas em <strong>Configurações</strong> e no <strong>Editar Site</strong>.</p>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Referência + UTMs (Meta Ads)</div>
+            <div class="code-block" style="font-size: 12px; padding: 10px;">
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
+              <span id="linkMetaRefOnly-${s.site_id}">${s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta')) : '—'}</span>
+            </div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-fill"></i> Referência + UTMs (TikTok Ads)</div>
+            <div class="code-block" style="font-size: 12px; padding: 10px;">
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
+              <span id="linkTikTokRefOnly-${s.site_id}">${s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok')) : '—'}</span>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin: 10px 0 8px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')"><i class="ri-eye-line"></i> Mostrar/Ocultar links completos</button>
+            </div>
+            <div id="siteFullLinksWrap-${s.site_id}" style="display: none;">
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Link completo (Meta Ads)</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
@@ -2671,6 +2725,7 @@
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
+            </div>
             </div>
             <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Use os links completos por plataforma nos anúncios.</p>
           </div>
@@ -3822,6 +3877,12 @@
       return url + (url.includes('?') ? '&' : '?') + cleanParams;
     }
 
+    function extractQueryFromUrl(url) {
+      if (!url) return '';
+      const idx = url.indexOf('?');
+      return idx >= 0 ? url.slice(idx + 1) : '';
+    }
+
     function getSiteAdsLinks(site, baseUrl, customParams) {
       const linkBase = buildLinkBase(site, baseUrl);
       const commonParams = buildLinkParams(site);
@@ -3851,6 +3912,18 @@
       }
     }
 
+    function copySitePlatformRefOnly(siteId, platform, ev) {
+      const site = sites.find(s => s.site_id === siteId);
+      if (!site || !site.link_code) { alert('Edite o site e salve a URL do seu site para gerar o link.'); return; }
+      const baseUrl = getLinkBaseUrl(document.getElementById('domainSelect-' + siteId)?.value || '');
+      const full = buildSitePlatformLink(site, baseUrl, platform);
+      const refOnly = extractQueryFromUrl(full);
+      if (refOnly) {
+        copyToClipboard(refOnly);
+        if (ev && ev.target) setButtonCopiedFeedback(ev.target.closest('.copy-btn'));
+      }
+    }
+
     function getAdsLinks(site, baseUrl) {
       const linkBase = buildLinkBase(site, baseUrl);
       const commonParams = buildLinkParams(site);
@@ -3868,10 +3941,14 @@
       const links = getAdsLinks(site, baseUrl);
       const metaEl = document.getElementById('generatedMetaLinkText');
       const tiktokEl = document.getElementById('generatedTikTokLinkText');
+      const metaRefOnlyEl = document.getElementById('generatedMetaRefOnlyText');
+      const tiktokRefOnlyEl = document.getElementById('generatedTikTokRefOnlyText');
       const refBox = document.getElementById('generatedRefParamBox');
       const refEl = document.getElementById('generatedRefParamValue');
       if (metaEl) metaEl.textContent = links.meta || '';
       if (tiktokEl) tiktokEl.textContent = links.tiktok || '';
+      if (metaRefOnlyEl) metaRefOnlyEl.textContent = extractQueryFromUrl(links.meta) || '—';
+      if (tiktokRefOnlyEl) tiktokRefOnlyEl.textContent = extractQueryFromUrl(links.tiktok) || '—';
       if (refBox && refEl) {
         if (links.ref) {
           refEl.textContent = links.ref;
@@ -3963,6 +4040,10 @@
         const links = getAdsLinks(site, base);
         metaCode.textContent = links.meta;
         tiktokCode.textContent = links.tiktok;
+        const metaRefOnly = document.getElementById('scriptMetaRefOnlyCode');
+        const tiktokRefOnly = document.getElementById('scriptTikTokRefOnlyCode');
+        if (metaRefOnly) metaRefOnly.textContent = extractQueryFromUrl(links.meta) || '—';
+        if (tiktokRefOnly) tiktokRefOnly.textContent = extractQueryFromUrl(links.tiktok) || '—';
         if (site.required_ref_token && site.required_ref_token.trim()) {
           refBox.style.display = 'block';
           refVal.textContent = 'ref=' + site.required_ref_token;
@@ -3972,6 +4053,10 @@
       } else {
         metaCode.textContent = 'Salve a URL do seu site e edite o site para gerar o link.';
         tiktokCode.textContent = 'Salve a URL do seu site e edite o site para gerar o link.';
+        const metaRefOnly = document.getElementById('scriptMetaRefOnlyCode');
+        const tiktokRefOnly = document.getElementById('scriptTikTokRefOnlyCode');
+        if (metaRefOnly) metaRefOnly.textContent = '—';
+        if (tiktokRefOnly) tiktokRefOnly.textContent = '—';
         refBox.style.display = 'none';
       }
       updateGeneratedLinksFromSelection();
@@ -4000,6 +4085,44 @@
     function copyGeneratedTikTokLink() {
       const code = document.getElementById('generatedTikTokLinkText');
       if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyScriptMetaRefOnly() {
+      const code = document.getElementById('scriptMetaRefOnlyCode');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyScriptTikTokRefOnly() {
+      const code = document.getElementById('scriptTikTokRefOnlyCode');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyGeneratedMetaRefOnly() {
+      const code = document.getElementById('generatedMetaRefOnlyText');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyGeneratedTikTokRefOnly() {
+      const code = document.getElementById('generatedTikTokRefOnlyText');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function toggleScriptFullLinks() {
+      const wrap = document.getElementById('scriptFullLinksWrap');
+      if (!wrap) return;
+      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleGeneratedFullLinks() {
+      const wrap = document.getElementById('generatedFullLinksWrap');
+      if (!wrap) return;
+      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleSiteFullLinks(siteId) {
+      const wrap = document.getElementById('siteFullLinksWrap-' + siteId);
+      if (!wrap) return;
+      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
     }
 
     function showCopyToast() {
@@ -4612,10 +4735,14 @@
       const paramsEl = document.getElementById('linkParams-' + siteId);
       const metaFullEl = document.getElementById('linkMetaFull-' + siteId);
       const tiktokFullEl = document.getElementById('linkTikTokFull-' + siteId);
+      const metaRefOnlyEl = document.getElementById('linkMetaRefOnly-' + siteId);
+      const tiktokRefOnlyEl = document.getElementById('linkTikTokRefOnly-' + siteId);
       if (baseEl) baseEl.textContent = site && site.link_code ? buildLinkBase(site, baseUrl) : '—';
       if (paramsEl) paramsEl.textContent = site && site.link_code ? (buildLinkParams(site) || '—') : '—';
       if (metaFullEl) metaFullEl.textContent = site && site.link_code ? buildSitePlatformLink(site, baseUrl, 'meta', customParams) : '—';
       if (tiktokFullEl) tiktokFullEl.textContent = site && site.link_code ? buildSitePlatformLink(site, baseUrl, 'tiktok', customParams) : '—';
+      if (metaRefOnlyEl) metaRefOnlyEl.textContent = site && site.link_code ? (extractQueryFromUrl(buildSitePlatformLink(site, baseUrl, 'meta', customParams)) || '—') : '—';
+      if (tiktokRefOnlyEl) tiktokRefOnlyEl.textContent = site && site.link_code ? (extractQueryFromUrl(buildSitePlatformLink(site, baseUrl, 'tiktok', customParams)) || '—') : '—';
     }
 
     function setButtonCopiedFeedback(btn) {
