@@ -3841,6 +3841,28 @@
       return parts.map(normalizeParamString).filter(Boolean).join('&');
     }
 
+    function mergeParamStringsPreferLast(parts) {
+      const order = [];
+      const kv = {};
+      (parts || []).forEach(function(part) {
+        const normalized = normalizeParamString(part);
+        if (!normalized) return;
+        normalized.split('&').forEach(function(pair) {
+          const item = (pair || '').trim();
+          if (!item) return;
+          const idx = item.indexOf('=');
+          const key = idx >= 0 ? item.slice(0, idx).trim() : item.trim();
+          const value = idx >= 0 ? item.slice(idx + 1) : '';
+          if (!key) return;
+          if (!Object.prototype.hasOwnProperty.call(kv, key)) order.push(key);
+          kv[key] = value;
+        });
+      });
+      return order.map(function(key) {
+        return kv[key] === '' ? key : (key + '=' + kv[key]);
+      }).join('&');
+    }
+
     function appendParamsToUrl(url, params) {
       const cleanParams = normalizeParamString(params);
       if (!url) return '';
@@ -3862,8 +3884,8 @@
       const linkBase = buildLinkBase(site, baseUrl);
       const commonParams = buildLinkParams(site);
       const perSiteParams = customParams || getParamsForSite(site.site_id, site);
-      const metaParams = joinParamParts([commonParams, perSiteParams.meta]);
-      const tiktokParams = joinParamParts([commonParams, perSiteParams.tiktok]);
+      const metaParams = mergeParamStringsPreferLast([commonParams, perSiteParams.meta]);
+      const tiktokParams = mergeParamStringsPreferLast([commonParams, perSiteParams.tiktok]);
       return {
         meta: appendParamsToUrl(linkBase, metaParams),
         tiktok: appendParamsToUrl(linkBase, tiktokParams),
@@ -3910,8 +3932,8 @@
     function getAdsLinks(site, baseUrl) {
       const linkBase = buildLinkBase(site, baseUrl);
       const commonParams = buildLinkParams(site);
-      const metaParams = joinParamParts([commonParams, getMetaPresetParams()]);
-      const tiktokParams = joinParamParts([commonParams, getTikTokPresetParams()]);
+      const metaParams = mergeParamStringsPreferLast([commonParams, getMetaPresetParams()]);
+      const tiktokParams = mergeParamStringsPreferLast([commonParams, getTikTokPresetParams()]);
       return {
         meta: appendParamsToUrl(linkBase, metaParams),
         tiktok: appendParamsToUrl(linkBase, tiktokParams),
