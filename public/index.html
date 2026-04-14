@@ -1491,12 +1491,28 @@
           </div>
           <button class="btn btn-primary" onclick="generateLinkFromUrl()"><i class="ri-link"></i> Gerar link para Ads</button>
           <div id="generatedLinkBox" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--success);">
-            <div class="form-label" style="margin-bottom: 8px;">✅ Link gerado – use esse link nos seus anúncios:</div>
-            <div class="code-block" style="margin-bottom: 10px;">
-              <button class="copy-btn" id="copyGeneratedLinkBtn" onclick="copyToClipboard(document.getElementById('generatedLinkText').textContent)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <pre id="generatedLinkText"></pre>
+            <div class="form-label" style="margin-bottom: 8px;">✅ Links gerados para Ads:</div>
+            <div id="generatedRefParamBox" style="display: none; margin-bottom: 12px;">
+              <div class="form-label" style="margin-bottom: 6px;">ID da ref para validação:</div>
+              <code id="generatedRefParamValue" style="padding: 8px 12px; background: var(--bg-primary); border-radius: 8px; font-size: 13px; word-break: break-all;"></code>
             </div>
-            <p style="color: var(--text-secondary); font-size: 12px;">Não precisa colocar nenhum script no seu site. Só use esse link como URL de destino nos Ads.</p>
+            <div style="display: grid; gap: 12px;">
+              <div>
+                <div class="form-label" style="margin-bottom: 8px;">Meta Ads</div>
+                <div class="code-block" style="margin-bottom: 10px;">
+                  <button class="copy-btn" onclick="copyGeneratedMetaLink()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <pre id="generatedMetaLinkText"></pre>
+                </div>
+              </div>
+              <div>
+                <div class="form-label" style="margin-bottom: 8px;">TikTok Ads</div>
+                <div class="code-block" style="margin-bottom: 10px;">
+                  <button class="copy-btn" onclick="copyGeneratedTikTokLink()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <pre id="generatedTikTokLinkText"></pre>
+                </div>
+              </div>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 12px;">Use o link de cada bloco como URL de destino da campanha correspondente.</p>
           </div>
         </div>
       </div>
@@ -1524,7 +1540,7 @@
       <div class="card">
         <div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Seu link para usar nos Ads</h3></div>
         <div class="card-body">
-          <p style="margin-bottom: 15px; color: var(--text-secondary);">Selecione um site e o domínio para ver e copiar o link completo (com ref e parâmetros padrão):</p>
+          <p style="margin-bottom: 15px; color: var(--text-secondary);">Selecione um site e o domínio para ver e copiar os links com parâmetros por plataforma:</p>
           <select class="form-select" id="scriptSiteSelector" style="max-width: 300px; margin-bottom: 10px;" onchange="updateScriptCode()">
             <option value="">Selecione um site...</option>
           </select>
@@ -1534,11 +1550,33 @@
               <option value="">Padrão</option>
             </select>
           </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 15px;">
+            <div>
+              <label class="form-label" style="font-size: 12px;">Parâmetros pré-definidos (Meta Ads)</label>
+              <input type="text" class="form-input" id="scriptMetaParams" placeholder="utm_source=meta&utm_medium=cpc" oninput="handleAdsParamsInput()">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 12px;">Parâmetros pré-definidos (TikTok Ads)</label>
+              <input type="text" class="form-input" id="scriptTikTokParams" placeholder="utm_source=tiktok&utm_medium=cpc" oninput="handleAdsParamsInput()">
+            </div>
+          </div>
           <div class="code-block" id="scriptCodeBlock" style="display: none;">
-            <button class="copy-btn" onclick="copyScript()"><i class="ri-file-copy-line"></i> Copiar link completo</button>
-            <pre id="scriptCode"></pre>
+            <div style="margin-bottom: 15px;">
+              <div class="form-label" style="margin-bottom: 8px;">Link completo para Meta Ads</div>
+              <div class="code-block" style="margin: 0;">
+                <button class="copy-btn" onclick="copyScriptMetaLink()"><i class="ri-file-copy-line"></i> Copiar Meta</button>
+                <pre id="scriptMetaCode"></pre>
+              </div>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom: 8px;">Link completo para TikTok Ads</div>
+              <div class="code-block" style="margin: 0;">
+                <button class="copy-btn" onclick="copyScriptTikTokLink()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
+                <pre id="scriptTikTokCode"></pre>
+              </div>
+            </div>
             <div id="scriptRefParamBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
-              <div class="form-label" style="margin-bottom: 8px;">No Meta Ads, em <strong>Rastreamento → Parâmetros de URL</strong>, adicione (para só permitir cliques do anúncio):</div>
+              <div class="form-label" style="margin-bottom: 8px;">ID da ref do link (para validação de clique de anúncio):</div>
               <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <code id="scriptRefParamValue" style="padding: 8px 12px; background: var(--bg-primary); border-radius: 8px; font-size: 13px; word-break: break-all;"></code>
                 <button type="button" class="btn btn-sm btn-secondary" onclick="copyRefParam()"><i class="ri-file-copy-line"></i> Copiar parâmetro</button>
@@ -3645,7 +3683,162 @@
     function closeVisitorModal() { document.getElementById('visitorModal').classList.remove('active'); }
 
     // Script section
+    const ADS_PARAMS_STORAGE_KEYS = {
+      meta: 'ads_meta_params',
+      tiktok: 'ads_tiktok_params',
+      perSite: 'ads_params_by_site'
+    };
+    function readAdsParamsBySite() {
+      try {
+        const raw = localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.perSite);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writeAdsParamsBySite(map) {
+      try {
+        localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.perSite, JSON.stringify(map || {}));
+      } catch (e) {}
+    }
+
+    function getSelectedScriptSiteId() {
+      const el = document.getElementById('scriptSiteSelector');
+      return el ? (el.value || '') : '';
+    }
+
+    function getParamsForSite(siteId) {
+      const map = readAdsParamsBySite();
+      const siteData = siteId && map[siteId] && typeof map[siteId] === 'object' ? map[siteId] : {};
+      return {
+        meta: normalizeParamString(siteData.meta || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.meta) || ''),
+        tiktok: normalizeParamString(siteData.tiktok || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.tiktok) || '')
+      };
+    }
+
+    function saveParamsForSite(siteId, meta, tiktok) {
+      if (!siteId) return;
+      const map = readAdsParamsBySite();
+      map[siteId] = {
+        meta: normalizeParamString(meta),
+        tiktok: normalizeParamString(tiktok)
+      };
+      writeAdsParamsBySite(map);
+    }
+
+    function loadAdsParamsForCurrentSite() {
+      const siteId = getSelectedScriptSiteId();
+      const metaInput = document.getElementById('scriptMetaParams');
+      const tiktokInput = document.getElementById('scriptTikTokParams');
+      if (!metaInput || !tiktokInput) return;
+      const site = sites.find(s => s.site_id === siteId);
+      const defaults = getParamsForSite(siteId);
+      let metaVal = defaults.meta;
+      let tiktokVal = defaults.tiktok;
+      // Na primeira vez de cada site, reaproveita os default_link_params atuais.
+      if (!metaVal && site && site.default_link_params) metaVal = normalizeParamString(site.default_link_params);
+      if (!tiktokVal && site && site.default_link_params) tiktokVal = normalizeParamString(site.default_link_params);
+      if (!metaVal) metaVal = 'utm_source=meta&utm_medium=cpc';
+      if (!tiktokVal) tiktokVal = 'utm_source=tiktok&utm_medium=cpc';
+      metaInput.value = metaVal;
+      tiktokInput.value = tiktokVal;
+      localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.meta, metaVal);
+      localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.tiktok, tiktokVal);
+    }
+
+
+    function normalizeParamString(value) {
+      return (value || '').trim().replace(/^[?&]+/, '');
+    }
+
+    function joinParamParts(parts) {
+      return parts.map(normalizeParamString).filter(Boolean).join('&');
+    }
+
+    function appendParamsToUrl(url, params) {
+      const cleanParams = normalizeParamString(params);
+      if (!url) return '';
+      if (!cleanParams) return url;
+      return url + (url.includes('?') ? '&' : '?') + cleanParams;
+    }
+
+    function getMetaPresetParams() {
+      const input = document.getElementById('scriptMetaParams');
+      return normalizeParamString(input ? input.value : '');
+    }
+
+    function getTikTokPresetParams() {
+      const input = document.getElementById('scriptTikTokParams');
+      return normalizeParamString(input ? input.value : '');
+    }
+
+    function getAdsLinks(site, baseUrl) {
+      const linkBase = buildLinkBase(site, baseUrl);
+      const commonParams = buildLinkParams(site);
+      const metaParams = joinParamParts([commonParams, getMetaPresetParams()]);
+      const tiktokParams = joinParamParts([commonParams, getTikTokPresetParams()]);
+      return {
+        meta: appendParamsToUrl(linkBase, metaParams),
+        tiktok: appendParamsToUrl(linkBase, tiktokParams),
+        ref: site && site.required_ref_token ? ('ref=' + site.required_ref_token) : ''
+      };
+    }
+
+    function handleAdsParamsInput() {
+      const metaInput = document.getElementById('scriptMetaParams');
+      const tiktokInput = document.getElementById('scriptTikTokParams');
+      if (metaInput) localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.meta, normalizeParamString(metaInput.value));
+      if (tiktokInput) localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.tiktok, normalizeParamString(tiktokInput.value));
+      saveParamsForSite(getSelectedScriptSiteId(), metaInput ? metaInput.value : '', tiktokInput ? tiktokInput.value : '');
+      updateScriptCode();
+      updateGeneratedLinksFromSelection();
+    }
+
+    function initializeAdsParamsInputs() {
+      const metaInput = document.getElementById('scriptMetaParams');
+      const tiktokInput = document.getElementById('scriptTikTokParams');
+      if (metaInput && !metaInput.value) {
+        metaInput.value = localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.meta) || 'utm_source=meta&utm_medium=cpc';
+      }
+      if (tiktokInput && !tiktokInput.value) {
+        tiktokInput.value = localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.tiktok) || 'utm_source=tiktok&utm_medium=cpc';
+      }
+      loadAdsParamsForCurrentSite();
+    }
+
+    function renderGeneratedLinks(site, baseUrl) {
+      const links = getAdsLinks(site, baseUrl);
+      const metaEl = document.getElementById('generatedMetaLinkText');
+      const tiktokEl = document.getElementById('generatedTikTokLinkText');
+      const refBox = document.getElementById('generatedRefParamBox');
+      const refEl = document.getElementById('generatedRefParamValue');
+      if (metaEl) metaEl.textContent = links.meta || '';
+      if (tiktokEl) tiktokEl.textContent = links.tiktok || '';
+      if (refBox && refEl) {
+        if (links.ref) {
+          refEl.textContent = links.ref;
+          refBox.style.display = 'block';
+        } else {
+          refEl.textContent = '';
+          refBox.style.display = 'none';
+        }
+      }
+    }
+
+    function updateGeneratedLinksFromSelection() {
+      const generatedBox = document.getElementById('generatedLinkBox');
+      if (!generatedBox || generatedBox.style.display === 'none') return;
+      const siteId = document.getElementById('scriptSiteSelector')?.value || '';
+      const domainHost = document.getElementById('scriptDomainSelect')?.value || '';
+      const site = sites.find(s => s.site_id === siteId);
+      if (!site || !site.link_code) return;
+      renderGeneratedLinks(site, getLinkBaseUrl(domainHost));
+    }
+
     async function loadScriptSection() {
+      initializeAdsParamsInputs();
       if (!domainsList || domainsList.length === 0) {
         try {
           const r = await apiGet('/api/domains');
@@ -3678,9 +3871,8 @@
         if (!res.ok) throw new Error('Erro ao criar');
         const site = await res.json();
         const baseUrl = selectedDomain ? getLinkBaseUrl(selectedDomain) : getBaseUrl();
-        const link = buildFullLink(site, baseUrl);
         await loadSites();
-        document.getElementById('generatedLinkText').textContent = link;
+        renderGeneratedLinks(site, baseUrl);
         document.getElementById('generatedLinkBox').style.display = 'block';
         document.getElementById('scriptSiteSelector').value = site.site_id;
         updateScriptCode();
@@ -3693,7 +3885,8 @@
       const siteId = document.getElementById('scriptSiteSelector').value;
       const domainSel = document.getElementById('scriptDomainSelect');
       const block = document.getElementById('scriptCodeBlock');
-      const code = document.getElementById('scriptCode');
+      const metaCode = document.getElementById('scriptMetaCode');
+      const tiktokCode = document.getElementById('scriptTikTokCode');
       const refBox = document.getElementById('scriptRefParamBox');
       const refVal = document.getElementById('scriptRefParamValue');
       if (domainSel && domainsList && domainSel.options.length <= 1) {
@@ -3707,12 +3900,15 @@
         });
       }
       if (!siteId) { block.style.display = 'none'; return; }
+      loadAdsParamsForCurrentSite();
       block.style.display = 'block';
       const site = sites.find(s => s.site_id === siteId);
       const domainHost = domainSel ? domainSel.value : '';
       const base = getLinkBaseUrl(domainHost);
       if (site && site.link_code) {
-        code.textContent = buildFullLink(site, base);
+        const links = getAdsLinks(site, base);
+        metaCode.textContent = links.meta;
+        tiktokCode.textContent = links.tiktok;
         if (site.required_ref_token && site.required_ref_token.trim()) {
           refBox.style.display = 'block';
           refVal.textContent = 'ref=' + site.required_ref_token;
@@ -3720,9 +3916,11 @@
           refBox.style.display = 'none';
         }
       } else {
-        code.textContent = 'Salve a URL do seu site e edite o site para gerar o link.';
+        metaCode.textContent = 'Salve a URL do seu site e edite o site para gerar o link.';
+        tiktokCode.textContent = 'Salve a URL do seu site e edite o site para gerar o link.';
         refBox.style.display = 'none';
       }
+      updateGeneratedLinksFromSelection();
     }
 
     function copyRefParam() {
@@ -3730,8 +3928,23 @@
       if (el && el.textContent) { copyToClipboard(el.textContent.trim()); }
     }
 
-    function copyScript() {
-      const code = document.getElementById('scriptCode');
+    function copyScriptMetaLink() {
+      const code = document.getElementById('scriptMetaCode');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyScriptTikTokLink() {
+      const code = document.getElementById('scriptTikTokCode');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyGeneratedMetaLink() {
+      const code = document.getElementById('generatedMetaLinkText');
+      if (code && code.textContent) copyToClipboard(code.textContent.trim());
+    }
+
+    function copyGeneratedTikTokLink() {
+      const code = document.getElementById('generatedTikTokLinkText');
       if (code && code.textContent) copyToClipboard(code.textContent.trim());
     }
 
