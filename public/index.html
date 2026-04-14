@@ -1660,6 +1660,24 @@
           </div>
         </div>
       </div>
+      <div class="card glass-card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-price-tag-3-line"></i> UTMs padrão para Ads</h3>
+        </div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Defina aqui os parâmetros que você mais usa. Eles aparecem automaticamente em `Link para Ads` e como base para novos sites.</p>
+          <div class="form-group">
+            <label class="form-label">UTMs globais (Meta Ads)</label>
+            <input type="text" class="form-input" id="settingsAdsMetaParams" placeholder="utm_source=meta&utm_medium=cpc&utm_campaign=minha_campanha_meta">
+          </div>
+          <div class="form-group">
+            <label class="form-label">UTMs globais (TikTok Ads)</label>
+            <input type="text" class="form-input" id="settingsAdsTikTokParams" placeholder="utm_source=tiktok&utm_medium=cpc&utm_campaign=minha_campanha_tiktok">
+          </div>
+          <button class="btn btn-primary" onclick="saveAdsGlobalSettings()"><i class="ri-save-line"></i> Salvar UTMs padrão</button>
+          <span id="adsGlobalSettingsMsg" style="margin-left: 15px; font-size: 13px;"></span>
+        </div>
+      </div>
       <div class="card" id="pathPoolCard" style="display: none;">
         <div class="card-header">
           <h3 class="card-title"><i class="ri-shield-keyhole-line"></i> Pool de prefixos de link (admin)</h3>
@@ -3741,6 +3759,37 @@
       } catch (e) {}
     }
 
+    function loadAdsGlobalSettings() {
+      const meta = localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.meta) || 'utm_source=meta&utm_medium=cpc';
+      const tiktok = localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.tiktok) || 'utm_source=tiktok&utm_medium=cpc';
+      const metaEl = document.getElementById('settingsAdsMetaParams');
+      const tiktokEl = document.getElementById('settingsAdsTikTokParams');
+      if (metaEl) metaEl.value = normalizeParamString(meta);
+      if (tiktokEl) tiktokEl.value = normalizeParamString(tiktok);
+    }
+
+    function saveAdsGlobalSettings() {
+      const metaEl = document.getElementById('settingsAdsMetaParams');
+      const tiktokEl = document.getElementById('settingsAdsTikTokParams');
+      const msg = document.getElementById('adsGlobalSettingsMsg');
+      const meta = normalizeParamString(metaEl ? metaEl.value : '');
+      const tiktok = normalizeParamString(tiktokEl ? tiktokEl.value : '');
+      localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.meta, meta);
+      localStorage.setItem(ADS_PARAMS_STORAGE_KEYS.tiktok, tiktok);
+
+      const scriptMeta = document.getElementById('scriptMetaParams');
+      const scriptTikTok = document.getElementById('scriptTikTokParams');
+      if (scriptMeta) scriptMeta.value = meta;
+      if (scriptTikTok) scriptTikTok.value = tiktok;
+      updateScriptCode();
+
+      if (msg) {
+        msg.textContent = 'UTMs padrão salvas!';
+        msg.style.color = 'var(--success)';
+        setTimeout(function() { msg.textContent = ''; }, 3000);
+      }
+    }
+
     function getSelectedScriptSiteId() {
       const el = document.getElementById('scriptSiteSelector');
       return el ? (el.value || '') : '';
@@ -4249,6 +4298,7 @@
           const pathEl = document.getElementById('cloakerPath');
           if (pathEl) pathEl.value = cloakerPath;
         }
+        loadAdsGlobalSettings();
         if (currentUser && currentUser.role === 'admin') {
           const card = document.getElementById('pathPoolCard');
           if (card) card.style.display = 'block';
