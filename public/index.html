@@ -2291,9 +2291,14 @@
           </div>
         </div>
         <div class="form-group" style="margin-top: 15px;">
-          <label class="form-label">Parâmetros padrão no link (opcional)</label>
-          <input type="text" class="form-input" id="siteDefaultLinkParams" placeholder="Ex: utm_source=facebook&utm_medium=cpc&utm_campaign=campanha1">
-          <p class="form-hint">Serão incluídos no link ao copiar. Ex: <code>utm_source=fb&utm_medium=cpc</code>. O <code>ref=</code> (se exigir) é adicionado automaticamente.</p>
+          <label class="form-label">UTMs padrão (Meta Ads)</label>
+          <input type="text" class="form-input" id="siteMetaLinkParams" placeholder="Ex: utm_source=meta&utm_medium=cpc&utm_campaign=campanha_meta">
+          <p class="form-hint">Parâmetros salvos para este site no bloco Meta Ads.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">UTMs padrão (TikTok Ads)</label>
+          <input type="text" class="form-input" id="siteTikTokLinkParams" placeholder="Ex: utm_source=tiktok&utm_medium=cpc&utm_campaign=campanha_tiktok">
+          <p class="form-hint">Parâmetros salvos para este site no bloco TikTok Ads.</p>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 25px;">
           <button class="btn btn-primary" onclick="saveSite()"><i class="ri-save-line"></i> Salvar</button>
@@ -2647,7 +2652,30 @@
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkBase('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkBase-${s.site_id}">${s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—'}</span>
             </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Parâmetros</div>
+            <div style="margin: 10px 0 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+              <div>
+                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;">UTMs Meta Ads</label>
+                <input type="text" class="form-input" id="siteMetaParams-${s.site_id}" value="${(getParamsForSite(s.site_id, s).meta || '').replace(/"/g, '&quot;')}" placeholder="utm_source=meta&utm_medium=cpc" style="font-size: 12px; padding: 8px 10px;" oninput="updateSiteLinkDisplays('${s.site_id}')">
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom: 4px; font-size: 11px;">UTMs TikTok Ads</label>
+                <input type="text" class="form-input" id="siteTikTokParams-${s.site_id}" value="${(getParamsForSite(s.site_id, s).tiktok || '').replace(/"/g, '&quot;')}" placeholder="utm_source=tiktok&utm_medium=cpc" style="font-size: 12px; padding: 8px 10px;" oninput="updateSiteLinkDisplays('${s.site_id}')">
+              </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="saveSiteAdsParamsFromCard('${s.site_id}')"><i class="ri-save-line"></i> Salvar UTMs</button>
+            </div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link completo (Meta Ads)</div>
+            <div class="code-block" style="font-size: 12px; padding: 10px;">
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
+              <span id="linkMetaFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta') : '—'}</span>
+            </div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link completo (TikTok Ads)</div>
+            <div class="code-block" style="font-size: 12px; padding: 10px;">
+              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
+              <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
+            </div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Parâmetros comuns</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkParams('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkParams-${s.site_id}">${s.link_code ? (buildLinkParams(s) || '—') : '—'}</span>
@@ -2703,7 +2731,8 @@
       updateCountryVisibility();
       document.getElementById('siteRequireRef').checked = false;
       document.getElementById('siteRefTokenBox').style.display = 'none';
-      document.getElementById('siteDefaultLinkParams').value = '';
+      document.getElementById('siteMetaLinkParams').value = '';
+      document.getElementById('siteTikTokLinkParams').value = '';
       regenerateRefOnSave = false;
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
       setSiteEffectiveTargetUI(null);
@@ -2760,7 +2789,9 @@
         refBox.style.display = 'block';
         document.getElementById('siteRefTokenValue').textContent = '(nenhum – marque "Exigir" e salve para gerar)';
       }
-      document.getElementById('siteDefaultLinkParams').value = (site.default_link_params || '').trim();
+      const siteParams = getParamsForSite(site.site_id, site);
+      document.getElementById('siteMetaLinkParams').value = siteParams.meta || '';
+      document.getElementById('siteTikTokLinkParams').value = siteParams.tiktok || '';
       document.getElementById('sitePathPrefix').value = (site.path_prefix || '').trim();
       fillSitePathPrefixSuggestions();
       regenerateRefOnSave = false;
@@ -2801,7 +2832,7 @@
         block_behavior: isPageBehavior ? 'page' : (document.getElementById('siteBlockBehaviorEmbed').checked ? 'embed' : 'redirect'),
         landing_page_id: isPageBehavior ? (document.getElementById('siteLandingPageId').value || null) : null,
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
-        default_link_params: (document.getElementById('siteDefaultLinkParams').value || '').trim(),
+        default_link_params: (document.getElementById('siteMetaLinkParams').value || '').trim(),
         block_desktop: document.getElementById('siteBlockDesktop').checked,
         block_facebook_library: document.getElementById('siteBlockFacebook').checked,
         block_bots: document.getElementById('siteBlockBots').checked,
@@ -2827,11 +2858,17 @@
       if (!data.target_url || !data.target_url.trim()) { alert('Digite a URL do seu site (landing page)'); return; }
 
       try {
+        let savedSiteId = siteId || '';
         if (siteId) {
           await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
         } else {
-          await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+          const createdRes = await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+          if (createdRes && createdRes.ok) {
+            const createdSite = await createdRes.json();
+            savedSiteId = createdSite && createdSite.site_id ? createdSite.site_id : '';
+          }
         }
+        saveParamsForSite(savedSiteId, document.getElementById('siteMetaLinkParams').value || '', document.getElementById('siteTikTokLinkParams').value || '');
         closeSiteModal();
         loadSites();
       } catch (e) { alert('Erro ao salvar site'); }
@@ -3709,12 +3746,13 @@
       return el ? (el.value || '') : '';
     }
 
-    function getParamsForSite(siteId) {
+    function getParamsForSite(siteId, siteObj) {
       const map = readAdsParamsBySite();
       const siteData = siteId && map[siteId] && typeof map[siteId] === 'object' ? map[siteId] : {};
+      const siteDefault = normalizeParamString(siteObj && siteObj.default_link_params ? siteObj.default_link_params : '');
       return {
-        meta: normalizeParamString(siteData.meta || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.meta) || ''),
-        tiktok: normalizeParamString(siteData.tiktok || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.tiktok) || '')
+        meta: normalizeParamString(siteData.meta || siteDefault || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.meta) || ''),
+        tiktok: normalizeParamString(siteData.tiktok || siteDefault || localStorage.getItem(ADS_PARAMS_STORAGE_KEYS.tiktok) || '')
       };
     }
 
@@ -3734,12 +3772,9 @@
       const tiktokInput = document.getElementById('scriptTikTokParams');
       if (!metaInput || !tiktokInput) return;
       const site = sites.find(s => s.site_id === siteId);
-      const defaults = getParamsForSite(siteId);
+      const defaults = getParamsForSite(siteId, site);
       let metaVal = defaults.meta;
       let tiktokVal = defaults.tiktok;
-      // Na primeira vez de cada site, reaproveita os default_link_params atuais.
-      if (!metaVal && site && site.default_link_params) metaVal = normalizeParamString(site.default_link_params);
-      if (!tiktokVal && site && site.default_link_params) tiktokVal = normalizeParamString(site.default_link_params);
       if (!metaVal) metaVal = 'utm_source=meta&utm_medium=cpc';
       if (!tiktokVal) tiktokVal = 'utm_source=tiktok&utm_medium=cpc';
       metaInput.value = metaVal;
@@ -3772,6 +3807,55 @@
     function getTikTokPresetParams() {
       const input = document.getElementById('scriptTikTokParams');
       return normalizeParamString(input ? input.value : '');
+    }
+
+    function getSiteAdsLinks(site, baseUrl, customParams) {
+      const linkBase = buildLinkBase(site, baseUrl);
+      const commonParams = buildLinkParams(site);
+      const perSiteParams = customParams || getParamsForSite(site.site_id, site);
+      const metaParams = joinParamParts([commonParams, perSiteParams.meta]);
+      const tiktokParams = joinParamParts([commonParams, perSiteParams.tiktok]);
+      return {
+        meta: appendParamsToUrl(linkBase, metaParams),
+        tiktok: appendParamsToUrl(linkBase, tiktokParams),
+        ref: site && site.required_ref_token ? ('ref=' + site.required_ref_token) : ''
+      };
+    }
+
+    function buildSitePlatformLink(site, baseUrl, platform, customParams) {
+      const links = getSiteAdsLinks(site, baseUrl, customParams);
+      return platform === 'tiktok' ? links.tiktok : links.meta;
+    }
+
+    function saveSiteAdsParamsFromCard(siteId) {
+      const site = sites.find(s => s.site_id === siteId);
+      if (!site) return;
+      const metaInput = document.getElementById('siteMetaParams-' + siteId);
+      const tiktokInput = document.getElementById('siteTikTokParams-' + siteId);
+      const metaParams = normalizeParamString(metaInput ? metaInput.value : '');
+      const tiktokParams = normalizeParamString(tiktokInput ? tiktokInput.value : '');
+      saveParamsForSite(siteId, metaParams, tiktokParams);
+      updateSiteLinkDisplays(siteId);
+      const selectedId = getSelectedScriptSiteId();
+      if (selectedId === siteId) {
+        const scriptMeta = document.getElementById('scriptMetaParams');
+        const scriptTikTok = document.getElementById('scriptTikTokParams');
+        if (scriptMeta) scriptMeta.value = metaParams;
+        if (scriptTikTok) scriptTikTok.value = tiktokParams;
+        updateScriptCode();
+      }
+      showCopyToast();
+    }
+
+    function copySitePlatformLink(siteId, platform, ev) {
+      const site = sites.find(s => s.site_id === siteId);
+      if (!site || !site.link_code) { alert('Edite o site e salve a URL do seu site para gerar o link.'); return; }
+      const baseUrl = getLinkBaseUrl(document.getElementById('domainSelect-' + siteId)?.value || '');
+      const full = buildSitePlatformLink(site, baseUrl, platform);
+      if (full) {
+        copyToClipboard(full);
+        if (ev && ev.target) setButtonCopiedFeedback(ev.target.closest('.copy-btn'));
+      }
     }
 
     function getAdsLinks(site, baseUrl) {
@@ -4552,10 +4636,20 @@
       saveSelectedDomain(siteId, document.getElementById('domainSelect-' + siteId)?.value || '');
       const site = sites.find(s => s.site_id === siteId);
       const baseUrl = getLinkBaseUrl(document.getElementById('domainSelect-' + siteId)?.value || '');
+      const metaInput = document.getElementById('siteMetaParams-' + siteId);
+      const tiktokInput = document.getElementById('siteTikTokParams-' + siteId);
+      const customParams = {
+        meta: normalizeParamString(metaInput ? metaInput.value : getParamsForSite(siteId, site).meta),
+        tiktok: normalizeParamString(tiktokInput ? tiktokInput.value : getParamsForSite(siteId, site).tiktok)
+      };
       const baseEl = document.getElementById('linkBase-' + siteId);
       const paramsEl = document.getElementById('linkParams-' + siteId);
+      const metaFullEl = document.getElementById('linkMetaFull-' + siteId);
+      const tiktokFullEl = document.getElementById('linkTikTokFull-' + siteId);
       if (baseEl) baseEl.textContent = site && site.link_code ? buildLinkBase(site, baseUrl) : '—';
       if (paramsEl) paramsEl.textContent = site && site.link_code ? (buildLinkParams(site) || '—') : '—';
+      if (metaFullEl) metaFullEl.textContent = site && site.link_code ? buildSitePlatformLink(site, baseUrl, 'meta', customParams) : '—';
+      if (tiktokFullEl) tiktokFullEl.textContent = site && site.link_code ? buildSitePlatformLink(site, baseUrl, 'tiktok', customParams) : '—';
     }
 
     function setButtonCopiedFeedback(btn) {
