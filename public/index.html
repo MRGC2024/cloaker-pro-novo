@@ -1267,13 +1267,26 @@
       </div>
       <div class="card" style="margin-bottom: 16px;">
         <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <label class="radio-label"><input type="checkbox" id="sitesSelectAll" onchange="toggleSelectAllSites(this.checked)"> Selecionar todos</label>
+          <label class="radio-label"><input type="checkbox" id="sitesSelectAll" onchange="toggleSelectAllSites(this.checked)"> Selecionar todos (visíveis)</label>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(true)"><i class="ri-play-circle-line"></i> Ativar selecionados</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(false)"><i class="ri-pause-circle-line"></i> Pausar selecionados</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(true)"><i class="ri-links-line"></i> Habilitar fallback</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(false)"><i class="ri-links-line"></i> Desabilitar fallback</button>
           <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteAllSites()" title="Remove todos os seus links e dados de visitantes de cada um"><i class="ri-delete-bin-2-line"></i> Deletar todos os sites</button>
           <span id="sitesBulkMsg" style="margin-left: 8px; font-size: 13px;"></span>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom: 16px; border: 1px solid rgba(0, 217, 255, 0.25);">
+        <div class="card-body">
+          <h4 style="margin: 0 0 8px; font-size: 14px;"><i class="ri-link"></i> Alterar URL principal da landing (em massa)</h4>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Marque os links na lista abaixo (use <strong>Selecionar ativos</strong> ou marque manualmente), cole a nova URL de cadastro e aplique em todos de uma vez. A contingência (override) dos selecionados será removida.</p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <input type="url" class="form-input" id="sitesBulkPrimaryUrlInput" placeholder="https://sua-landing.com/pagina" style="flex: 1; min-width: 260px;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetSitesPrimaryUrl()"><i class="ri-checkbox-multiple-line"></i> Aplicar nos selecionados</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectActiveSitesOnly()"><i class="ri-check-double-line"></i> Selecionar ativos</button>
+          </div>
+          <span id="sitesBulkPrimaryUrlMsg" style="display: block; margin-top: 10px; font-size: 13px;"></span>
+          <span id="sitesSelectedCount" style="display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary);"></span>
         </div>
       </div>
       <div id="sitesList"></div>
@@ -2622,12 +2635,11 @@
       });
     }
 
-    function renderSitesList() {
-      const container = document.getElementById('sitesList');
+    function getFilteredSitesList() {
       const search = (document.getElementById('sitesSearchInput')?.value || '').trim().toLowerCase();
       const filter = document.getElementById('sitesQuickFilter')?.value || 'all';
       const sort = document.getElementById('sitesSortOrder')?.value || 'newest';
-      const filtered = (sites || []).filter(s => {
+      return (sites || []).filter(s => {
         const text = [s.name, s.domain, s.target_url, s.link_code, s.site_id].map(v => (v || '').toString().toLowerCase()).join(' ');
         if (search && !text.includes(search)) return false;
         if (filter === 'active' && !(s.is_active !== 0 && s.is_active !== false)) return false;
@@ -2644,6 +2656,18 @@
         if (sort === 'oldest') return (new Date(a.created_at || 0) - new Date(b.created_at || 0));
         return (new Date(b.created_at || 0) - new Date(a.created_at || 0));
       });
+    }
+
+    function updateSitesSelectedCountUI() {
+      const el = document.getElementById('sitesSelectedCount');
+      if (!el) return;
+      const n = selectedSiteIds.size;
+      el.textContent = n > 0 ? (n + ' link(s) selecionado(s) para ação em massa.') : 'Nenhum link selecionado.';
+    }
+
+    function renderSitesList() {
+      const container = document.getElementById('sitesList');
+      const filtered = getFilteredSitesList();
 
       const meta = document.getElementById('sitesListMeta');
       if (meta) meta.textContent = `${filtered.length} de ${sites.length} site(s) exibidos`;
@@ -2732,6 +2756,7 @@
         </div>
       `;
       }).join('');
+      updateSitesSelectedCountUI();
     }
 
     let regenerateRefOnSave = false;
@@ -2964,6 +2989,7 @@
       const checkedCount = document.querySelectorAll('#sitesList input[type="checkbox"]:checked').length;
       const allEl = document.getElementById('sitesSelectAll');
       if (allEl) allEl.checked = filteredCount > 0 && checkedCount === filteredCount;
+      updateSitesSelectedCountUI();
     }
 
     function toggleSelectAllSites(checked) {
@@ -2976,6 +3002,58 @@
       });
       const allEl = document.getElementById('sitesSelectAll');
       if (allEl) allEl.checked = checked;
+      updateSitesSelectedCountUI();
+    }
+
+    function selectActiveSitesOnly() {
+      selectedSiteIds.clear();
+      getFilteredSitesList().forEach(s => {
+        if (s.is_active !== 0 && s.is_active !== false) selectedSiteIds.add(s.site_id);
+      });
+      renderSitesList();
+      const msg = document.getElementById('sitesBulkPrimaryUrlMsg');
+      if (msg) {
+        msg.textContent = selectedSiteIds.size > 0
+          ? (selectedSiteIds.size + ' link(s) ativo(s) selecionado(s).')
+          : 'Nenhum link ativo na lista filtrada.';
+        msg.style.color = selectedSiteIds.size > 0 ? 'var(--success)' : 'var(--warning)';
+        setTimeout(function() { msg.textContent = ''; }, 3000);
+      }
+    }
+
+    async function bulkSetSitesPrimaryUrl() {
+      const input = document.getElementById('sitesBulkPrimaryUrlInput');
+      const msg = document.getElementById('sitesBulkPrimaryUrlMsg');
+      const url = (input && input.value || '').trim();
+      const ids = Array.from(selectedSiteIds);
+      if (ids.length === 0) {
+        if (msg) { msg.textContent = 'Selecione ao menos 1 link na lista abaixo.'; msg.style.color = 'var(--warning)'; }
+        return;
+      }
+      if (!url) { if (msg) { msg.textContent = 'Digite a URL principal da landing.'; msg.style.color = 'var(--danger)'; } return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        if (msg) { msg.textContent = 'A URL deve começar com http:// ou https://'; msg.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (!confirm('Definir esta URL como principal em ' + ids.length + ' link(s) selecionado(s)? A contingência (override) desses links será removida.')) return;
+      try {
+        const res = await fetch('/api/sites/bulk/primary-url', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ url, site_ids: ids })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao aplicar');
+        if (msg) {
+          msg.textContent = 'URL principal aplicada em ' + (data.updated || ids.length) + ' link(s).';
+          msg.style.color = 'var(--success)';
+          setTimeout(function() { msg.textContent = ''; }, 4000);
+        }
+        await loadSites();
+      } catch (e) {
+        if (msg) { msg.textContent = e.message || 'Erro ao aplicar'; msg.style.color = 'var(--danger)'; }
+      }
     }
 
     async function bulkSetSitesActive(isActive) {
