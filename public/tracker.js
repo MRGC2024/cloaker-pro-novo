@@ -98,7 +98,7 @@
     // Do not match bare "instagram"/"whatsapp" — real in-app browsers often include those strings (same idea as server-side filters).
     const botPatterns = [
       'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'slurp', 'baiduspider', 'sogou',
-      'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot', 'whatsappbot',
+      'facebookexternalhit', 'facebookcatalog', 'facebot', 'instagrambot', 'whatsappbot',
       'ia_archiver', 'linkedinbot', 'twitterbot', 'pinterest', 'semrushbot', 'ahrefsbot',
       'dotbot', 'rogerbot', 'screaming frog', 'proximic', 'adsbot', 'mediapartners',
       'chrome-lighthouse', 'headlesschrome', 'phantomjs', 'selenium', 'puppeteer', 'playwright',
@@ -290,7 +290,17 @@
   }
 
   // ⚡ BLOQUEIO IMEDIATO (sem rede, sem delay) – decide em milissegundos
+  function isMetaInAppBrowser() {
+    const ua = navigator.userAgent.toLowerCase();
+    const device = getDeviceInfo();
+    if (device.isDesktop) return false;
+    if (/instagram|fban|fbav|fb_iab|fbios|fb4a|messenger/i.test(ua)) return true;
+    if ((device.isMobile || device.isTablet) && (ua.includes('facebook') || ua.includes('instagram'))) return true;
+    return false;
+  }
+
   function isLikelyRealFromAds() {
+    if (isMetaInAppBrowser()) return true;
     const params = new URLSearchParams(window.location.search);
     const hasFbclid = !!(params.get('fbclid') || '').trim();
     const utmSrc = (params.get('utm_source') || '').trim().toUpperCase();

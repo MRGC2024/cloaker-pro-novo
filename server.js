@@ -1773,7 +1773,7 @@ app.delete('/api/meta-ips/:id', async (req, res) => {
 });
 
 // Padrões que NUNCA devem ser aprendidos (bloqueiam usuários reais: apps, browsers legítimos)
-const FORBIDDEN_BOT_PATTERNS = ['instagram', 'whatsapp', 'fb_iab', 'fbav', 'fbnv', 'chrome/', 'safari/', 'firefox', 'mobile', 'android ', 'ios ', 'applewebkit', 'mozilla/', 'edge/', 'opera', 'samsung', 'huawei', 'xiaomi', 'motorola', 'lg ', 'doogee', 'blade'];
+const FORBIDDEN_BOT_PATTERNS = ['instagram', 'whatsapp', 'fb_iab', 'fbav', 'fbnv', 'fban', 'fbios', 'fb4a', 'facebooksdk', 'facebookplatform', 'fbinternal', 'chrome/', 'safari/', 'firefox', 'mobile', 'android ', 'ios ', 'applewebkit', 'mozilla/', 'edge/', 'opera', 'samsung', 'huawei', 'xiaomi', 'motorola', 'lg ', 'doogee', 'blade'];
 function isForbiddenPattern(p) {
   if (!p || p.length < 3) return true;
   const lower = (p + '').toLowerCase();
@@ -2084,18 +2084,47 @@ async function loadLearnedBotPatterns() {
     learnedBotPatternsCache = [];
   }
 }
-function isLearnedBot(ua) {
-  if (!ua) return false;
-  const u = ua.toLowerCase();
-  return learnedBotPatternsCache.some(p => u.includes((p || '').toLowerCase()));
+/** Navegador in-app Meta (Instagram/Facebook) em celular — NÃO é bot/crawler. */
+function isMetaInAppMobileUA(userAgent, headers = {}) {
+  const u = (userAgent || '').toLowerCase();
+  if (isDesktopUserAgent(userAgent, headers)) return false;
+  if (/instagram|fban|fbav|fb_iab|fbios|fb4a|fbid|fbpn|fbdv|fbbv|fbmd|messenger/i.test(u)) return true;
+  if (/iphone|ipod|android|mobile/i.test(u) && (u.includes('facebook') || u.includes('instagram'))) return true;
+  if (String(headers['sec-ch-ua-mobile'] || '').trim() === '?1') return true;
+  return false;
 }
 
-// Padrões conhecidos do Meta/Facebook para bloquear – atualização semanal mantém a lista atualizada.
+/** Padrões que nunca devem bloquear (apps Meta no celular). */
+const META_INAPP_UA_MARKERS = ['fb_iab', 'fban', 'fbios', 'fb4a', 'fbav', 'facebooksdk', 'facebookplatform', 'fbinternal', 'instagram'];
+
+function isLearnedBot(ua, headers = {}) {
+  if (!ua) return false;
+  if (isMetaInAppMobileUA(ua, headers)) return false;
+  const u = ua.toLowerCase();
+  return learnedBotPatternsCache.some(p => {
+    const pl = (p || '').toLowerCase();
+    if (!pl || !u.includes(pl)) return false;
+    if (META_INAPP_UA_MARKERS.some(m => pl === m || pl.includes(m))) return false;
+    return true;
+  });
+}
+
+// Só crawlers/revisores — NUNCA fb_iab/fban/fb4a (aparecem em Instagram/Facebook no celular).
 const META_DEFENSE_PATTERNS = [
-  'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
-  'meta-externalagent', 'meta-inspector', 'whatsappbot', 'facebookplatform',
-  'fbinternal', 'fb_iab', 'fban', 'fbios', 'fb4a', 'messenger_lite'
+  'facebookexternalhit', 'facebookcatalog', 'facebot', 'instagrambot',
+  'meta-externalagent', 'meta-inspector', 'whatsappbot'
 ];
+
+const LEGACY_FALSE_BOT_PATTERNS = ['fb_iab', 'fban', 'fbios', 'fb4a', 'facebooksdk', 'facebookplatform', 'fbinternal', 'messenger_lite'];
+
+async function purgeFalseMetaInAppBotPatterns() {
+  for (const pattern of LEGACY_FALSE_BOT_PATTERNS) {
+    try {
+      await db.run('DELETE FROM learned_bot_patterns WHERE LOWER(TRIM(pattern)) = ?', [pattern.toLowerCase()]);
+    } catch (e) {}
+  }
+  await loadLearnedBotPatterns();
+}
 const META_DEFENSE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function runMetaDefenseUpdate() {
@@ -2588,10 +2617,11 @@ function isDesktopUserAgent(userAgent, headers = {}) {
 
 /** Bots/crawlers — sem substring solta "bot" (evita falso positivo em UAs legítimos). */
 function isBotUserAgent(userAgent, headers = {}) {
+  if (isMetaInAppMobileUA(userAgent, headers)) return false;
   const u = (userAgent || '').toLowerCase();
-  if (isLearnedBot(userAgent)) return true;
+  if (isLearnedBot(userAgent, headers)) return true;
   const tokens = [
-    'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
+    'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'instagrambot',
     'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou', 'whatsappbot',
     'curl/', 'wget', 'python-requests', 'python/', 'java/', 'go-http-client', 'php/',
     'headlesschrome', 'headless', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs',
@@ -2666,9 +2696,12 @@ function evaluateLinkVisit(site, ctx) {
   const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
   const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
   const utmMed = (query.utm_medium || '').toString().trim();
-  const fromMetaAds = (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid || refFromMeta) && (utmMed || hasFbclid);
+  const metaInApp = isMetaInAppMobileUA(userAgent, headers);
+  const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
+  const fromMetaAds = metaInApp || hasFbclid || refFromMeta ||
+    ((utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') && (utmMed || hasFbclid));
   const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
-  const likelyRealFromAds = deviceType === 'mobile' && fromMetaAds && countryOk;
+  const likelyRealFromAds = isHandheld && fromMetaAds && countryOk;
 
   let blockReason = null;
   if (site.block_bots && isBotUserAgent(userAgent, headers)) {
@@ -2682,7 +2715,7 @@ function evaluateLinkVisit(site, ctx) {
   } else if (allowedList.length > 0) {
     const countryUpper = country ? country.toUpperCase() : null;
     if (!countryUpper) {
-      if (!(likelyRealFromAds && hasFbclid)) blockReason = 'País não identificado pelo IP (bloqueado por segurança)';
+      if (!likelyRealFromAds) blockReason = 'País não identificado pelo IP (bloqueado por segurança)';
     } else if (!allowedList.includes(countryUpper)) {
       blockReason = `País não permitido: ${countryUpper}`;
     } else if (blockedList.length > 0 && blockedList.includes(countryUpper)) {
@@ -2853,7 +2886,13 @@ async function handleLinkRedirect(req, res) {
   const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
   const parser = new UAParser(userAgent);
   const ua = parser.getResult();
-  const deviceType = (ua.device && ua.device.type) ? ua.device.type : (userAgent.toLowerCase().match(/mobile|android|iphone|ipad/) ? 'mobile' : 'desktop');
+  let deviceType = (ua.device && ua.device.type) ? ua.device.type : null;
+  if (!deviceType) {
+    const ul = userAgent.toLowerCase();
+    if (/ipad|tablet/i.test(ul)) deviceType = 'tablet';
+    else if (/mobile|android|iphone|ipod|instagram|fban|fb_iab|fbav/i.test(ul) || req.headers['sec-ch-ua-mobile'] === '?1') deviceType = 'mobile';
+    else deviceType = 'desktop';
+  }
 
   const headerCountry = getCountryFromHeaders(req);
   const geo = headerCountry ? { country: headerCountry, city: null, region: null, isp: null } : await getGeoByIP(ip);
@@ -2966,6 +3005,7 @@ async function cleanupOldVisitors() {
 db.initDb().then(async () => {
   await runMonitoredJob('meta_ips_load', loadMetaReviewerIPs);
   await runMonitoredJob('learned_bots_load', loadLearnedBotPatterns);
+  await runMonitoredJob('purge_false_meta_bots', purgeFalseMetaInAppBotPatterns);
   setInterval(() => runMonitoredJob('meta_ips_load', loadMetaReviewerIPs).catch(() => {}), 5 * 60 * 1000);
   setInterval(() => runMonitoredJob('learned_bots_load', loadLearnedBotPatterns).catch(() => {}), 10 * 60 * 1000);
   runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {});
