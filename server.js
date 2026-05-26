@@ -2088,7 +2088,7 @@ async function loadLearnedBotPatterns() {
 function isMetaInAppMobileUA(userAgent, headers = {}) {
   const u = (userAgent || '').toLowerCase();
   if (isDesktopUserAgent(userAgent, headers)) return false;
-  if (/instagram|fban|fbav|fb_iab|fbios|fb4a|fbid|fbpn|fbdv|fbbv|fbmd|messenger/i.test(u)) return true;
+  if (/instagram|fban|fbav|fb_iab|fbios|fb4a|fbid|fbpn|fbdv|fbbv|fbmd|messenger|iabmv|iab\/|iphone\d*,\d/i.test(u)) return true;
   if (/iphone|ipod|android|mobile/i.test(u) && (u.includes('facebook') || u.includes('instagram'))) return true;
   if (String(headers['sec-ch-ua-mobile'] || '').trim() === '?1') return true;
   return false;
@@ -2604,6 +2604,38 @@ async function getPathPrefixPool() {
   return DEFAULT_PATH_POOL;
 }
 
+/** Tipo de dispositivo para logs/filtros — prioriza UA real (Instagram/iPhone) sobre ua-parser. */
+function resolveDeviceType(userAgent, uaParserResult, headers = {}) {
+  const ul = (userAgent || '').toLowerCase();
+  if (isMetaInAppMobileUA(userAgent, headers)) {
+    return /ipad|tablet/i.test(ul) ? 'tablet' : 'mobile';
+  }
+  if (/iphone|ipod/i.test(ul) || (/\bmobile\b/i.test(ul) && /android|iphone|ipod|instagram/i.test(ul))) return 'mobile';
+  if (/ipad|tablet|playbook|silk/i.test(ul)) return 'tablet';
+  if (/android|webos|blackberry|iemobile|opera mini/i.test(ul)) return 'mobile';
+  if (String(headers['sec-ch-ua-mobile'] || '').trim() === '?1') return 'mobile';
+  const parsed = uaParserResult && uaParserResult.device && uaParserResult.device.type;
+  if (parsed === 'mobile' || parsed === 'tablet') return parsed;
+  if (isDesktopUserAgent(userAgent, headers)) return 'desktop';
+  return 'mobile';
+}
+
+/** ref=TOKEN no link OU clique legítimo pelo app Meta no celular (fbclid/UTM/referrer). */
+function isRefTokenSatisfied(site, query, userAgent, referer, headers) {
+  if (!site || !site.required_ref_token) return true;
+  const token = String(site.required_ref_token).trim();
+  if (!token) return true;
+  if (String(query.ref || '').trim() === token) return true;
+  if (!isMetaInAppMobileUA(userAgent, headers)) return false;
+  const hasFbclid = !!(query.fbclid || '').toString().trim();
+  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
+  const refLow = (referer || '').toLowerCase();
+  if (hasFbclid) return true;
+  if (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') return true;
+  if (refLow.includes('instagram') || refLow.includes('facebook') || refLow.includes('fb.')) return true;
+  return false;
+}
+
 /** Desktop: evita falso positivo em iPad (Macintosh) e navegadores mobile sinalizados pelo client hints. */
 function isDesktopUserAgent(userAgent, headers = {}) {
   const u = (userAgent || '').toLowerCase();
@@ -2850,19 +2882,24 @@ async function handleLinkRedirect(req, res) {
     }
   }
 
-  // Parâmetro de rastreamento (Meta Ads): se o site exige ref, só permite quem vier com ref=TOKEN
-  const refParam = (req.query.ref || '').trim();
-  if (site.required_ref_token) {
-    if (refParam !== site.required_ref_token) {
-      const blockReasonRef = 'Acesso sem parâmetro de rastreamento (não veio do Ads)';
-      const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-      await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, was_blocked, block_reason, is_bot, request_path, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 0, ?, datetime('now'))`,
-        [site.site_id, (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim() || 'unknown', req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), fullUrl, null, blockReasonRef, req.path]);
-      const blockUrl = site.redirect_url || 'https://www.google.com/';
-      if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
-      if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
-      return redirectWithDelay(res, blockUrl);
-    }
+  const userAgentEarly = req.headers['user-agent'] || '';
+  const refererEarly = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
+  const uaEarly = new UAParser(userAgentEarly).getResult();
+  const deviceTypeEarly = resolveDeviceType(userAgentEarly, uaEarly, req.headers);
+
+  // ref=TOKEN ou sinais de clique real no app Meta (Instagram costuma não repassar ref na URL)
+  if (!isRefTokenSatisfied(site, req.query, userAgentEarly, refererEarly, req.headers)) {
+    const blockReasonRef = 'Acesso sem parâmetro de rastreamento (não veio do Ads)';
+    const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    let ipRef = (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim() || 'unknown';
+    await db.run(
+      `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, device_type, browser, os, was_blocked, block_reason, is_bot, request_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, datetime('now'))`,
+      [site.site_id, ipRef, userAgentEarly, refererEarly, fullUrl, null, deviceTypeEarly, uaEarly.browser?.name || null, uaEarly.os?.name || null, blockReasonRef, req.path]
+    );
+    const blockUrl = site.redirect_url || 'https://www.google.com/';
+    if ((site.block_behavior || 'redirect') === 'page') { if (await sendCustomPage(res, site)) return; }
+    if ((site.block_behavior || 'redirect') === 'embed') return sendEmbeddedPage(res, blockUrl);
+    return redirectWithDelay(res, blockUrl);
   }
 
   // IP: prioridade cf-connecting-ip (Cloudflare), true-client-ip, x-forwarded-for (1º = cliente), x-real-ip, socket
@@ -2881,18 +2918,11 @@ async function handleLinkRedirect(req, res) {
     return redirectWithDelay(res, blockUrl);
   }
 
-  const userAgent = req.headers['user-agent'] || '';
-  const referer = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
+  const userAgent = userAgentEarly;
+  const referer = refererEarly;
   const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-  const parser = new UAParser(userAgent);
-  const ua = parser.getResult();
-  let deviceType = (ua.device && ua.device.type) ? ua.device.type : null;
-  if (!deviceType) {
-    const ul = userAgent.toLowerCase();
-    if (/ipad|tablet/i.test(ul)) deviceType = 'tablet';
-    else if (/mobile|android|iphone|ipod|instagram|fban|fb_iab|fbav/i.test(ul) || req.headers['sec-ch-ua-mobile'] === '?1') deviceType = 'mobile';
-    else deviceType = 'desktop';
-  }
+  const ua = uaEarly;
+  const deviceType = deviceTypeEarly;
 
   const headerCountry = getCountryFromHeaders(req);
   const geo = headerCountry ? { country: headerCountry, city: null, region: null, isp: null } : await getGeoByIP(ip);
