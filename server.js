@@ -1406,6 +1406,100 @@ app.put('/api/sites/bulk/primary-url', async (req, res) => {
   }
 });
 
+// API: Diagnóstico do link (simula perfis + cadeia de redirect) — não altera regras do cloaker
+app.get('/api/sites/:siteId/link-health', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) {
+    const admin = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+    if (!admin || admin.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  }
+  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
+  const warnings = getMetaLinkConfigWarnings(site);
+  const publicUrl = await buildSiteAdsLinkUrl(site, req.session.userId, req.query.host || null);
+  const offerUrl = getEffectiveTargetUrl(site);
+  const safeUrl = (site.redirect_url || 'https://www.google.com/').trim();
+
+  const simulations = LINK_HEALTH_PROFILES.map((profile) => {
+    const query = { utm_source: 'FB', utm_medium: 'cpc', fbclid: 'audit_test' };
+    if (site.required_ref_token) query.ref = site.required_ref_token;
+    const fullUrl = (publicUrl || 'https://example.com/test') + (publicUrl && publicUrl.includes('?') ? '&' : '?') + 'ping=1';
+    const decision = evaluateLinkVisit(site, {
+      query,
+      userAgent: profile.userAgent,
+      referer: profile.referer || '',
+      fullUrl,
+      headers: profile.headers || {},
+      country: profile.country || null,
+      deviceType: profile.deviceType,
+      uaParserResult: {},
+      allowMetaReviewers,
+      suspectedReviewer: false,
+      ip: '203.0.113.1'
+    });
+    let finalHost = '';
+    try { finalHost = new URL(decision.redirectTarget || '').hostname; } catch (e) {}
+    return {
+      id: profile.id,
+      label: profile.label,
+      blocked: decision.blocked,
+      block_reason: decision.blockReason,
+      destination_type: decision.redirectMode,
+      redirect_target: decision.redirectTarget,
+      final_host: finalHost
+    };
+  });
+
+  const offerHosts = new Set();
+  const safeHosts = new Set();
+  simulations.forEach((s) => {
+    if (s.blocked) {
+      try { safeHosts.add(new URL(s.redirect_target).hostname); } catch (e) {}
+    } else {
+      try { offerHosts.add(new URL(s.redirect_target).hostname); } catch (e) {}
+    }
+  });
+  const destinationsDiffer = offerHosts.size > 0 && safeHosts.size > 0 && [...offerHosts].some(h => !safeHosts.has(h));
+
+  let redirectChain = [];
+  if (publicUrl) {
+    redirectChain = await traceRedirectChain(publicUrl, {
+      'User-Agent': LINK_HEALTH_PROFILES[1].userAgent,
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    });
+  }
+
+  const metaRisk = [];
+  if (destinationsDiffer) {
+    metaRisk.push({
+      level: 'critical',
+      message: 'O mesmo link leva a destinos diferentes conforme o perfil (oferta vs bloqueio). É exatamente o padrão "link enganoso / redirecionamentos" do Meta.'
+    });
+  }
+  if (redirectChain.length > 2) {
+    metaRisk.push({
+      level: 'high',
+      message: `Cadeia com ${redirectChain.length} saltos HTTP detectada no link público.`
+    });
+  }
+  warnings.forEach((w) => {
+    if (w.level === 'high' || w.level === 'error') metaRisk.push({ level: w.level === 'error' ? 'critical' : 'high', message: w.message });
+  });
+
+  res.json({
+    site_id: site.site_id,
+    public_link: publicUrl,
+    offer_url: offerUrl,
+    safe_url: safeUrl,
+    config_warnings: warnings,
+    meta_risk: metaRisk,
+    destinations_differ: destinationsDiffer,
+    simulations,
+    redirect_chain: redirectChain
+  });
+});
+
 // API: Atualizar domínio selecionado do site
 app.put('/api/sites/:siteId/selected-domain', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -2481,6 +2575,227 @@ async function getPathPrefixPool() {
   return DEFAULT_PATH_POOL;
 }
 
+/** Desktop: evita falso positivo em iPad (Macintosh) e navegadores mobile sinalizados pelo client hints. */
+function isDesktopUserAgent(userAgent, headers = {}) {
+  const u = (userAgent || '').toLowerCase();
+  if (/ipad|tablet|playbook|silk/i.test(u)) return false;
+  if (/android|webos|iphone|ipod|blackberry|iemobile|opera mini|mobile/i.test(u)) return false;
+  if (String(headers['sec-ch-ua-mobile'] || '').trim() === '?1') return false;
+  const platform = String(headers['sec-ch-ua-platform'] || '');
+  if (/ios|ipados|android/i.test(platform)) return false;
+  return !/mobile|android|iphone|ipad|webos|blackberry|iemobile|opera mini/i.test(u);
+}
+
+/** Bots/crawlers — sem substring solta "bot" (evita falso positivo em UAs legítimos). */
+function isBotUserAgent(userAgent, headers = {}) {
+  const u = (userAgent || '').toLowerCase();
+  if (isLearnedBot(userAgent)) return true;
+  const tokens = [
+    'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
+    'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou', 'whatsappbot',
+    'curl/', 'wget', 'python-requests', 'python/', 'java/', 'go-http-client', 'php/',
+    'headlesschrome', 'headless', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs',
+    'lighthouse', 'gtmetrix', 'screaming frog', 'semrush', 'ahrefsbot', 'dotbot', 'rogerbot', 'proximic',
+    'mediapartners', 'adsbot', 'ia_archiver', 'archive.org', 'x-purpose'
+  ];
+  if (tokens.some(t => u.includes(t))) return true;
+  if (/\bbot\b/.test(u)) return true;
+  return !!headers['x-purpose'];
+}
+
+function isEmulatorUserAgent(userAgent, uaParserResult) {
+  const u = (userAgent || '').toLowerCase();
+  return /android sdk|sdk_gphone|emulator|generic.*android|build\/generic|model.*unknown|vbox|genymotion|bluestacks|nox|andy|droid4x|memu|koplayer|mumu/i.test(u) ||
+    (uaParserResult && uaParserResult.device && (uaParserResult.device.model === 'unknown' || uaParserResult.device.model === 'Emulator'));
+}
+
+function isFromFacebookReferer(referer, fullUrl) {
+  const ref = (referer || '').toLowerCase();
+  const url = (fullUrl || '').toLowerCase();
+  return ref.includes('facebook.com') || ref.includes('fb.com') || url.includes('fbclid=');
+}
+
+/**
+ * Decide bloqueio/liberação (mesma lógica do /:prefix/:code).
+ * ctx: { query, userAgent, referer, fullUrl, headers, country, deviceType, uaParserResult, allowMetaReviewers, ip, suspectedReviewer }
+ */
+function evaluateLinkVisit(site, ctx) {
+  const destUrl = getEffectiveTargetUrl(site);
+  const safeUrl = (site && site.redirect_url) ? site.redirect_url.trim() : 'https://www.google.com/';
+  const blockBehavior = (site && site.block_behavior) || 'redirect';
+  const out = {
+    blocked: false,
+    blockReason: null,
+    reviewerBypass: false,
+    offerUrl: destUrl,
+    safeUrl,
+    blockBehavior,
+    redirectTarget: destUrl,
+    redirectMode: 'offer'
+  };
+  if (!site || !destUrl) {
+    out.blocked = true;
+    out.blockReason = 'Site ou URL de destino inválidos';
+    out.redirectTarget = safeUrl;
+    out.redirectMode = 'safe';
+    return out;
+  }
+
+  const userAgent = ctx.userAgent || '';
+  const referer = (ctx.referer || '').toLowerCase();
+  const fullUrl = ctx.fullUrl || '';
+  const query = ctx.query || {};
+  const headers = ctx.headers || {};
+  const country = ctx.country || null;
+  const deviceType = ctx.deviceType || 'desktop';
+  const ua = ctx.uaParserResult || {};
+  const hasFbclid = !!(query.fbclid || '').toString().trim();
+  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
+  const reviewerUa = /facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot/i.test(userAgent.toLowerCase());
+  const suspectedReviewer = !!ctx.suspectedReviewer;
+  const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
+
+  if (ctx.allowMetaReviewers && seemsActualReviewer && destUrl) {
+    out.reviewerBypass = true;
+    out.redirectTarget = destUrl;
+    out.redirectMode = 'offer';
+    return out;
+  }
+
+  const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+  const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
+  const utmMed = (query.utm_medium || '').toString().trim();
+  const fromMetaAds = (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid || refFromMeta) && (utmMed || hasFbclid);
+  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
+  const likelyRealFromAds = deviceType === 'mobile' && fromMetaAds && countryOk;
+
+  let blockReason = null;
+  if (site.block_bots && isBotUserAgent(userAgent, headers)) {
+    if (!likelyRealFromAds) blockReason = 'Bot detectado';
+  } else if (isEmulatorUserAgent(userAgent, ua)) {
+    blockReason = 'Emulador detectado (apenas celular real permitido)';
+  } else if (site.block_desktop && isDesktopUserAgent(userAgent, headers)) {
+    blockReason = 'Desktop detectado';
+  } else if (site.block_facebook_library && isFromFacebookReferer(referer, fullUrl) && isDesktopUserAgent(userAgent, headers)) {
+    blockReason = 'Biblioteca Facebook';
+  } else if (allowedList.length > 0) {
+    const countryUpper = country ? country.toUpperCase() : null;
+    if (!countryUpper) {
+      if (!(likelyRealFromAds && hasFbclid)) blockReason = 'País não identificado pelo IP (bloqueado por segurança)';
+    } else if (!allowedList.includes(countryUpper)) {
+      blockReason = `País não permitido: ${countryUpper}`;
+    } else if (blockedList.length > 0 && blockedList.includes(countryUpper)) {
+      blockReason = `País bloqueado: ${countryUpper}`;
+    }
+  } else if (country && blockedList.includes(country.toUpperCase())) {
+    blockReason = `País bloqueado: ${country}`;
+  }
+
+  out.blocked = !!blockReason;
+  out.blockReason = blockReason;
+  if (out.blocked) {
+    out.redirectTarget = safeUrl;
+    out.redirectMode = blockBehavior === 'page' ? 'page' : (blockBehavior === 'embed' ? 'embed' : 'safe');
+  } else {
+    out.redirectTarget = destUrl;
+    out.redirectMode = 'offer';
+  }
+  return out;
+}
+
+function getMetaLinkConfigWarnings(site) {
+  const warnings = [];
+  if (!site) return warnings;
+  const safe = (site.redirect_url || '').trim().toLowerCase();
+  const target = (getEffectiveTargetUrl(site) || '').trim();
+  let safeHost = '';
+  let targetHost = '';
+  try { safeHost = safe ? new URL(safe.startsWith('http') ? safe : 'https://' + safe).hostname : ''; } catch (e) {}
+  try { targetHost = target ? new URL(target).hostname : ''; } catch (e) {}
+  if (!target) warnings.push({ level: 'error', code: 'no_target', message: 'URL da oferta (landing) não configurada.' });
+  if (safe.includes('google.com')) warnings.push({ level: 'high', code: 'safe_google', message: 'URL de bloqueio é Google — destino muito diferente da oferta (Meta costuma marcar como link enganoso).' });
+  if ((site.block_behavior || 'redirect') === 'embed') warnings.push({ level: 'high', code: 'embed', message: 'Modo embed ativo: mais uma camada de conteúdo/redirect na mesma URL.' });
+  if (site.required_ref_token) warnings.push({ level: 'high', code: 'ref_required', message: 'ref obrigatório: crawlers do Meta muitas vezes acessam SEM ref → só veem a página de bloqueio.' });
+  if (safeHost && targetHost && safeHost !== targetHost) warnings.push({ level: 'medium', code: 'domain_mismatch', message: `Domínio da oferta (${targetHost}) ≠ domínio do bloqueio (${safeHost}).` });
+  if (site.block_desktop) warnings.push({ level: 'info', code: 'block_desktop', message: 'Desktop bloqueado — revisores em desktop podem cair na safe page.' });
+  if (site.block_bots) warnings.push({ level: 'info', code: 'block_bots', message: 'Bots bloqueados — crawlers (facebookexternalhit) tendem a ir para a safe page.' });
+  return warnings;
+}
+
+async function buildSiteAdsLinkUrl(site, userId, hostOverride) {
+  const user = await db.get('SELECT cloaker_base_url FROM users WHERE id = ?', [userId]);
+  let base = (hostOverride || user?.cloaker_base_url || '').trim().replace(/\/$/, '');
+  if (!base && site.selected_domain) base = 'https://' + String(site.selected_domain).trim();
+  if (!base) return null;
+  if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
+  const prefix = (site.path_prefix || 'go').trim().toLowerCase() || 'go';
+  const parts = ['utm_source=FB', 'utm_medium=cpc', 'fbclid=audit_test'];
+  if (site.required_ref_token) parts.unshift('ref=' + encodeURIComponent(site.required_ref_token));
+  return base.replace(/\/$/, '') + '/' + prefix + '/' + site.link_code + '?' + parts.join('&');
+}
+
+async function traceRedirectChain(startUrl, headers, maxHops = 6) {
+  const chain = [];
+  if (!startUrl) return chain;
+  let current = startUrl;
+  for (let i = 0; i < maxHops; i++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(current, { method: 'GET', redirect: 'manual', signal: controller.signal, headers });
+      clearTimeout(timeout);
+      const location = res.headers.get('location');
+      chain.push({ url: current, status: res.status, location: location || null });
+      if (![301, 302, 303, 307, 308].includes(res.status) || !location) break;
+      current = new URL(location, current).href;
+    } catch (e) {
+      clearTimeout(timeout);
+      chain.push({ url: current, status: 0, error: e.message || 'fetch failed' });
+      break;
+    }
+  }
+  return chain;
+}
+
+const LINK_HEALTH_PROFILES = [
+  {
+    id: 'meta_crawler',
+    label: 'Crawler Meta (facebookexternalhit)',
+    userAgent: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    referer: '',
+    deviceType: 'desktop',
+    country: 'US'
+  },
+  {
+    id: 'meta_mobile',
+    label: 'Clique mobile (iPhone + fbclid + UTMs)',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    referer: 'https://l.facebook.com/',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"iOS"' }
+  },
+  {
+    id: 'desktop_user',
+    label: 'Desktop (Windows Chrome)',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    referer: '',
+    deviceType: 'desktop',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?0' }
+  },
+  {
+    id: 'ipad_user',
+    label: 'iPad (Safari — UA Macintosh)',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+    referer: 'https://www.instagram.com/',
+    deviceType: 'tablet',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?0', 'sec-ch-ua-platform': '"iOS"' }
+  }
+];
+
 // Handler compartilhado para links (/:prefix/:code)
 async function handleLinkRedirect(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
@@ -2544,15 +2859,23 @@ async function handleLinkRedirect(req, res) {
   const geo = headerCountry ? { country: headerCountry, city: null, region: null, isp: null } : await getGeoByIP(ip);
   const country = geo.country;
   const suspectedReviewer = isSuspectedReviewerIP(ip);
-  const hasFbclid = !!(req.query.fbclid || '').trim();
-  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
-  const reviewerUa = /facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot/i.test(userAgent.toLowerCase());
-  const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
-
-  // Só libera bypass quando há IP suspeito E sinais reais de revisão Meta.
-  // Isso evita que um IP marcado por engano faça o cloaker "deixar passar tudo".
   const allowMetaReviewers = await getAllowMetaReviewersEnabled();
-  if (allowMetaReviewers && seemsActualReviewer && destUrl) {
+
+  const decision = evaluateLinkVisit(site, {
+    query: req.query,
+    userAgent,
+    referer,
+    fullUrl,
+    headers: req.headers,
+    country,
+    deviceType,
+    uaParserResult: ua,
+    allowMetaReviewers,
+    suspectedReviewer,
+    ip
+  });
+
+  if (decision.reviewerBypass) {
     let dest = destUrl;
     const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
     if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
@@ -2561,59 +2884,8 @@ async function handleLinkRedirect(req, res) {
     return redirectWithDelay(res, dest);
   }
 
-  const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
-  const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
-
-  function isDesktop() {
-    const u = userAgent.toLowerCase();
-    return !/mobile|android|iphone|ipad|webos|blackberry|iemobile|opera mini/i.test(u);
-  }
-  function isFromFacebook() {
-    return referer.includes('facebook.com') || referer.includes('fb.com') || fullUrl.toLowerCase().includes('fbclid=');
-  }
-  // Padrões de CRAWLERS/BOTS (não incluir "instagram" nem "whatsapp" – são apps legítimos de usuários reais)
-  // Instagram/WhatsApp crawlers usam facebookexternalhit ou instagrambot. In-app browser tem "Instagram X.X" ou "WhatsApp".
-  function isBot() {
-    const u = userAgent.toLowerCase();
-    if (isLearnedBot(userAgent)) return true;
-    const bots = [
-      'bot', 'crawler', 'spider', 'googlebot', 'facebookexternalhit', 'facebookcatalog', 'facebot', 'facebooksdk', 'instagrambot',
-      'slurp', 'duckduckbot', 'bingbot', 'yandex', 'baiduspider', 'sogou', 'whatsappbot',
-      'curl', 'wget', 'python-requests', 'python/', 'java/', 'go-http-client', 'php/',
-      'headless', 'headlesschrome', 'puppeteer', 'phantom', 'selenium', 'playwright', 'chromedriver', 'geckodriver', 'phantomjs',
-      'lighthouse', 'gtmetrix', 'screaming frog', 'semrush', 'ahrefsbot', 'dotbot', 'rogerbot', 'proximic',
-      'mediapartners', 'adsbot', 'ia_archiver', 'archive.org', 'x-purpose'
-    ];
-    return bots.some(b => u.includes(b)) || !!req.headers['x-purpose'];
-  }
-  function isEmulator() {
-    const u = userAgent.toLowerCase();
-    return /android sdk|sdk_gphone|emulator|generic.*android|build\/generic|model.*unknown|vbox|genymotion|bluestacks|nox|andy|droid4x|memu|koplayer|mumu/i.test(u) ||
-      (ua.device && (ua.device.model === 'unknown' || ua.device.model === 'Emulator'));
-  }
-
-  // Exceção: tráfego com UTMs do Meta Ads + mobile + país permitido = provável cliente real, não bloquear como bot
-  const utmSrc = (req.query.utm_source || '').trim().toUpperCase();
-  const utmMed = (req.query.utm_medium || '').trim();
-  const fromMetaAds = (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid || refFromMeta) && (utmMed || hasFbclid);
-  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
-  const likelyRealFromAds = deviceType === 'mobile' && fromMetaAds && countryOk;
-
-  let blockReason = null;
-  if (site.block_bots && isBot()) {
-    if (!likelyRealFromAds) blockReason = 'Bot detectado';
-  }
-  else if (isEmulator()) blockReason = 'Emulador detectado (apenas celular real permitido)';
-  else if (site.block_desktop && isDesktop()) blockReason = 'Desktop detectado';
-  else if (site.block_facebook_library && isFromFacebook() && isDesktop()) blockReason = 'Biblioteca Facebook';
-  else if (allowedList.length > 0) {
-    const countryUpper = country ? country.toUpperCase() : null;
-    if (!countryUpper) blockReason = 'País não identificado pelo IP (bloqueado por segurança)';
-    else if (!allowedList.includes(countryUpper)) blockReason = `País não permitido: ${countryUpper}`;
-    else if (blockedList.length > 0 && blockedList.includes(countryUpper)) blockReason = `País bloqueado: ${countryUpper}`;
-  } else if (country && blockedList.includes(country.toUpperCase())) blockReason = `País bloqueado: ${country}`;
-
-  const wasBlocked = !!blockReason;
+  const wasBlocked = decision.blocked;
+  const blockReason = decision.blockReason;
 
   // UTMs e parâmetros dos Ads (vêm na URL do clique) – repassados para o link de oferta no redirect
   const utm_source = (req.query.utm_source || '').trim() || null;
@@ -2626,7 +2898,7 @@ async function handleLinkRedirect(req, res) {
 
   const suspectedRev = suspectedReviewer ? 1 : 0;
   const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
-  const visitorParams = [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBot() ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev];
+  const visitorParams = [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev];
 
   if (wasBlocked) {
     await db.run(visitorSql, visitorParams);

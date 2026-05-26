@@ -1629,6 +1629,14 @@
           </div>
         </div>
       </div>
+      <div class="card" style="border: 1px solid var(--warning);">
+        <div class="card-header"><h3 class="card-title"><i class="ri-shield-check-line"></i> Diagnóstico Meta (link do anúncio)</h3></div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 13px;">Simula o que acontece quando o Meta (crawler) e um lead mobile clicam no <strong>mesmo link</strong>. O cloaker continua igual — aqui você vê <strong>por que</strong> pode dar “link enganoso” e o que ajustar na configuração.</p>
+          <button type="button" class="btn btn-primary" onclick="runLinkHealthCheck()"><i class="ri-radar-line"></i> Analisar site selecionado</button>
+          <div id="linkHealthResults" style="display: none; margin-top: 16px;"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Configurações (domínio do cloaker – por usuário) -->
@@ -4091,6 +4099,62 @@
       }
     }
     
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function runLinkHealthCheck() {
+      const siteId = document.getElementById('scriptSiteSelector').value;
+      const box = document.getElementById('linkHealthResults');
+      if (!siteId) { alert('Selecione um site acima.'); return; }
+      box.style.display = 'block';
+      box.innerHTML = '<p style="color:var(--text-secondary)">Analisando...</p>';
+      try {
+        const domainSel = document.getElementById('scriptDomainSelect');
+        const host = domainSel && domainSel.value ? domainSel.value : '';
+        const q = host ? '?host=' + encodeURIComponent('https://' + host.replace(/^https?:\/\//, '')) : '';
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/link-health' + q, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro na análise');
+        let html = '';
+        if (data.meta_risk && data.meta_risk.length) {
+          html += '<div style="margin-bottom:14px;">';
+          data.meta_risk.forEach(function(r) {
+            const col = r.level === 'critical' ? 'var(--danger)' : (r.level === 'high' ? 'var(--warning)' : 'var(--text-secondary)');
+            html += '<p style="margin:0 0 8px; padding:10px; border-radius:8px; background:rgba(239,68,68,0.08); border-left:3px solid ' + col + '; font-size:13px;">' + escapeHtml(r.message) + '</p>';
+          });
+          html += '</div>';
+        }
+        if (data.destinations_differ) {
+          html += '<p style="font-weight:600; color:var(--warning); margin-bottom:10px;">⚠️ Destinos diferentes detectados (oferta vs bloqueio) — padrão que o Meta reprova.</p>';
+        }
+        html += '<table class="data-table" style="width:100%; font-size:12px; margin-bottom:14px;"><thead><tr><th>Perfil</th><th>Resultado</th><th>Destino</th></tr></thead><tbody>';
+        (data.simulations || []).forEach(function(s) {
+          const st = s.blocked ? '<span style="color:var(--danger)">Bloqueado</span>' : '<span style="color:var(--success)">Liberado → oferta</span>';
+          const dest = (s.redirect_target || '').substring(0, 80) + ((s.redirect_target || '').length > 80 ? '…' : '');
+          html += '<tr><td>' + escapeHtml(s.label) + '</td><td>' + st + (s.block_reason ? '<br><small>' + escapeHtml(s.block_reason) + '</small>' : '') + '</td><td style="word-break:break-all"><small>' + escapeHtml(dest) + '</small></td></tr>';
+        });
+        html += '</tbody></table>';
+        if (data.config_warnings && data.config_warnings.length) {
+          html += '<p style="font-weight:600; margin-bottom:6px;">Ajustes recomendados na config do site:</p><ul style="font-size:12px; color:var(--text-secondary); padding-left:18px;">';
+          data.config_warnings.forEach(function(w) {
+            html += '<li>' + escapeHtml(w.message) + '</li>';
+          });
+          html += '</ul>';
+        }
+        if (data.redirect_chain && data.redirect_chain.length) {
+          html += '<p style="font-weight:600; margin:12px 0 6px;">Cadeia HTTP do link público:</p><ol style="font-size:12px; color:var(--text-secondary); padding-left:18px;">';
+          data.redirect_chain.forEach(function(h) {
+            html += '<li>' + escapeHtml(h.status + ' → ' + (h.url || '')) + '</li>';
+          });
+          html += '</ol>';
+        }
+        box.innerHTML = html;
+      } catch (e) {
+        box.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(e.message || 'Falha') + '</p>';
+      }
+    }
+
     function updateScriptCode() {
       const siteId = document.getElementById('scriptSiteSelector').value;
       const domainSel = document.getElementById('scriptDomainSelect');

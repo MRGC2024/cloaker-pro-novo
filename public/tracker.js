@@ -76,9 +76,9 @@
 
   function getDeviceInfo() {
     const ua = navigator.userAgent.toLowerCase();
-    
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
-    const isTablet = /ipad|tablet|playbook|silk/i.test(ua) || (isMobile && window.innerWidth > 768);
+    const isIPadOS = /ipad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMobile = /android|webos|iphone|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua) && !isIPadOS;
+    const isTablet = isIPadOS || /ipad|tablet|playbook|silk/i.test(ua) || (isMobile && window.innerWidth > 768);
     const isDesktop = !isMobile && !isTablet;
     
     let os = 'Unknown';
@@ -226,7 +226,7 @@
     }
 
     const botCheck = detectBot();
-    if (CONFIG.BLOCK_BOTS && botCheck.isBot) {
+    if (CONFIG.BLOCK_BOTS && botCheck.isBot && !isLikelyRealFromAds()) {
       return { block: true, reason: botCheck.reason };
     }
 
@@ -290,12 +290,24 @@
   }
 
   // ⚡ BLOQUEIO IMEDIATO (sem rede, sem delay) – decide em milissegundos
+  function isLikelyRealFromAds() {
+    const params = new URLSearchParams(window.location.search);
+    const hasFbclid = !!(params.get('fbclid') || '').trim();
+    const utmSrc = (params.get('utm_source') || '').trim().toUpperCase();
+    const utmMed = (params.get('utm_medium') || '').trim();
+    const ref = (document.referrer || '').toLowerCase();
+    const fromMeta = utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' || hasFbclid ||
+      ref.includes('facebook') || ref.includes('fb.') || ref.includes('instagram');
+    const device = getDeviceInfo();
+    return (device.isMobile || device.isTablet) && fromMeta && (utmMed || hasFbclid);
+  }
+
   function shouldBlockSync() {
     const device = getDeviceInfo();
     if (CONFIG.BLOCK_DESKTOP && device.isDesktop) return { block: true, reason: 'Desktop detectado' };
     if (CONFIG.BLOCK_FACEBOOK_LIBRARY && isFromFacebook() && device.isDesktop) return { block: true, reason: 'Biblioteca Facebook' };
     const botCheck = detectBot();
-    if (CONFIG.BLOCK_BOTS && botCheck.isBot) return { block: true, reason: botCheck.reason };
+    if (CONFIG.BLOCK_BOTS && botCheck.isBot && !isLikelyRealFromAds()) return { block: true, reason: botCheck.reason };
     return { block: false, reason: null };
   }
 
