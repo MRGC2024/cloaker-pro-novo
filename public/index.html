@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Cloaker Pro — Painel</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M16 7l7 4v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9v-6l7-4z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -398,7 +398,10 @@
     .card-title i { color: var(--text-tertiary); font-size: 16px; }
     .card-body { padding: 20px; }
 
-    .table-container { overflow-x: auto; }
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
     th { 
@@ -621,7 +624,8 @@
       transition: border-color 0.15s; 
     }
     .site-card:hover { border-color: var(--border-hover); }
-    .site-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .site-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .site-card-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
     .site-card-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
     .site-card-domain { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
     .site-card-stats { display: flex; gap: 24px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -674,25 +678,228 @@
     }
     .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     @media (max-width: 768px) {
-      .menu-toggle { display: flex; }
-      .sidebar { width: 300px; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-      .sidebar.open { transform: translateX(0); }
-      .main, body.sidebar-collapsed .main { margin-left: 0; padding: 72px 16px 24px; }
-      .header { flex-direction: column; align-items: flex-start; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
-      .country-select-wrap { grid-template-columns: 1fr; }
-      .stat-value { font-size: 28px; }
-      .charts-grid { grid-template-columns: 1fr; }
-      .chart-container { height: 240px; }
-      .table-container { font-size: 12px; }
-      th, td { padding: 10px 12px; }
-      .period-selector { flex-wrap: wrap; }
-      .header-actions { width: 100%; }
-      .site-selector { width: 100%; }
+      body { overflow-x: hidden; }
+      body.menu-open { overflow: hidden; }
+
+      .menu-toggle {
+        display: flex;
+        position: fixed;
+        top: max(10px, env(safe-area-inset-top, 0px));
+        left: max(10px, env(safe-area-inset-left, 0px));
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        z-index: 102;
+        touch-action: manipulation;
+      }
+
+      .sidebar {
+        width: min(288px, 86vw);
+        max-width: 100%;
+        transform: translateX(-105%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        padding-top: max(12px, env(safe-area-inset-top, 0px));
+        padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        z-index: 103;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 12px 0 40px rgba(0, 0, 0, 0.65);
+      }
+      .sidebar.collapsed,
+      body.sidebar-collapsed .sidebar {
+        width: min(288px, 86vw);
+      }
+      .sidebar.collapsed .logo h1,
+      .sidebar.collapsed .logo-text,
+      .sidebar.collapsed .nav-link-text,
+      .sidebar.collapsed .nav-group-title {
+        opacity: 1;
+        visibility: visible;
+        width: auto;
+      }
+      .sidebar.collapsed .nav-link {
+        justify-content: flex-start;
+        padding: 12px 14px;
+      }
+      .sidebar-toggle { display: none; }
+
+      .main,
+      body.sidebar-collapsed .main {
+        margin-left: 0;
+        padding: max(58px, calc(48px + env(safe-area-inset-top, 0px))) 14px max(28px, env(safe-area-inset-bottom, 0px));
+      }
+
+      .page-top-bar {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        padding-left: 48px;
+        min-height: 40px;
+        align-items: center;
+      }
+      .page-top-bar h1 { font-size: 17px; gap: 8px; }
+      .page-top-bar h1 i { font-size: 18px; }
+
+      .header { margin-bottom: 16px; gap: 12px; }
+      .header h2 { font-size: 16px; }
+      .header > p { font-size: 12px !important; }
+      .header-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .header-actions .btn,
+      .header-actions .form-select,
+      .header-actions .site-selector {
+        width: 100%;
+        min-width: 0;
+      }
+      .header-actions .period-selector {
+        width: 100%;
+        display: flex;
+      }
+      .period-btn {
+        flex: 1;
+        min-height: 42px;
+        font-size: 11px;
+        padding: 8px 4px;
+      }
+      .site-selector { width: 100%; min-width: 0; }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 22px; }
+      .stat-icon { width: 34px; height: 34px; font-size: 17px; margin-bottom: 8px; }
+      .stat-label { font-size: 11px; }
+
+      .site-card { padding: 16px; }
+      .site-card .form-select { max-width: 100% !important; width: 100%; }
+      .site-card-header { flex-direction: column; align-items: stretch; }
+      .site-card-title { font-size: 15px; line-height: 1.4; }
+      .site-card-actions { width: 100%; }
+      .site-card-actions .btn {
+        flex: 1;
+        min-width: calc(33.333% - 6px);
+        justify-content: center;
+        min-height: 44px;
+      }
+      .site-card-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .site-card-stat-value { font-size: 18px; }
+
+      .toolbar-row { flex-direction: column; align-items: stretch; }
+      .toolbar-row .form-group { min-width: 0; width: 100%; flex: none; }
+
+      .bulk-bar { flex-direction: column; align-items: stretch; }
+      .bulk-bar .btn,
+      .bulk-bar .radio-label {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+      }
+      .bulk-bar .btn { display: flex; }
+
+      .panel-tip-banner { padding: 14px; margin-bottom: 14px; }
+      .panel-tip-banner > i { font-size: 22px; }
+
+      .table-container::after {
+        content: 'Deslize para ver mais →';
+        display: block;
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-tertiary);
+        padding: 8px 0 2px;
+      }
+      .table-container table { min-width: 560px; }
+      th, td { padding: 10px 12px; font-size: 12px; }
+
+      .modal {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(92vh, 100dvh);
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+      }
+      .modal-body { padding: 16px; max-height: calc(92vh - 60px); overflow-y: auto; }
+
+      .info-grid { grid-template-columns: 1fr !important; gap: 16px; }
+      .country-select-wrap { grid-template-columns: 1fr; gap: 16px; }
+      .charts-grid { grid-template-columns: 1fr; gap: 12px; }
+      .chart-container { height: 220px; }
+
+      .card { margin-bottom: 14px; border-radius: 10px; }
+      .card-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 14px 16px;
+        align-items: flex-start;
+      }
+      .card-title { font-size: 13px; }
+      .card-body { padding: 14px 16px; }
+
+      .nav-link { padding: 12px 14px; min-height: 44px; font-size: 14px; }
+      .nav-group-title { padding-top: 16px; }
+
+      .filters { width: 100%; gap: 6px; }
+      .filter-btn {
+        flex: 1 1 calc(50% - 3px);
+        min-height: 42px;
+        text-align: center;
+        font-size: 11px;
+        padding: 8px 10px;
+      }
+
+      .code-block {
+        padding: 40px 12px 12px;
+        font-size: 11px;
+        word-break: break-all;
+      }
+      .copy-btn {
+        min-height: 34px;
+        padding: 6px 12px;
+        font-size: 11px;
+      }
+
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 40px; padding: 8px 12px; }
+
+      .form-input, .form-select { min-height: 44px; font-size: 16px; }
+      .behavior-cards { grid-template-columns: 1fr; }
+
+      .pagination { flex-wrap: wrap; gap: 6px; padding: 0 4px; }
+      .page-btn { min-width: 40px; min-height: 40px; padding: 8px 12px; }
+
+      #toastCopy {
+        bottom: max(20px, env(safe-area-inset-bottom, 0px));
+        left: 14px;
+        right: 14px;
+        transform: none;
+        width: auto;
+        max-width: none;
+      }
+      #toastCopy.show { transform: none; }
     }
+
     @media (max-width: 480px) {
-      .stats-grid { grid-template-columns: 1fr; }
-      .stat-value { font-size: 24px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat-value { font-size: 20px; }
+      .site-card-actions .btn { min-width: 100%; flex: 1 1 100%; }
+      .site-card-stats { grid-template-columns: repeat(3, 1fr); }
+      .filter-btn { flex: 1 1 100%; }
+      .period-btn { font-size: 10px; letter-spacing: -0.02em; }
+      .main, body.sidebar-collapsed .main { padding-left: 12px; padding-right: 12px; }
+    }
+
+    @media (min-width: 769px) {
+      .menu-toggle { display: none !important; }
     }
 
     .modal.active { display: flex; }
@@ -751,33 +958,62 @@
       var toggle = document.getElementById('menuToggle');
       var collapseBtn = document.getElementById('sidebarCollapseBtn');
       var collapseIcon = document.getElementById('sidebarCollapseIcon');
-      function openMenu() { sidebar.classList.add('open'); overlay.classList.add('active'); toggle.setAttribute('aria-label', 'Fechar menu'); toggle.innerHTML = '<i class="ri-close-line"></i>'; }
-      function closeMenu() { sidebar.classList.remove('open'); overlay.classList.remove('active'); toggle.setAttribute('aria-label', 'Abrir menu'); toggle.innerHTML = '<i class="ri-menu-line"></i>'; }
+      var MOBILE_BP = 768;
+      function isMobile() { return window.innerWidth <= MOBILE_BP; }
+      function openMenu() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.classList.add('menu-open');
+        toggle.setAttribute('aria-label', 'Fechar menu');
+        toggle.innerHTML = '<i class="ri-close-line"></i>';
+      }
+      function closeMenu() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.classList.remove('menu-open');
+        toggle.setAttribute('aria-label', 'Abrir menu');
+        toggle.innerHTML = '<i class="ri-menu-line"></i>';
+      }
       function updateCollapseIcon() {
         if (!collapseIcon) return;
         collapseIcon.className = sidebar.classList.contains('collapsed') ? 'ri-menu-unfold-line' : 'ri-menu-fold-line';
         collapseBtn.setAttribute('aria-label', sidebar.classList.contains('collapsed') ? 'Expandir menu' : 'Recolher menu');
         collapseBtn.setAttribute('title', sidebar.classList.contains('collapsed') ? 'Expandir menu' : 'Recolher menu');
       }
+      function applySidebarLayout() {
+        if (isMobile()) {
+          sidebar.classList.remove('collapsed');
+          document.body.classList.remove('sidebar-collapsed');
+          closeMenu();
+        } else {
+          try {
+            if (localStorage.getItem('sidebarCollapsed') === '1') {
+              sidebar.classList.add('collapsed');
+              document.body.classList.add('sidebar-collapsed');
+            }
+          } catch (e) {}
+        }
+        updateCollapseIcon();
+      }
       if (collapseBtn && sidebar) {
         collapseBtn.addEventListener('click', function() {
+          if (isMobile()) return;
           sidebar.classList.toggle('collapsed');
           document.body.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
           try { localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch (e) {}
           updateCollapseIcon();
         });
       }
-      try {
-        if (localStorage.getItem('sidebarCollapsed') === '1') {
-          sidebar.classList.add('collapsed');
-          document.body.classList.add('sidebar-collapsed');
-          updateCollapseIcon();
-        }
-      } catch (e) {}
+      applySidebarLayout();
+      var resizeTimer;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(applySidebarLayout, 150);
+      });
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('a.nav-link[data-section]').forEach(function(link) {
-        link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); });
+        link.addEventListener('click', function() { if (isMobile()) closeMenu(); });
       });
     })();
   </script>
@@ -2352,7 +2588,7 @@
               <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
               ${destinoCard}
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div class="site-card-actions">
               <button class="btn btn-primary btn-sm" onclick="openReport('${s.site_id}')" title="Ver relatório individual"><i class="ri-file-chart-line"></i> Relatório</button>
               <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')"><i class="ri-edit-line"></i></button>
               <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')"><i class="ri-delete-bin-line"></i></button>
