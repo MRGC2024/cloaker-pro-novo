@@ -377,6 +377,24 @@
     .stat-card.danger .stat-icon { background: rgba(248, 113, 113, 0.1); color: var(--danger); }
     .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); letter-spacing: -0.02em; }
     .stat-label { color: var(--text-tertiary); font-size: 12px; font-weight: 500; }
+    .stat-sub { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+    .stat-delta { font-size: 11px; font-weight: 500; }
+    .kpi-delta { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+    .kpi-delta.up { color: var(--success); background: rgba(52, 211, 153, 0.12); }
+    .kpi-delta.down { color: var(--danger); background: rgba(248, 113, 113, 0.12); }
+    .kpi-delta.neutral { color: var(--text-tertiary); }
+    .meta-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .meta-kpi-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+    .meta-kpi-item .meta-kpi-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+    .meta-kpi-item .meta-kpi-label { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+    .bar-list-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .bar-list-row:last-child { border-bottom: none; }
+    .bar-list-label { flex: 0 0 120px; font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-list-track { flex: 1; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+    .bar-list-fill { height: 100%; border-radius: 4px; background: var(--accent-solid); }
+    .bar-list-fill.success { background: var(--success); }
+    .bar-list-fill.danger { background: var(--danger); }
+    .bar-list-count { flex: 0 0 48px; text-align: right; font-size: 12px; font-weight: 600; }
 
     .card { 
       background: var(--bg-card); 
@@ -1046,21 +1064,53 @@
       </div>
 
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon"><i class="ri-eye-line"></i></div><div class="stat-value" id="statTotal">-</div><div class="stat-label">Total de Visitas</div></div>
-        <div class="stat-card success"><div class="stat-icon"><i class="ri-check-line"></i></div><div class="stat-value" id="statAllowed">-</div><div class="stat-label">Permitidos</div></div>
-        <div class="stat-card danger"><div class="stat-icon"><i class="ri-forbid-line"></i></div><div class="stat-value" id="statBlocked">-</div><div class="stat-label">Bloqueados</div></div>
-        <div class="stat-card warning"><div class="stat-icon"><i class="ri-robot-line"></i></div><div class="stat-value" id="statBots">-</div><div class="stat-label">Bots</div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="ri-smartphone-line"></i></div><div class="stat-value" id="statMobile">-</div><div class="stat-label">Mobile</div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="ri-computer-line"></i></div><div class="stat-value" id="statDesktop">-</div><div class="stat-label">Desktop</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="ri-eye-line"></i></div><div class="stat-value" id="statTotal">-</div><div class="stat-delta" id="statTotalDelta"></div><div class="stat-label">Total de Visitas</div></div>
+        <div class="stat-card success"><div class="stat-icon"><i class="ri-check-line"></i></div><div class="stat-value" id="statAllowed">-</div><div class="stat-sub" id="statAllowedPct">—</div><div class="stat-delta" id="statAllowedDelta"></div><div class="stat-label">Permitidos</div></div>
+        <div class="stat-card danger"><div class="stat-icon"><i class="ri-forbid-line"></i></div><div class="stat-value" id="statBlocked">-</div><div class="stat-sub" id="statBlockedPct">—</div><div class="stat-delta" id="statBlockedDelta"></div><div class="stat-label">Bloqueados</div></div>
+        <div class="stat-card warning"><div class="stat-icon"><i class="ri-robot-line"></i></div><div class="stat-value" id="statBots">-</div><div class="stat-sub" id="statBotsPct">—</div><div class="stat-label">Bots</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="ri-smartphone-line"></i></div><div class="stat-value" id="statMobile">-</div><div class="stat-sub" id="statMobilePct">—</div><div class="stat-label">Mobile</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="ri-computer-line"></i></div><div class="stat-value" id="statDesktop">-</div><div class="stat-sub" id="statDesktopPct">—</div><div class="stat-label">Desktop</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-megaphone-line"></i> Tráfego Meta Ads</h3>
+          <span style="color: var(--text-secondary); font-size: 12px;">fbclid, referrer Facebook e revisores</span>
+        </div>
+        <div class="card-body">
+          <div class="meta-kpi-grid">
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaReviewers">-</div><div class="meta-kpi-label">Revisores Meta</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaTraffic">-</div><div class="meta-kpi-label">Tráfego Meta total</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaAllowedPct" style="color: var(--success);">-</div><div class="meta-kpi-label">Taxa aprovação Meta</div></div>
+          </div>
+        </div>
       </div>
 
       <div class="charts-grid">
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-line-chart-line"></i> Visitas por Hora</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-line-chart-line"></i> <span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-pie-chart-line"></i> Por Navegador</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBrowser"></canvas></div></div></div>
       </div>
       <div class="charts-grid">
         <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-global-line"></i> Por País</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartCountry"></canvas></div></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-prohibited-line"></i> Motivos de Bloqueio</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBlockReasons"></canvas></div></div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-windows-line"></i> Por Sistema (OS)</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartOS"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Top Referrers</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartReferrer"></canvas></div></div></div>
+      </div>
+
+      <div class="card" id="dashboardBySiteCard" style="margin-bottom: 20px; display: none;">
+        <div class="card-header"><h3 class="card-title"><i class="ri-stack-line"></i> Desempenho por Site</h3></div>
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Site</th><th>Total</th><th>Permitidos</th><th>Bloqueados</th><th>Taxa OK</th></tr></thead>
+              <tbody id="dashboardBySiteTable"><tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:20px;">—</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -1252,7 +1302,7 @@
           <select class="form-select site-selector" id="reportsSiteFilter" onchange="loadReports()" style="min-width: 200px;">
             <option value="all">Todos os Sites</option>
           </select>
-          <select class="form-select" id="reportsPeriodFilter" onchange="loadReports()" style="min-width: 140px;">
+          <select class="form-select" id="reportsPeriodFilter" onchange="reportsPeriodChanged()" style="min-width: 140px;">
             <option value="today">Hoje</option>
             <option value="7d">7 dias</option>
             <option value="30d">30 dias</option>
@@ -1265,23 +1315,47 @@
       <div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px;">
         <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border); padding: 20px; border-radius: 12px;">
           <div class="stat-value" id="reportStatTotal" style="font-size: 28px; font-weight: 700;">-</div>
+          <div class="stat-delta" id="reportStatTotalDelta"></div>
           <div class="stat-label" style="color: var(--text-secondary); font-size: 13px;">Total</div>
         </div>
         <div class="stat-card success" style="background: var(--bg-card); border: 1px solid rgba(63, 185, 80, 0.3); padding: 20px; border-radius: 12px;">
           <div class="stat-value" id="reportStatAllowed" style="font-size: 28px; font-weight: 700; color: var(--success);">-</div>
+          <div class="stat-sub" id="reportStatAllowedPct" style="color: var(--success);">—</div>
+          <div class="stat-delta" id="reportStatAllowedDelta"></div>
           <div class="stat-label" style="color: var(--text-secondary); font-size: 13px;">Aceitas</div>
         </div>
         <div class="stat-card danger" style="background: var(--bg-card); border: 1px solid rgba(248, 81, 73, 0.3); padding: 20px; border-radius: 12px;">
           <div class="stat-value" id="reportStatBlocked" style="font-size: 28px; font-weight: 700; color: var(--danger);">-</div>
+          <div class="stat-sub" id="reportStatBlockedPct" style="color: var(--danger);">—</div>
+          <div class="stat-delta" id="reportStatBlockedDelta"></div>
           <div class="stat-label" style="color: var(--text-secondary); font-size: 13px;">Bloqueadas</div>
+        </div>
+        <div class="stat-card warning" style="background: var(--bg-card); border: 1px solid rgba(251, 191, 36, 0.3); padding: 20px; border-radius: 12px;">
+          <div class="stat-value" id="reportStatBots" style="font-size: 28px; font-weight: 700; color: var(--warning);">-</div>
+          <div class="stat-sub" id="reportStatBotsPct">—</div>
+          <div class="stat-label" style="color: var(--text-secondary); font-size: 13px;">Bots</div>
         </div>
       </div>
 
-      <!-- Requisições por dia (gráfico) -->
       <div class="card" style="margin-bottom: 24px;">
         <div class="card-header">
-          <h3 class="card-title"><i class="ri-line-chart-line"></i> Requisições por dia</h3>
-          <span style="color: var(--text-secondary); font-size: 12px;">Quantidade de requisições por hora</span>
+          <h3 class="card-title"><i class="ri-megaphone-line"></i> Tráfego Meta Ads</h3>
+        </div>
+        <div class="card-body">
+          <div class="meta-kpi-grid">
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="reportMetaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="reportMetaReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="reportMetaReviewers">-</div><div class="meta-kpi-label">Revisores Meta</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="reportMetaAllowedPct" style="color: var(--success);">-</div><div class="meta-kpi-label">Taxa aprovação Meta</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requisições por dia/hora (gráfico) -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-line-chart-line"></i> <span id="reportChartTitle">Requisições por dia</span></h3>
+          <span style="color: var(--text-secondary); font-size: 12px;" id="reportChartSubtitle">Evolução no período selecionado</span>
         </div>
         <div class="card-body">
           <div class="chart-container" style="height: 280px;">
@@ -1294,17 +1368,31 @@
         </div>
       </div>
 
-      <!-- Requisições por país -->
-      <div class="card" style="margin-bottom: 24px;">
-        <div class="card-header">
-          <h3 class="card-title"><i class="ri-global-line"></i> Requisições por país</h3>
-          <span style="color: var(--text-secondary); font-size: 12px;">Quantidade de requisições por país</span>
+      <div class="charts-grid" style="margin-bottom: 24px;">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-global-line"></i> Requisições por país</h3></div>
+          <div class="card-body"><div id="reportCountryList" style="display: flex; flex-direction: column; gap: 8px;"><div style="color: var(--text-secondary); padding: 20px; text-align: center;">Carregando...</div></div></div>
         </div>
-        <div class="card-body">
-          <div id="reportCountryList" style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="color: var(--text-secondary); padding: 20px; text-align: center;">Carregando...</div>
-          </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-prohibited-line"></i> Motivos de bloqueio</h3></div>
+          <div class="card-body"><div id="reportBlockReasonsList"></div></div>
         </div>
+      </div>
+
+      <div class="charts-grid" style="margin-bottom: 24px;">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-windows-line"></i> Por sistema (OS)</h3></div>
+          <div class="card-body"><div id="reportOSList"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Top referrers</h3></div>
+          <div class="card-body"><div id="reportReferrerList"></div></div>
+        </div>
+      </div>
+
+      <div class="card" id="reportBySiteCard" style="margin-bottom: 24px; display: none;">
+        <div class="card-header"><h3 class="card-title"><i class="ri-stack-line"></i> Por site</h3></div>
+        <div class="card-body"><div id="reportBySiteList"></div></div>
       </div>
 
       <!-- Tabelas Permitidos e Bloqueados -->
@@ -1793,6 +1881,31 @@
             <button class="period-btn" data-period="30d">30 dias</button>
           </div>
           <button class="btn btn-primary" onclick="loadAnalytics()"><i class="ri-refresh-line"></i> Atualizar</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="ri-line-chart-line"></i> Timeline <span id="analyticsTimelineLabel">(por hora)</span></h3>
+          <span style="color: var(--text-secondary); font-size: 12px;">Total, bloqueios e revisores Meta</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" style="height: 280px;"><canvas id="analyticsTimelineChart"></canvas></div>
+          <div style="display: flex; gap: 16px; margin-top: 10px; font-size: 12px; flex-wrap: wrap;">
+            <span><span style="display:inline-block;width:12px;height:3px;background:#6366f1;vertical-align:middle;margin-right:6px;"></span> Total</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--danger);vertical-align:middle;margin-right:6px;"></span> Bloqueados</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--warning);vertical-align:middle;margin-right:6px;"></span> Revisores</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header"><h3 class="card-title"><i class="ri-megaphone-line"></i> Indicadores Meta</h3></div>
+        <div class="card-body">
+          <div class="meta-kpi-grid">
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="analyticsMetaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="analyticsMetaReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="analyticsMetaReviewers">-</div><div class="meta-kpi-label">Revisores Meta</div></div>
+            <div class="meta-kpi-item"><div class="meta-kpi-value" id="analyticsMetaFbclidPct">-</div><div class="meta-kpi-label">% com fbclid</div></div>
+          </div>
         </div>
       </div>
       <div class="charts-grid">
@@ -3519,6 +3632,60 @@
       }
     }
 
+    // Stats helpers
+    function formatPct(n) { const v = Number(n); return (isNaN(v) ? 0 : v).toFixed(1) + '%'; }
+    function formatCountDelta(n) {
+      const v = Number(n) || 0;
+      if (v === 0) return '<span class="kpi-delta neutral">= período anterior</span>';
+      const cls = v > 0 ? 'up' : 'down';
+      const sign = v > 0 ? '+' : '';
+      return `<span class="kpi-delta ${cls}">${sign}${v.toLocaleString('pt-BR')} vs anterior</span>`;
+    }
+    function formatPctDelta(n) {
+      const v = Number(n) || 0;
+      if (Math.abs(v) < 0.05) return '<span class="kpi-delta neutral">Taxa estável</span>';
+      const cls = v > 0 ? 'up' : 'down';
+      const sign = v > 0 ? '+' : '';
+      return `<span class="kpi-delta ${cls}">${sign}${v.toFixed(1)} pp vs anterior</span>`;
+    }
+    function useDailyChart(period) { return ['7d', '15d', '30d'].includes(period); }
+    function siteDisplayName(siteId) {
+      const s = (sites || []).find(x => x.site_id === siteId);
+      return s ? (s.name || siteId) : (siteId || 'default');
+    }
+    function renderBarList(containerId, items, opts) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const labelKey = (opts && opts.labelKey) || 'label';
+      const countKey = (opts && opts.countKey) || 'count';
+      const maxItems = (opts && opts.maxItems) || 10;
+      const fillClass = (opts && opts.fillClass) || '';
+      const list = (items || []).slice(0, maxItems);
+      if (!list.length) { el.innerHTML = '<div style="color:var(--text-secondary);padding:16px;text-align:center;">Nenhum dado no período</div>'; return; }
+      const max = Math.max(...list.map(r => Number(r[countKey]) || 0), 1);
+      el.innerHTML = list.map(r => {
+        const label = r[labelKey] || 'N/A';
+        const count = Number(r[countKey]) || 0;
+        const pctW = Math.round((count / max) * 100);
+        return `<div class="bar-list-row"><span class="bar-list-label" title="${String(label).replace(/"/g, '&quot;')}">${label}</span><div class="bar-list-track"><div class="bar-list-fill ${fillClass}" style="width:${pctW}%"></div></div><span class="bar-list-count">${count}</span></div>`;
+      }).join('');
+    }
+    function updateMetaKpis(prefix, meta) {
+      if (!meta) return;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set(prefix + 'Fbclid', (meta.withFbclid || 0).toLocaleString('pt-BR'));
+      set(prefix + 'Referrer', (meta.fbReferrer || 0).toLocaleString('pt-BR'));
+      set(prefix + 'Reviewers', (meta.reviewers || 0).toLocaleString('pt-BR'));
+      if (prefix === 'meta') {
+        set('metaTraffic', (meta.metaTraffic || 0).toLocaleString('pt-BR'));
+        set('metaAllowedPct', formatPct(meta.metaAllowedPct));
+      }
+      if (prefix === 'reportMeta') set('reportMetaAllowedPct', formatPct(meta.metaAllowedPct));
+      if (prefix === 'analyticsMeta') {
+        set('analyticsMetaFbclidPct', formatPct(meta.fbclidPct));
+      }
+    }
+
     // Stats
     async function refreshStats() {
       const siteId = document.getElementById('dashboardSiteFilter') ? document.getElementById('dashboardSiteFilter').value : 'all';
@@ -3537,7 +3704,38 @@
         document.getElementById('statBots').textContent = (n(stats.bots)).toLocaleString();
         document.getElementById('statMobile').textContent = (n(stats.mobile)).toLocaleString();
         document.getElementById('statDesktop').textContent = (n(stats.desktop)).toLocaleString();
-        updateCharts(stats);
+        const rates = stats.rates || {};
+        const cmp = stats.compare || {};
+        const setSub = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = formatPct(val); };
+        setSub('statAllowedPct', rates.allowedPct);
+        setSub('statBlockedPct', rates.blockedPct);
+        setSub('statBotsPct', rates.botPct);
+        setSub('statMobilePct', rates.mobilePct);
+        setSub('statDesktopPct', rates.desktopPct);
+        const setDelta = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+        setDelta('statTotalDelta', formatCountDelta(cmp.totalDelta));
+        setDelta('statAllowedDelta', formatPctDelta(cmp.allowedPctDelta));
+        setDelta('statBlockedDelta', formatPctDelta(cmp.blockedPctDelta));
+        updateMetaKpis('meta', stats.meta);
+        const bySiteCard = document.getElementById('dashboardBySiteCard');
+        const bySiteTbody = document.getElementById('dashboardBySiteTable');
+        const siteFilter = document.getElementById('dashboardSiteFilter')?.value || 'all';
+        if (bySiteCard && bySiteTbody) {
+          const bySite = stats.bySite || [];
+          if (siteFilter === 'all' && bySite.length > 1) {
+            bySiteCard.style.display = '';
+            bySiteTbody.innerHTML = bySite.map(r => `<tr>
+              <td><span class="badge badge-info">${siteDisplayName(r.site_id)}</span></td>
+              <td>${(r.count || 0).toLocaleString('pt-BR')}</td>
+              <td style="color:var(--success)">${(r.allowed || 0).toLocaleString('pt-BR')}</td>
+              <td style="color:var(--danger)">${(r.blocked || 0).toLocaleString('pt-BR')}</td>
+              <td>${formatPct(r.allowedPct)}</td>
+            </tr>`).join('');
+          } else {
+            bySiteCard.style.display = 'none';
+          }
+        }
+        updateCharts(stats, currentPeriod);
         if (resVis && resVis.ok) renderLastVisitsFromData(await resVis.json());
         else loadLastVisits();
         var lastEl = document.getElementById('dashboardLastUpdate');
@@ -3579,24 +3777,30 @@
       } catch (e) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--danger)">Erro ao carregar</td></tr>'; }
     }
 
-    function updateCharts(stats) {
+    function updateCharts(stats, period) {
       if (!stats || typeof stats !== 'object') return;
-      const colors = { line: ['#00d9a5', '#e94560'], pie: ['#e94560', '#00d9a5', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14'] };
+      period = period || currentPeriod || 'today';
+      const colors = { line: ['#00d9a5', '#e94560'], pie: ['#e94560', '#00d9a5', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997', '#6610f2'] };
       const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a0a0b0' } } } };
       const arr = (x) => Array.isArray(x) ? x : [];
-      const byHour = arr(stats.byHour);
-      const hourlyData = byHour.slice().reverse();
+      const daily = useDailyChart(period);
+      const trendTitle = document.getElementById('chartTrendTitle');
+      if (trendTitle) trendTitle.textContent = daily ? 'Visitas por Dia' : 'Visitas por Hora';
+      const trendData = daily ? arr(stats.byDay) : arr(stats.byHour).slice().reverse();
+      const trendLabels = daily
+        ? trendData.map(d => (d.day || '').slice(5))
+        : trendData.map(h => h.hour?.split(' ')[1] || h.hour);
       if (charts.hourly) charts.hourly.destroy();
       charts.hourly = new Chart(document.getElementById('chartHourly'), {
-        type: 'line',
+        type: daily ? 'bar' : 'line',
         data: {
-          labels: hourlyData.map(h => h.hour?.split(' ')[1] || h.hour),
+          labels: trendLabels,
           datasets: [
-            { label: 'Permitidos', data: hourlyData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: 'rgba(0,217,165,0.1)', fill: true, tension: 0.4 },
-            { label: 'Bloqueados', data: hourlyData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: 'rgba(233,69,96,0.1)', fill: true, tension: 0.4 }
+            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(0,217,165,0.65)' : 'rgba(0,217,165,0.1)', fill: !daily, tension: 0.4 },
+            { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(233,69,96,0.65)' : 'rgba(233,69,96,0.1)', fill: !daily, tension: 0.4 }
           ]
         },
-        options: { ...chartOpts, scales: { x: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
+        options: { ...chartOpts, scales: { x: { ticks: { color: '#a0a0b0', maxRotation: daily ? 0 : 45 }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
       });
 
       // Browser
@@ -3606,6 +3810,35 @@
         data: { labels: arr(stats.byBrowser).map(b => b.browser || 'N/A'), datasets: [{ data: arr(stats.byBrowser).map(b => b.count), backgroundColor: colors.pie }] },
         options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a0a0b0' } } } }
       });
+
+      // OS
+      if (charts.os) charts.os.destroy();
+      const osEl = document.getElementById('chartOS');
+      if (osEl) {
+        charts.os = new Chart(osEl, {
+          type: 'doughnut',
+          data: { labels: arr(stats.byOS).map(o => o.os || 'N/A'), datasets: [{ data: arr(stats.byOS).map(o => o.count), backgroundColor: colors.pie }] },
+          options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a0a0b0' } } } }
+        });
+      }
+
+      // Referrer (horizontal bar, truncated labels)
+      if (charts.referrer) charts.referrer.destroy();
+      const refEl = document.getElementById('chartReferrer');
+      if (refEl) {
+        const refs = arr(stats.byReferrer).slice(0, 8);
+        charts.referrer = new Chart(refEl, {
+          type: 'bar',
+          data: {
+            labels: refs.map(r => {
+              const u = (r.referrer || 'Direto').replace(/^https?:\/\//, '').slice(0, 28);
+              return u.length >= 28 ? u + '…' : u;
+            }),
+            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#6366f1' }]
+          },
+          options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0', font: { size: 10 } }, grid: { color: '#2a2a4a' } } } }
+        });
+      }
 
       // Country
       if (charts.country) charts.country.destroy();
@@ -3683,6 +3916,11 @@
         if (el) { el.value = siteId || 'all'; loadReports(); }
       }, 100);
     }
+    function reportsPeriodChanged() {
+      permittedPage = 1;
+      blockedPage = 1;
+      loadReports();
+    }
     async function loadReports() {
       const siteId = document.getElementById('reportsSiteFilter')?.value || 'all';
       const period = document.getElementById('reportsPeriodFilter')?.value || 'today';
@@ -3690,34 +3928,84 @@
         const res = await apiGet(`/api/stats?period=${period}&site=${siteId}`);
         if (res && res.ok) {
           const s = await res.json();
-          document.getElementById('reportStatTotal').textContent = s.total || 0;
-          document.getElementById('reportStatAllowed').textContent = s.allowed || 0;
-          document.getElementById('reportStatBlocked').textContent = s.blocked || 0;
-          const byHour = (s.byHour || []).slice().reverse();
+          const n = (v) => (v == null || isNaN(v) ? 0 : Number(v));
+          document.getElementById('reportStatTotal').textContent = (n(s.total)).toLocaleString('pt-BR');
+          document.getElementById('reportStatAllowed').textContent = (n(s.allowed)).toLocaleString('pt-BR');
+          document.getElementById('reportStatBlocked').textContent = (n(s.blocked)).toLocaleString('pt-BR');
+          const botsEl = document.getElementById('reportStatBots');
+          if (botsEl) botsEl.textContent = (n(s.bots)).toLocaleString('pt-BR');
+          const rates = s.rates || {};
+          const cmp = s.compare || {};
+          const setSub = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = formatPct(val); };
+          setSub('reportStatAllowedPct', rates.allowedPct);
+          setSub('reportStatBlockedPct', rates.blockedPct);
+          setSub('reportStatBotsPct', rates.botPct);
+          const setDelta = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+          setDelta('reportStatTotalDelta', formatCountDelta(cmp.totalDelta));
+          setDelta('reportStatAllowedDelta', formatPctDelta(cmp.allowedPctDelta));
+          setDelta('reportStatBlockedDelta', formatPctDelta(cmp.blockedPctDelta));
+          updateMetaKpis('reportMeta', s.meta);
+
+          const daily = useDailyChart(period);
+          const chartTitle = document.getElementById('reportChartTitle');
+          const chartSub = document.getElementById('reportChartSubtitle');
+          if (chartTitle) chartTitle.textContent = daily ? 'Requisições por dia' : 'Requisições por hora';
+          if (chartSub) chartSub.textContent = daily ? 'Agregado por dia no período' : 'Últimas 24 horas do período';
+
+          const trendData = daily ? (s.byDay || []) : (s.byHour || []).slice().reverse();
+          const trendLabels = daily
+            ? trendData.map(d => (d.day || '').slice(5))
+            : trendData.map(h => (h.hour || '').slice(-8));
+
           if (reportsChart) reportsChart.destroy();
           const ctx = document.getElementById('reportChartHourly');
           if (ctx) {
             const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a0a0b0' } } } };
             reportsChart = new Chart(ctx, {
-              type: 'line',
+              type: daily ? 'bar' : 'line',
               data: {
-                labels: byHour.map(h => (h.hour || '').slice(-8).replace(' ', ' ')),
+                labels: trendLabels,
                 datasets: [
-                  { label: 'Aceitas', data: byHour.map(h => h.allowed || 0), borderColor: 'rgb(63, 185, 80)', backgroundColor: 'rgba(63, 185, 80, 0.1)', fill: true, tension: 0.3 },
-                  { label: 'Bloqueadas', data: byHour.map(h => h.blocked || 0), borderColor: 'rgb(248, 81, 73)', backgroundColor: 'rgba(248, 81, 73, 0.1)', fill: true, tension: 0.3 }
+                  { label: 'Aceitas', data: trendData.map(h => h.allowed || 0), borderColor: 'rgb(63, 185, 80)', backgroundColor: daily ? 'rgba(63, 185, 80, 0.65)' : 'rgba(63, 185, 80, 0.1)', fill: !daily, tension: 0.3 },
+                  { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: 'rgb(248, 81, 73)', backgroundColor: daily ? 'rgba(248, 81, 73, 0.65)' : 'rgba(248, 81, 73, 0.1)', fill: !daily, tension: 0.3 }
                 ]
               },
-              options: { ...opts, scales: { x: { ticks: { color: '#a0a0b0', maxRotation: 45 }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
+              options: { ...opts, scales: { x: { ticks: { color: '#a0a0b0', maxRotation: daily ? 0 : 45 }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
             });
           }
+
           const byCountry = s.byCountry || [];
           const listEl = document.getElementById('reportCountryList');
           if (listEl) {
             if (byCountry.length === 0) listEl.innerHTML = '<div style="color: var(--text-secondary); padding: 20px; text-align: center;">Nenhuma requisição no período</div>';
-            else listEl.innerHTML = byCountry.map(r => {
-              const flag = countryToFlag(r.country);
-              return `<div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-secondary); border-radius: 8px;"><span style="font-size: 20px;">${flag}</span><span>${r.country || ''}</span><span style="margin-left: auto; font-weight: 600;">${r.count || 0}</span></div>`;
-            }).join('');
+            else {
+              const maxC = Math.max(...byCountry.map(r => r.count || 0), 1);
+              listEl.innerHTML = byCountry.map(r => {
+                const flag = countryToFlag(r.country);
+                const pctW = Math.round(((r.count || 0) / maxC) * 100);
+                return `<div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-secondary); border-radius: 8px;">
+                  <span style="font-size: 20px;">${flag}</span>
+                  <span style="flex:0 0 40px">${r.country || ''}</span>
+                  <div class="bar-list-track" style="flex:1"><div class="bar-list-fill success" style="width:${pctW}%"></div></div>
+                  <span style="font-weight: 600;">${r.count || 0}</span>
+                </div>`;
+              }).join('');
+            }
+          }
+
+          renderBarList('reportBlockReasonsList', (s.blockReasons || []).map(r => ({ label: r.block_reason || 'Outro', count: r.count })), { fillClass: 'danger', maxItems: 12 });
+          renderBarList('reportOSList', (s.byOS || []).map(r => ({ label: r.os || 'N/A', count: r.count })), { maxItems: 10 });
+          renderBarList('reportReferrerList', (s.byReferrer || []).map(r => ({ label: (r.referrer || '').replace(/^https?:\/\//, '').slice(0, 40), count: r.count })), { maxItems: 10 });
+
+          const bySiteCard = document.getElementById('reportBySiteCard');
+          if (bySiteCard) {
+            const bySite = s.bySite || [];
+            if (siteId === 'all' && bySite.length > 1) {
+              bySiteCard.style.display = '';
+              renderBarList('reportBySiteList', bySite.map(r => ({ label: siteDisplayName(r.site_id) + ' (' + formatPct(r.allowedPct) + ' OK)', count: r.count })), { maxItems: 20 });
+            } else {
+              bySiteCard.style.display = 'none';
+            }
           }
         }
       } catch (e) { console.error(e); }
@@ -3727,10 +4015,11 @@
 
     async function loadPermitted() {
       const siteId = document.getElementById('reportsSiteFilter') ? document.getElementById('reportsSiteFilter').value : 'all';
+      const period = document.getElementById('reportsPeriodFilter')?.value || 'today';
       const tbody = document.getElementById('permittedTable');
       if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="loading"><div class="spinner"></div></td></tr>';
       try {
-        const res = await apiGet(`/api/visitors?page=${permittedPage}&filter=allowed&site=${siteId}&limit=25`);
+        const res = await apiGet(`/api/visitors?page=${permittedPage}&filter=allowed&site=${siteId}&limit=25&period=${period}`);
         if (!res) return;
         const data = await res.json();
         const list = Array.isArray(data && data.visitors) ? data.visitors : [];
@@ -3768,10 +4057,11 @@
 
     async function loadBlocked() {
       const siteId = document.getElementById('reportsSiteFilter') ? document.getElementById('reportsSiteFilter').value : 'all';
+      const period = document.getElementById('reportsPeriodFilter')?.value || 'today';
       const tbody = document.getElementById('blockedTable');
       if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>';
       try {
-        const res = await apiGet(`/api/visitors?page=${blockedPage}&filter=blocked&site=${siteId}&limit=25`);
+        const res = await apiGet(`/api/visitors?page=${blockedPage}&filter=blocked&site=${siteId}&limit=25&period=${period}`);
         if (!res) return;
         const data = await res.json();
         const list = Array.isArray(data && data.visitors) ? data.visitors : [];
@@ -4334,8 +4624,47 @@
         const rev = d.suspectedReviewers || [];
         const revEl = document.getElementById('analyticsReviewers');
         const revEmpty = document.getElementById('analyticsReviewersEmpty');
-        if (revEl) revEl.innerHTML = rev.length ? rev.map(r => `<tr><td><code>${r.ip||'-'}</code></td><td title="${(r.user_agent||'').replace(/"/g,'')}">${(r.user_agent||'').substring(0,40)}…</td><td title="${(r.referrer||'').replace(/"/g,'')}">${(r.referrer||'').substring(0,30)}…</td><td>${r.block_reason||'-'}</td><td>${formatDateBR(r.created_at)}</td></tr>`).join('') : '<tr><td colspan="5">Nenhum acesso de IP suspeito no período.</td></tr>';
+        if (revEl) revEl.innerHTML = rev.length ? rev.map(r => {
+          const uaStr = r.user_agent || '';
+          const refStr = r.referrer || '';
+          return `<tr><td><code>${r.ip||'-'}</code></td><td title="${uaStr.replace(/"/g,'')}">${uaStr.length > 40 ? uaStr.substring(0, 40) + '…' : uaStr || '-'}</td><td title="${refStr.replace(/"/g,'')}">${refStr.length > 30 ? refStr.substring(0, 30) + '…' : refStr || '-'}</td><td>${r.block_reason||'-'}</td><td>${formatDateBR(r.created_at)}</td></tr>`;
+        }).join('') : '<tr><td colspan="5">Nenhum acesso de IP suspeito no período.</td></tr>';
         if (revEmpty) revEmpty.style.display = rev.length ? 'none' : 'block';
+
+        updateMetaKpis('analyticsMeta', d.meta);
+        const tlLabel = document.getElementById('analyticsTimelineLabel');
+        if (tlLabel) tlLabel.textContent = d.timelineGranularity === 'day' ? '(por dia)' : '(por hora)';
+        const timeline = d.timeline || [];
+        const tlCtx = document.getElementById('analyticsTimelineChart');
+        if (tlCtx) {
+          const labels = timeline.map(t => {
+            const lbl = t.label || '';
+            return d.timelineGranularity === 'day' ? lbl.slice(5) : (lbl.split(' ')[1] || lbl.slice(-5));
+          });
+          if (charts.analyticsTimeline) charts.analyticsTimeline.destroy();
+          charts.analyticsTimeline = new Chart(tlCtx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Total', data: timeline.map(t => t.total), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Bloqueados', data: timeline.map(t => t.blocked), borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.08)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Revisores', data: timeline.map(t => t.reviewers), borderColor: '#fbbf24', borderDash: [4, 4], fill: false, tension: 0.3, yAxisID: 'y1' }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: { legend: { labels: { color: '#a0a0b0' } } },
+              scales: {
+                x: { ticks: { color: '#a0a0b0', maxRotation: d.timelineGranularity === 'day' ? 0 : 45 }, grid: { color: '#2a2a4a' } },
+                y: { position: 'left', ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } },
+                y1: { position: 'right', ticks: { color: '#fbbf24', stepSize: 1 }, grid: { drawOnChartArea: false } }
+              }
+            }
+          });
+        }
       } catch (e) { console.error(e); }
     }
 

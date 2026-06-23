@@ -15,4 +15,9 @@ test('metrics service retorna stats numéricos mesmo com dados vazios', async ()
   const r = await svc.getStatsForUser(1, 'today', null);
   assert.equal(r.total, 0);
   assert.ok(Array.isArray(r.byCountry));
+  assert.ok(r.rates);
+  assert.equal(typeof r.rates.allowedPct, 'number');
+  assert.ok(r.meta);
+  assert.ok(r.compare);
+  assert.ok(Array.isArray(r.byDay));
 });

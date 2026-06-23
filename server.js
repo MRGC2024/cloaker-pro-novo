@@ -1683,9 +1683,16 @@ app.get('/api/visitors', async (req, res) => {
   const offset = (page - 1) * limit;
   const filter = req.query.filter || 'all';
   const siteId = req.query.site || null;
+  const period = req.query.period || null;
 
   let where = ["v.site_id IN (SELECT site_id FROM sites WHERE user_id = ?)"];
   const params = [userId];
+  if (period) {
+    const { start, end } = getBrasiliaDateRange(period);
+    where.push('v.created_at >= ?');
+    where.push('v.created_at < ?');
+    params.push(start, end);
+  }
   if (siteId && siteId !== 'all') {
     const myIds = await getMySiteIds(userId);
     if (!myIds.includes(siteId)) {
