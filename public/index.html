@@ -13,30 +13,29 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #0b0f17;
-      --bg-secondary: #111827;
-      --bg-card: #151c2c;
-      --bg-hover: #1a2336;
+      --bg-primary: #000000;
+      --bg-secondary: #0a0a0a;
+      --bg-card: #111111;
+      --bg-hover: #1a1a1a;
       --accent-primary: #6366f1;
-      --accent-secondary: #4f46e5;
+      --accent-secondary: #818cf8;
       --accent-solid: #6366f1;
-      --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
-      --success: #34d399;
-      --warning: #fbbf24;
-      --danger: #f87171;
-      --info: #22d3ee;
-      --text-primary: #f1f5f9;
-      --text-secondary: #94a3b8;
-      --text-tertiary: #64748b;
-      --border: rgba(148, 163, 184, 0.12);
-      --border-hover: rgba(99, 102, 241, 0.35);
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
-      --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.35);
-      --accent-glow: rgba(99, 102, 241, 0.05);
-      --accent-glow-2: transparent;
+      --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --info: #38bdf8;
+      --text-primary: #fafafa;
+      --text-secondary: #a3a3a3;
+      --text-tertiary: #737373;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(99, 102, 241, 0.45);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.6);
     }
+    html { color-scheme: dark; }
 
     /* Stealth — guia e confirmação */
     .stealth-guide-panel {
@@ -125,7 +124,7 @@
       top: 0; 
       width: 260px; 
       height: 100vh; 
-      background: #0e1420; 
+      background: #0a0a0a; 
       border-right: 1px solid var(--border); 
       padding: 16px 12px; 
       z-index: 100; 
@@ -281,12 +280,11 @@
 
     .main { 
       margin-left: 260px; 
-      padding: 24px 32px 48px; 
+      padding: 24px 28px 48px; 
       min-height: 100vh; 
       position: relative;
       z-index: 1;
       transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      max-width: 1400px;
     }
     body.sidebar-collapsed .main { margin-left: 72px; }
 
@@ -423,7 +421,12 @@
     .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.25; color: var(--accent-primary); }
     .empty-state h3 { margin-bottom: 8px; color: var(--text-primary); font-size: 16px; font-weight: 600; }
 
-    .menu-toggle {
+    .toolbar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .toolbar-row .form-group { flex: 1; min-width: 160px; margin-bottom: 0; }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .bulk-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .chart-container { height: 280px; position: relative; }
 
     .filters { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -455,7 +458,27 @@
 
     .form-group { margin-bottom: 20px; }
     .form-label { display: block; margin-bottom: 8px; color: var(--text-primary); font-size: 13px; font-weight: 600; }
-    .form-input, .form-select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0a0a;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+    .form-select option { background: #111; color: #fafafa; }
     .form-input:focus, .form-select:focus { 
       outline: none; 
       border-color: var(--accent-solid); 
@@ -570,10 +593,24 @@
     .section.active { display: block; animation: fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .period-selector { display: flex; gap: 4px; background: var(--bg-primary); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
-    .period-btn { padding: 8px 12px; border: none; background: none; color: var(--text-secondary); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: inherit; transition: background 0.15s, color 0.15s; }
+    .period-selector { display: inline-flex; gap: 2px; background: #0a0a0a; padding: 3px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
+    .period-btn {
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
     .period-btn.active { background: var(--accent-solid); color: #fff; }
     .period-btn:hover:not(.active) { background: var(--bg-hover); color: var(--text-primary); }
+
+    button, input, select, textarea { font-family: inherit; }
+    button { cursor: pointer; }
 
     .site-card { 
       background: var(--bg-card); 
@@ -739,7 +776,9 @@
       } catch (e) {}
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
-      document.querySelectorAll('.nav-link').forEach(function(link) { link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); }); });
+      document.querySelectorAll('a.nav-link[data-section]').forEach(function(link) {
+        link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); });
+      });
     })();
   </script>
 
@@ -756,7 +795,7 @@
           <p class="last-update" id="dashboardLastUpdate">Última atualização: —</p>
         </div>
         <div class="header-actions">
-          <select class="form-select site-selector" id="dashboardSiteFilter" onchange="refreshStats()">
+          <select class="form-select site-selector" id="dashboardSiteFilter" onchange="refreshStats()" style="width:auto; min-width:180px;">
             <option value="all">Todos os Sites</option>
           </select>
           <div class="period-selector">
@@ -823,12 +862,12 @@
         </div>
       </div>
       <div class="card" style="margin-bottom: 16px;">
-        <div class="card-body" style="display:grid; grid-template-columns: 1.2fr 220px 220px; gap:10px; align-items:end;">
-          <div class="form-group" style="margin-bottom:0;">
+        <div class="card-body toolbar-row">
+          <div class="form-group">
             <label class="form-label">Buscar</label>
             <input type="text" class="form-input" id="sitesSearchInput" placeholder="Buscar por nome, domínio, URL ou código..." oninput="renderSitesList()">
           </div>
-          <div class="form-group" style="margin-bottom:0;">
+          <div class="form-group" style="flex:0 1 180px;">
             <label class="form-label">Filtro</label>
             <select class="form-select" id="sitesQuickFilter" onchange="renderSitesList()">
               <option value="all">Todos</option>
@@ -839,7 +878,7 @@
               <option value="no_target">Sem URL principal</option>
             </select>
           </div>
-          <div class="form-group" style="margin-bottom:0;">
+          <div class="form-group" style="flex:0 1 180px;">
             <label class="form-label">Ordenar</label>
             <select class="form-select" id="sitesSortOrder" onchange="renderSitesList()">
               <option value="newest">Mais novos</option>
@@ -853,7 +892,7 @@
         </div>
       </div>
       <div class="card" style="margin-bottom: 16px;">
-        <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div class="card-body bulk-bar">
           <label class="radio-label"><input type="checkbox" id="sitesSelectAll" onchange="toggleSelectAllSites(this.checked)"> Selecionar todos (visíveis)</label>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(true)"><i class="ri-play-circle-line"></i> Ativar selecionados</button>
           <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(false)"><i class="ri-pause-circle-line"></i> Pausar selecionados</button>
@@ -2154,9 +2193,9 @@
       var iconEl = document.getElementById('pageTopBarIcon');
       if (titleEl) titleEl.textContent = sectionTitles[sectionId] || sectionId;
       if (iconEl && sectionIcons[sectionId]) { iconEl.className = sectionIcons[sectionId]; }
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('a.nav-link[data-section]').forEach(l => l.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      const link = document.querySelector('.nav-link[data-section="' + sectionId + '"]');
+      const link = document.querySelector('a.nav-link[data-section="' + sectionId + '"]');
       if (link) link.classList.add('active');
       document.getElementById(sectionId).classList.add('active');
       if (location.hash !== '#' + sectionId) location.hash = sectionId;
@@ -2179,13 +2218,16 @@
       const hash = (location.hash || '').replace(/^#/, '').toLowerCase();
       if (hash && document.getElementById(hash)) goToSection(hash);
     });
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        const section = link.dataset.section;
-        if (section) goToSection(section);
+    function initNavLinks() {
+      document.querySelectorAll('a.nav-link[data-section]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          var section = link.getAttribute('data-section');
+          if (section) goToSection(section);
+        });
       });
-    });
+    }
+    initNavLinks();
 
     document.querySelectorAll('.period-btn').forEach(btn => {
       btn.addEventListener('click', () => {
