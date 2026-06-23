@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🔒 Cloaker Pro - Painel de Controle</title>
+  <title>Cloaker Pro — Painel</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,14 +13,14 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #0a0e14;
-      --bg-secondary: #111820;
-      --bg-card: #161d26;
-      --bg-hover: #1c242e;
-      --accent-primary: #14b8a6;
-      --accent-secondary: #0d9488;
-      --accent-solid: #14b8a6;
-      --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+      --bg-primary: #0b0f17;
+      --bg-secondary: #111827;
+      --bg-card: #151c2c;
+      --bg-hover: #1a2336;
+      --accent-primary: #6366f1;
+      --accent-secondary: #4f46e5;
+      --accent-solid: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
       --success: #34d399;
       --warning: #fbbf24;
       --danger: #f87171;
@@ -28,14 +28,14 @@
       --text-primary: #e2e8f0;
       --text-secondary: #94a3b8;
       --text-tertiary: #64748b;
-      --border: rgba(51, 65, 85, 0.9);
-      --border-hover: rgba(20, 184, 166, 0.35);
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
-      --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6);
-      --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.65);
-      --accent-glow: rgba(20, 184, 166, 0.06);
-      --accent-glow-2: rgba(15, 118, 110, 0.05);
+      --border: rgba(148, 163, 184, 0.12);
+      --border-hover: rgba(99, 102, 241, 0.35);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+      --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.35);
+      --accent-glow: rgba(99, 102, 241, 0.05);
+      --accent-glow-2: transparent;
     }
     /* ===== TEMAS ALTERNATIVOS ===== */
     body.theme-violet {
@@ -255,6 +255,134 @@
     body.theme-warm .card { border-color: var(--border); }
     body.theme-warm .stat-card::before { background: var(--accent-solid); }
     body.theme-warm .btn-primary { color: #1c1917; }
+
+    /* ===== TEMA PRO (padrão — limpo e profissional) ===== */
+    body.theme-pro {
+      --bg-primary: #0b0f17;
+      --bg-secondary: #111827;
+      --bg-card: #151c2c;
+      --bg-hover: #1a2336;
+      --accent-primary: #6366f1;
+      --accent-secondary: #4f46e5;
+      --accent-solid: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      --border: rgba(148, 163, 184, 0.12);
+      --border-hover: rgba(99, 102, 241, 0.35);
+      --accent-glow: rgba(99, 102, 241, 0.05);
+      --accent-glow-2: transparent;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    body.theme-pro { font-family: 'DM Sans', 'Plus Jakarta Sans', sans-serif; background-image: none; }
+    body.theme-pro::before { display: none; }
+    body.theme-pro .sidebar { box-shadow: none; border-right: 1px solid var(--border); background: #0e1420; }
+    body.theme-pro .logo h1 { font-weight: 700; letter-spacing: -0.02em; }
+    body.theme-pro .nav-link { border-left: none; border-radius: 10px; margin: 2px 0; font-weight: 500; }
+    body.theme-pro .nav-link.active { background: rgba(99, 102, 241, 0.12); color: #c7d2fe; }
+    body.theme-pro .nav-link:hover { background: var(--bg-hover); }
+    body.theme-pro .nav-group-title { font-size: 10px; letter-spacing: 0.08em; opacity: 0.7; }
+    body.theme-pro .card, body.theme-pro .stat-card, body.theme-pro .site-card { border-radius: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+    body.theme-pro .stat-card::before { display: none; }
+    body.theme-pro .stat-card:hover, body.theme-pro .site-card:hover { transform: none; border-color: var(--border-hover); }
+    body.theme-pro .stat-icon { border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--accent-primary); }
+    body.theme-pro .btn { border-radius: 10px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+    body.theme-pro .btn::before { display: none; }
+    body.theme-pro .btn-primary { box-shadow: none; }
+    body.theme-pro .btn-primary:hover { opacity: 0.92; transform: none; }
+    body.theme-pro .form-label { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    body.theme-pro .form-input, body.theme-pro .form-select { border-radius: 10px; border-color: var(--border); background: var(--bg-primary); }
+    body.theme-pro .form-input:focus, body.theme-pro .form-select:focus { border-color: var(--accent-solid); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
+    body.theme-pro .modal-content { border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+    body.theme-pro .modal-header { border-bottom: 1px solid var(--border); padding: 20px 24px; }
+    body.theme-pro .modal-header h3 { font-weight: 700; letter-spacing: -0.02em; }
+    body.theme-pro th { background: var(--bg-primary) !important; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); }
+    body.theme-pro .page-top-bar { border-bottom: 1px solid var(--border); margin-bottom: 28px; padding-bottom: 18px; }
+    body.theme-pro .page-top-bar h1 { font-size: 22px; font-weight: 700; }
+
+    body.theme-teal {
+      --accent-primary: #14b8a6;
+      --accent-secondary: #0d9488;
+      --accent-solid: #14b8a6;
+      --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+      --border-hover: rgba(20, 184, 166, 0.35);
+      --accent-glow: rgba(20, 184, 166, 0.06);
+      --accent-glow-2: rgba(15, 118, 110, 0.05);
+    }
+
+    /* Stealth — guia e confirmação */
+    .stealth-guide-panel {
+      display: none;
+      margin-top: 16px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.02) 100%);
+    }
+    .stealth-guide-header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+    .stealth-guide-header > i { font-size: 28px; color: var(--accent-primary); flex-shrink: 0; margin-top: 2px; }
+    .stealth-guide-header strong { display: block; font-size: 15px; margin-bottom: 4px; color: var(--text-primary); }
+    .stealth-guide-header p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0; }
+    .stealth-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .stealth-checklist li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.15); }
+    .stealth-checklist li i { font-size: 18px; flex-shrink: 0; }
+    .stealth-checklist li.ok { color: var(--success); background: rgba(52, 211, 153, 0.08); }
+    .stealth-checklist li.ok i { color: var(--success); }
+    .stealth-checklist li.fail { color: var(--danger); background: rgba(248, 113, 113, 0.08); }
+    .stealth-checklist li.fail i { color: var(--danger); }
+    .stealth-warning-banner {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      font-size: 13px;
+      color: #fecaca;
+      line-height: 1.5;
+    }
+    .stealth-warning-banner i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .behavior-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    @media (max-width: 560px) { .behavior-cards { grid-template-columns: 1fr; } }
+    .behavior-card {
+      position: relative;
+      display: block;
+      padding: 14px 14px 14px 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .behavior-card:hover { border-color: var(--border-hover); }
+    .behavior-card.selected { border-color: var(--accent-solid); background: rgba(99, 102, 241, 0.08); box-shadow: 0 0 0 1px var(--accent-solid); }
+    .behavior-card.recommended { border-color: rgba(99, 102, 241, 0.4); }
+    .behavior-card input { position: absolute; left: 14px; top: 16px; accent-color: var(--accent-solid); }
+    .behavior-card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .behavior-card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
+    .badge-recommended { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; background: rgba(99, 102, 241, 0.2); color: #c7d2fe; }
+    .form-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .legacy-notice { font-size: 12px; color: var(--text-tertiary); padding: 10px 12px; border-radius: 10px; background: var(--bg-primary); border: 1px dashed var(--border); margin-top: 10px; line-height: 1.5; }
+    .panel-tip-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+      border-radius: 14px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.03) 100%);
+    }
+    .panel-tip-banner > i { font-size: 26px; color: var(--accent-primary); flex-shrink: 0; margin-top: 2px; }
+    .panel-tip-banner strong { color: var(--text-primary); }
+    .panel-tip-banner p { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+    .badge-stealth { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(99, 102, 241, 0.2); color: #c7d2fe; margin-left: 6px; vertical-align: middle; }
+    .badge-redirect { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); margin-left: 6px; vertical-align: middle; }
 
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -1154,9 +1282,9 @@
         }
       } catch (e) {}
       var savedTheme = '';
-      try { savedTheme = localStorage.getItem('appTheme') || 'teal'; } catch (e) { savedTheme = 'teal'; }
-      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm');
-      if (savedTheme && savedTheme !== 'teal') document.body.classList.add('theme-' + savedTheme);
+      try { savedTheme = localStorage.getItem('appTheme') || 'pro'; } catch (e) { savedTheme = 'pro'; }
+      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm', 'theme-pro');
+      if (savedTheme) document.body.classList.add('theme-' + savedTheme);
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('.nav-link').forEach(function(link) { link.addEventListener('click', function() { if (window.innerWidth <= 768) closeMenu(); }); });
@@ -1233,6 +1361,13 @@
         </div>
         <div class="header-actions">
           <button class="btn btn-primary" onclick="openNewSiteModal()"><i class="ri-add-line"></i> Novo Site</button>
+        </div>
+      </div>
+      <div class="panel-tip-banner">
+        <i class="ri-shield-check-line"></i>
+        <div>
+          <strong>Campanhas novas no Meta → use modo Stealth</strong>
+          <p>Crie o site em <strong>Stealth</strong>, cadastre uma <strong>white page</strong> em Páginas e use o <strong>link novo</strong> no anúncio. Links antigos com redirect 302 devem continuar nas campanhas que já estão rodando.</p>
         </div>
       </div>
       <div class="card" style="margin-bottom: 16px;">
@@ -1483,11 +1618,18 @@
       <div class="header">
         <h2>Link para Ads</h2>
       </div>
+      <div class="panel-tip-banner">
+        <i class="ri-shield-check-line"></i>
+        <div>
+          <strong>Antes de gerar: Stealth é a melhor opção para Meta Ads</strong>
+          <p>O link será criado em modo Stealth. Depois de gerar, edite o site e selecione a <strong>white page</strong> em Páginas — sem ela o Stealth não ativa. Não use este link em campanhas antigas que já usam redirect 302.</p>
+        </div>
+      </div>
       <!-- Gerar link direto: colar URL → gerar link para usar nos Ads -->
-      <div class="card" style="border: 2px solid var(--accent-solid);">
+      <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.4);">
         <div class="card-header"><h3 class="card-title"><i class="ri-links-line"></i> Gerar novo link para Ads</h3></div>
         <div class="card-body">
-          <p style="color: var(--text-secondary); margin-bottom: 15px;">Cole o link da sua landing page abaixo e clique em <strong>Gerar link</strong>. Use o link gerado como <strong>URL de destino</strong> nos seus anúncios (Meta Ads, Google Ads, etc.).</p>
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Cole a URL da sua landing page e clique em <strong>Gerar link</strong>. Você verá um aviso de confirmação Stealth antes de salvar. Use o link gerado como <strong>URL de destino</strong> no Meta Ads.</p>
           <div class="form-group">
             <label class="form-label">URL da sua landing page</label>
             <input type="url" class="form-input" id="quickTargetUrl" placeholder="https://seusite.com/landing">
@@ -1862,7 +2004,12 @@
         <div class="card-header"><h3 class="card-title"><i class="ri-palette-line"></i> Tema do painel</h3></div>
         <div class="card-body">
           <div class="appearance-themes" id="appearanceThemes">
-            <div class="appearance-theme-card active" data-theme="teal" onclick="applyTheme('teal')">
+            <div class="appearance-theme-card active" data-theme="pro" onclick="applyTheme('pro')">
+              <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #0b0f17 50%, #6366f1 50%);"></div>
+              <h4>Pro</h4>
+              <p>Limpo, organizado — padrão recomendado.</p>
+            </div>
+            <div class="appearance-theme-card" data-theme="teal" onclick="applyTheme('teal')">
               <div class="appearance-theme-preview" style="background: linear-gradient(135deg, #14b8a6, #0d9488);"></div>
               <h4>Padrão (Teal)</h4>
               <p>Verde-água, visual atual do painel.</p>
@@ -2251,7 +2398,7 @@
 
   <!-- Modal Novo/Editar Site -->
   <div class="modal" id="siteModal">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: 720px;">
       <div class="modal-header">
         <h3 id="siteModalTitle">Novo Site</h3>
         <button class="modal-close" onclick="closeSiteModal()">&times;</button>
@@ -2298,26 +2445,64 @@
           <small style="color: var(--text-secondary); font-size: 12px;">Cada link recebe um prefixo único e aleatório (ex: <strong>k7m2n9p4</strong> → seulink.com/<strong>k7m2n9p4</strong>/abc123). Ao criar um site novo, um prefixo é gerado automaticamente. Clique em <strong>Gerar aleatório</strong> para trocar.</small>
         </div>
         <div class="form-group">
-          <label class="form-label">URL de Redirecionamento (quando bloquear)</label>
-          <input type="text" class="form-input" id="siteRedirectUrl" value="https://www.google.com/" placeholder="Para onde mandar quem for bloqueado">
-          <div class="form-group" style="margin-top: 12px;">
-            <label class="form-label">Ao bloquear, o que fazer?</label>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorStealth" value="stealth" checked> <strong>Stealth (recomendado Meta Ads)</strong> — bloqueio e oferta na mesma URL (HTTP 200)</label>
-              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorRedirect" value="redirect"> Redirecionar para a URL acima (302 — mais detectável)</label>
-              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorEmbed" value="embed"> Mostrar o conteúdo da URL nesta mesma página (embed)</label>
-              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorPage" value="page"> Usar minha página (HTML definido em Páginas — fica no mesmo domínio)</label>
-            </div>
-            <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 8px;">No modo <strong>Stealth</strong>, crawler e lead recebem o <strong>mesmo HTML</strong> na URL do link. Leads reais só avançam após validação interna. Crie uma página em <strong>Páginas</strong> (mesmo tema da oferta) e selecione abaixo — evita reprovação por “link enganoso”.</small>
+          <label class="form-label">Modo de entrega do link</label>
+          <div class="behavior-cards">
+            <label class="behavior-card recommended" id="behaviorCardStealth">
+              <input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorStealth" value="stealth" checked>
+              <div class="behavior-card-title">Stealth <span class="badge-recommended">Meta Ads</span></div>
+              <div class="behavior-card-desc">Mesma página para crawler e lead. Ideal para campanhas novas no Meta.</div>
+            </label>
+            <label class="behavior-card" id="behaviorCardRedirect">
+              <input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorRedirect" value="redirect">
+              <div class="behavior-card-title">Redirect 302</div>
+              <div class="behavior-card-desc">Clique vai direto à oferta. Use em links/campanhas que já estão rodando.</div>
+            </label>
+            <label class="behavior-card" id="behaviorCardEmbed">
+              <input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorEmbed" value="embed">
+              <div class="behavior-card-title">Embed</div>
+              <div class="behavior-card-desc">Bloqueio mostra conteúdo da URL de redirecionamento na mesma página.</div>
+            </label>
+            <label class="behavior-card" id="behaviorCardPage">
+              <input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorPage" value="page">
+              <div class="behavior-card-title">Página customizada</div>
+              <div class="behavior-card-desc">HTML próprio ao bloquear (modo page).</div>
+            </label>
           </div>
-          <div id="sitePageSelectBox" style="display: none; margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
-            <label class="form-label" style="margin-bottom: 6px;">Página da ponte / white page (recomendado no Stealth)</label>
+          <div id="stealthGuidePanel" class="stealth-guide-panel">
+            <div class="stealth-guide-header">
+              <i class="ri-shield-check-line"></i>
+              <div>
+                <strong>Checklist Stealth — leia antes de salvar</strong>
+                <p>Sites <strong>antigos</strong> com redirect 302 não precisam disso. Stealth é para <strong>campanhas novas</strong> no Meta.</p>
+              </div>
+            </div>
+            <ul class="stealth-checklist">
+              <li id="stealthCheckPage" class="fail"><i class="ri-close-circle-fill"></i> Selecionar white page em <strong>Páginas</strong> (obrigatório)</li>
+              <li id="stealthCheckTarget" class="fail"><i class="ri-close-circle-fill"></i> URL da oferta preenchida</li>
+              <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> White page no <strong>mesmo tema</strong> do anúncio (evita reprovação)</li>
+              <li id="stealthCheckNewLink" class="ok"><i class="ri-information-line"></i> Usar o <strong>link novo</strong> gerado — não reutilizar links de campanhas antigas</li>
+            </ul>
+            <div id="stealthWarningBanner" class="stealth-warning-banner">
+              <i class="ri-error-warning-fill"></i>
+              <span><strong>White page obrigatória.</strong> Sem ela o Stealth não ativa e o link funciona como redirect 302. Crie em <strong>Páginas</strong> e selecione abaixo.</span>
+            </div>
+          </div>
+          <div class="legacy-notice" id="legacyModeNotice" style="display:none;">
+            <i class="ri-information-line"></i> Modo <strong>Redirect 302</strong>: comportamento clássico — lead vai direto à oferta. Recomendado para links que já estão em campanhas ativas.
+          </div>
+          <div id="sitePageSelectBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: var(--bg-primary); border-radius: 12px; border: 1px solid var(--border);">
+            <label class="form-label" style="margin-bottom: 8px;"><i class="ri-file-code-line"></i> White page / página da ponte <span id="whitePageRequiredTag" style="color:var(--danger);">*</span></label>
             <select class="form-select" id="siteLandingPageId">
-              <option value="">— Selecione —</option>
+              <option value="">— Selecione uma página —</option>
             </select>
+            <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 8px;">Crie em <strong>Páginas</strong> antes de salvar. No Stealth, é ela que o Meta vê na revisão.</small>
           </div>
         </div>
-        <h4 style="margin: 25px 0 15px;">Regras de Bloqueio</h4>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label">URL de redirecionamento (quando bloquear)</label>
+          <input type="text" class="form-input" id="siteRedirectUrl" value="https://www.google.com/" placeholder="Fallback se não usar white page no bloqueio">
+        </div>
+        <div class="form-section-title">Regras de bloqueio</div>
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Padrão: <strong>apenas Brasil (BR)</strong>; bloquear desktops, Facebook, bots, VPN/proxy e DevTools.</p>
         <div class="info-grid">
           <div class="info-item"><span class="info-label">Bloquear Desktops</span><label class="switch"><input type="checkbox" id="siteBlockDesktop" checked><span class="slider"></span></label></div>
@@ -2377,6 +2562,33 @@
         <div style="display: flex; gap: 10px; margin-top: 25px;">
           <button class="btn btn-primary" onclick="saveSite()"><i class="ri-save-line"></i> Salvar</button>
           <button class="btn btn-secondary" onclick="closeSiteModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmação Stealth antes de salvar site novo -->
+  <div class="modal" id="stealthConfirmModal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3><i class="ri-shield-check-line"></i> Confirmar site Stealth</h3>
+        <button class="modal-close" onclick="closeStealthConfirmModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="stealthConfirmIntro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:</p>
+        <ul class="stealth-checklist" style="margin-bottom: 16px;">
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> White page selecionada — Meta vê essa página na revisão</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Leads reais no celular vão para a <strong>oferta</strong> após validação</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> deste site — não misture com links antigos (302)</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
+        </ul>
+        <label class="radio-label" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;font-size:13px;color:var(--text-secondary);">
+          <input type="checkbox" id="stealthConfirmCheckbox" style="margin-top:3px;">
+          <span>Li e confirmo: este é um <strong>site/link novo</strong> para teste ou campanha nova no Meta.</span>
+        </label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="stealthConfirmSaveBtn" disabled onclick="confirmStealthAndSave()"><i class="ri-check-line"></i> Confirmar e salvar</button>
+          <button type="button" class="btn btn-secondary" onclick="closeStealthConfirmModal()">Voltar e revisar</button>
         </div>
       </div>
     </div>
@@ -2567,17 +2779,17 @@
       if (sectionId === 'autoimprove') loadAutoImprove();
       if (sectionId === 'systemhealth') loadSystemHealth();
     }
-    var THEME_IDS = ['teal', 'minimal', 'neon', 'light', 'glass', 'compact', 'warm'];
+    var THEME_IDS = ['pro', 'teal', 'minimal', 'neon', 'light', 'glass', 'compact', 'warm'];
     function applyTheme(themeId) {
       if (!themeId || !THEME_IDS.includes(themeId)) return;
-      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm');
-      if (themeId !== 'teal') document.body.classList.add('theme-' + themeId);
+      document.body.classList.remove('theme-teal', 'theme-violet', 'theme-amber', 'theme-slate', 'theme-minimal', 'theme-neon', 'theme-light', 'theme-glass', 'theme-compact', 'theme-warm', 'theme-pro');
+      document.body.classList.add('theme-' + themeId);
       try { localStorage.setItem('appTheme', themeId); } catch (e) {}
       loadAppearance();
     }
     function loadAppearance() {
       var current = '';
-      try { current = localStorage.getItem('appTheme') || 'teal'; } catch (e) { current = 'teal'; }
+      try { current = localStorage.getItem('appTheme') || 'pro'; } catch (e) { current = 'pro'; }
       document.querySelectorAll('.appearance-theme-card').forEach(function(card) {
         var t = card.getAttribute('data-theme');
         card.classList.toggle('active', t === current);
@@ -2696,6 +2908,12 @@
         const primUrl = ((s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
+        const behavior = (s.block_behavior || 'redirect');
+        const behaviorBadge = behavior === 'stealth'
+          ? '<span class="badge-stealth" title="Modo Stealth — Meta Ads">Stealth</span>'
+          : behavior === 'redirect'
+            ? '<span class="badge-redirect" title="Redirect 302 — campanhas antigas">302</span>'
+            : '<span class="badge-redirect">' + behavior + '</span>';
         const statusBadge = !isActive
           ? '<span class="badge" style="background:var(--text-secondary);font-size:10px;margin-left:6px;">Pausado</span>'
           : hasFb
@@ -2708,7 +2926,7 @@
         <div class="site-card">
           <div class="site-card-header">
             <div>
-              <div class="site-card-title"><label class="radio-label" style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;"><input type="checkbox" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)"></label>${s.name} ${statusBadge} ${(s.use_fallback !== 0 && s.use_fallback !== false) ? '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--primary);opacity:0.9;" title="Substituição de link ativa ao cair">Fallback</span>' : '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--text-secondary);" title="Sem substituição ao cair">Sem fallback</span>'}</div>
+              <div class="site-card-title"><label class="radio-label" style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;"><input type="checkbox" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)"></label>${s.name} ${behaviorBadge} ${statusBadge} ${(s.use_fallback !== 0 && s.use_fallback !== false) ? '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--primary);opacity:0.9;" title="Substituição de link ativa ao cair">Fallback</span>' : '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--text-secondary);" title="Sem substituição ao cair">Sem fallback</span>'}</div>
               <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
               ${destinoCard}
             </div>
@@ -2844,6 +3062,7 @@
       setSiteEffectiveTargetUI(null);
       document.getElementById('siteUseFallback').checked = true;
       await fillRandomPathPrefix();
+      updateStealthUI();
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -2901,6 +3120,7 @@
       document.getElementById('siteTikTokLinkParams').value = siteParams.tiktok || '';
       document.getElementById('sitePathPrefix').value = (site.path_prefix || '').trim();
       regenerateRefOnSave = false;
+      updateStealthUI();
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -2915,6 +3135,108 @@
       if (!code || !code.textContent || code.textContent.startsWith('(nenhum')) return;
       const text = code.textContent.trim();
       if (text) { copyToClipboard(text); }
+    }
+
+    let pendingSiteSavePayload = null;
+    let pendingSiteSaveId = '';
+    let pendingStealthCallback = null;
+
+    function openStealthConfirmModal(options) {
+      const opts = options || {};
+      const titleEl = document.querySelector('#stealthConfirmModal .modal-header h3');
+      const introEl = document.getElementById('stealthConfirmIntro');
+      if (opts.mode === 'link') {
+        if (titleEl) titleEl.innerHTML = '<i class="ri-shield-check-line"></i> Confirmar novo link Stealth';
+        if (introEl) introEl.innerHTML = 'Você está gerando um <strong>link novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:';
+      } else {
+        if (titleEl) titleEl.innerHTML = '<i class="ri-shield-check-line"></i> Confirmar site Stealth';
+        if (introEl) introEl.innerHTML = 'Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:';
+      }
+      pendingStealthCallback = typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
+      pendingSiteSavePayload = opts.payload || null;
+      pendingSiteSaveId = opts.siteId || '';
+      document.getElementById('stealthConfirmCheckbox').checked = false;
+      document.getElementById('stealthConfirmSaveBtn').disabled = true;
+      document.getElementById('stealthConfirmModal').classList.add('active');
+    }
+
+    function setStealthCheckItem(id, ok) {
+      const el = document.getElementById(id);
+      if (!el || id === 'stealthCheckTheme' || id === 'stealthCheckNewLink') return;
+      el.classList.toggle('ok', ok);
+      el.classList.toggle('fail', !ok);
+      const icon = el.querySelector('i');
+      if (icon) icon.className = ok ? 'ri-checkbox-circle-fill' : 'ri-close-circle-fill';
+    }
+
+    function updateStealthUI() {
+      const isStealth = document.getElementById('siteBlockBehaviorStealth').checked;
+      const isPage = document.getElementById('siteBlockBehaviorPage').checked;
+      const isRedirect = document.getElementById('siteBlockBehaviorRedirect').checked;
+      const guide = document.getElementById('stealthGuidePanel');
+      const legacy = document.getElementById('legacyModeNotice');
+      const pageBox = document.getElementById('sitePageSelectBox');
+      const reqTag = document.getElementById('whitePageRequiredTag');
+      if (guide) guide.style.display = isStealth ? 'block' : 'none';
+      if (legacy) legacy.style.display = isRedirect ? 'block' : 'none';
+      if (pageBox) pageBox.style.display = (isStealth || isPage) ? 'block' : 'none';
+      if (reqTag) reqTag.style.display = isStealth ? 'inline' : 'none';
+      document.querySelectorAll('.behavior-card').forEach(function(card) {
+        const input = card.querySelector('input[type=radio]');
+        card.classList.toggle('selected', !!(input && input.checked));
+      });
+      updateStealthChecklist();
+    }
+
+    function updateStealthChecklist() {
+      const isStealth = document.getElementById('siteBlockBehaviorStealth').checked;
+      if (!isStealth) return;
+      const hasPage = !!(document.getElementById('siteLandingPageId').value || '').trim();
+      const hasTarget = !!(document.getElementById('siteTargetUrl').value || '').trim();
+      setStealthCheckItem('stealthCheckPage', hasPage);
+      setStealthCheckItem('stealthCheckTarget', hasTarget);
+      const banner = document.getElementById('stealthWarningBanner');
+      if (banner) banner.style.display = hasPage ? 'none' : 'flex';
+    }
+
+    function closeStealthConfirmModal() {
+      document.getElementById('stealthConfirmModal').classList.remove('active');
+      document.getElementById('stealthConfirmCheckbox').checked = false;
+      document.getElementById('stealthConfirmSaveBtn').disabled = true;
+      pendingSiteSavePayload = null;
+      pendingSiteSaveId = '';
+      pendingStealthCallback = null;
+    }
+
+    async function confirmStealthAndSave() {
+      if (!document.getElementById('stealthConfirmCheckbox').checked) return;
+      const data = pendingSiteSavePayload;
+      const siteId = pendingSiteSaveId;
+      const callback = pendingStealthCallback;
+      closeStealthConfirmModal();
+      if (callback) {
+        await callback();
+        return;
+      }
+      if (data) await performSaveSite(data, siteId);
+    }
+
+    async function performSaveSite(data, siteId) {
+      try {
+        let savedSiteId = siteId || '';
+        if (siteId) {
+          await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+        } else {
+          const createdRes = await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+          if (createdRes && createdRes.ok) {
+            const createdSite = await createdRes.json();
+            savedSiteId = createdSite && createdSite.site_id ? createdSite.site_id : '';
+          }
+        }
+        saveParamsForSite(savedSiteId, document.getElementById('siteMetaLinkParams').value || '', document.getElementById('siteTikTokLinkParams').value || '');
+        closeSiteModal();
+        loadSites();
+      } catch (e) { alert('Erro ao salvar site'); }
     }
 
     async function saveSite() {
@@ -2956,21 +3278,20 @@
       if (!data.name) { alert('Digite um nome para o site'); return; }
       if (!data.target_url || !data.target_url.trim()) { alert('Digite a URL do seu site (landing page)'); return; }
 
-      try {
-        let savedSiteId = siteId || '';
-        if (siteId) {
-          await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-        } else {
-          const createdRes = await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-          if (createdRes && createdRes.ok) {
-            const createdSite = await createdRes.json();
-            savedSiteId = createdSite && createdSite.site_id ? createdSite.site_id : '';
-          }
+      if (isStealthBehavior) {
+        updateStealthChecklist();
+        if (!data.landing_page_id) {
+          document.getElementById('stealthGuidePanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          alert('Modo Stealth exige uma white page.\n\n1. Vá em Páginas e crie o HTML\n2. Selecione a página no campo "White page"\n3. Salve novamente');
+          return;
         }
-        saveParamsForSite(savedSiteId, document.getElementById('siteMetaLinkParams').value || '', document.getElementById('siteTikTokLinkParams').value || '');
-        closeSiteModal();
-        loadSites();
-      } catch (e) { alert('Erro ao salvar site'); }
+        if (!siteId) {
+          openStealthConfirmModal({ mode: 'site', payload: data, siteId: '' });
+          return;
+        }
+      }
+
+      await performSaveSite(data, siteId);
     }
 
     async function deleteSite(siteId) {
@@ -4092,6 +4413,13 @@
       const name = (document.getElementById('quickSiteName').value || '').trim() || ('Landing ' + new Date().toLocaleDateString('pt-BR'));
       const domainSelect = document.getElementById('quickDomainSelect');
       const selectedDomain = domainSelect ? domainSelect.value : '';
+      openStealthConfirmModal({
+        mode: 'link',
+        onConfirm: function() { return performGenerateLinkFromUrl(url, name, selectedDomain); }
+      });
+    }
+
+    async function performGenerateLinkFromUrl(url, name, selectedDomain) {
       try {
         const res = await fetch('/api/sites', {
           method: 'POST',
@@ -4101,6 +4429,7 @@
             name,
             target_url: url,
             redirect_url: 'https://www.google.com/',
+            block_behavior: 'stealth',
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
@@ -4113,6 +4442,9 @@
         document.getElementById('generatedLinkBox').style.display = 'block';
         document.getElementById('scriptSiteSelector').value = site.site_id;
         updateScriptCode();
+        if (!(pagesList && pagesList.length)) {
+          alert('Link criado em modo Stealth.\n\nPróximo passo: vá em Páginas, crie a white page e edite este site para selecioná-la — sem isso o Stealth não ativa no Meta.');
+        }
       } catch (e) {
         alert('Erro ao gerar link. Tente novamente.');
       }
@@ -5369,11 +5701,25 @@
     document.getElementById('visitorModal').addEventListener('click', e => { if (e.target.id === 'visitorModal') closeVisitorModal(); });
     document.getElementById('siteModal').addEventListener('click', e => { if (e.target.id === 'siteModal') closeSiteModal(); });
     [document.getElementById('siteBlockBehaviorStealth'), document.getElementById('siteBlockBehaviorRedirect'), document.getElementById('siteBlockBehaviorEmbed'), document.getElementById('siteBlockBehaviorPage')].forEach(el => {
-      if (el) el.addEventListener('change', () => {
-        const showPage = document.getElementById('siteBlockBehaviorPage').checked || document.getElementById('siteBlockBehaviorStealth').checked;
-        document.getElementById('sitePageSelectBox').style.display = showPage ? 'block' : 'none';
-      });
+      if (el) el.addEventListener('change', updateStealthUI);
     });
+    const siteLandingPageEl = document.getElementById('siteLandingPageId');
+    const siteTargetUrlEl = document.getElementById('siteTargetUrl');
+    if (siteLandingPageEl) siteLandingPageEl.addEventListener('change', updateStealthChecklist);
+    if (siteTargetUrlEl) siteTargetUrlEl.addEventListener('input', updateStealthChecklist);
+    const stealthConfirmCheckbox = document.getElementById('stealthConfirmCheckbox');
+    const stealthConfirmSaveBtn = document.getElementById('stealthConfirmSaveBtn');
+    if (stealthConfirmCheckbox && stealthConfirmSaveBtn) {
+      stealthConfirmCheckbox.addEventListener('change', function() {
+        stealthConfirmSaveBtn.disabled = !stealthConfirmCheckbox.checked;
+      });
+    }
+    const stealthConfirmModal = document.getElementById('stealthConfirmModal');
+    if (stealthConfirmModal) {
+      stealthConfirmModal.addEventListener('click', function(e) {
+        if (e.target.id === 'stealthConfirmModal') closeStealthConfirmModal();
+      });
+    }
     const sitePathPrefixRandomBtn = document.getElementById('sitePathPrefixRandomBtn');
     if (sitePathPrefixRandomBtn) sitePathPrefixRandomBtn.addEventListener('click', () => { fillRandomPathPrefix(); });
     document.getElementById('userModal').addEventListener('click', e => { if (e.target.id === 'userModal') document.getElementById('userModal').classList.remove('active'); });
