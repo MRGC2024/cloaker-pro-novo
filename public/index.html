@@ -2301,10 +2301,12 @@
           <div class="form-group" style="margin-top: 12px;">
             <label class="form-label">Ao bloquear, o que fazer?</label>
             <div style="display: flex; flex-direction: column; gap: 8px;">
-              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorRedirect" value="redirect" checked> Redirecionar para a URL acima</label>
+              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorStealth" value="stealth" checked> <strong>Stealth (recomendado Meta Ads)</strong> — bloqueio e oferta na mesma URL (HTTP 200)</label>
+              <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorRedirect" value="redirect"> Redirecionar para a URL acima (302 — mais detectável)</label>
               <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorEmbed" value="embed"> Mostrar o conteúdo da URL nesta mesma página (embed)</label>
               <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorPage" value="page"> Usar minha página (HTML definido em Páginas — fica no mesmo domínio)</label>
             </div>
+            <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 8px;">No modo <strong>Stealth</strong>, bots/crawlers do Meta veem a página segura embutida (mesma URL). Leads reais são enviados à oferta sem redirect 302 visível — reduz detecção de cloaking.</small>
           </div>
           <div id="sitePageSelectBox" style="display: none; margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
             <label class="form-label" style="margin-bottom: 6px;">Qual página usar?</label>
@@ -2794,7 +2796,8 @@
       document.getElementById('siteDomain').value = '';
       document.getElementById('siteTargetUrl').value = '';
       document.getElementById('siteRedirectUrl').value = 'https://www.google.com/';
-      document.getElementById('siteBlockBehaviorRedirect').checked = true;
+      document.getElementById('siteBlockBehaviorStealth').checked = true;
+      document.getElementById('siteBlockBehaviorRedirect').checked = false;
       document.getElementById('siteBlockBehaviorEmbed').checked = false;
       document.getElementById('siteBlockBehaviorPage').checked = false;
       document.getElementById('sitePageSelectBox').style.display = 'none';
@@ -2841,10 +2844,12 @@
       setSiteEffectiveTargetUI(site);
       document.getElementById('siteUseFallback').checked = site.use_fallback !== 0 && site.use_fallback !== false;
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
-      const behavior = site.block_behavior || 'redirect';
+      const behavior = site.block_behavior || 'stealth';
+      const isStealth = behavior === 'stealth';
       const isEmbed = behavior === 'embed';
       const isPage = behavior === 'page';
-      document.getElementById('siteBlockBehaviorRedirect').checked = !isEmbed && !isPage;
+      document.getElementById('siteBlockBehaviorStealth').checked = isStealth;
+      document.getElementById('siteBlockBehaviorRedirect').checked = !isStealth && !isEmbed && !isPage;
       document.getElementById('siteBlockBehaviorEmbed').checked = isEmbed;
       document.getElementById('siteBlockBehaviorPage').checked = isPage;
       document.getElementById('sitePageSelectBox').style.display = isPage ? 'block' : 'none';
@@ -2904,12 +2909,14 @@
       const siteId = document.getElementById('editSiteId').value;
       const requireRef = document.getElementById('siteRequireRef').checked;
       const isPageBehavior = document.getElementById('siteBlockBehaviorPage').checked;
+      const isStealthBehavior = document.getElementById('siteBlockBehaviorStealth').checked;
+      const isEmbedBehavior = document.getElementById('siteBlockBehaviorEmbed').checked;
       const data = {
         name: document.getElementById('siteName').value,
         domain: document.getElementById('siteDomain').value,
         target_url: document.getElementById('siteTargetUrl').value,
         redirect_url: document.getElementById('siteRedirectUrl').value,
-        block_behavior: isPageBehavior ? 'page' : (document.getElementById('siteBlockBehaviorEmbed').checked ? 'embed' : 'redirect'),
+        block_behavior: isPageBehavior ? 'page' : (isStealthBehavior ? 'stealth' : (isEmbedBehavior ? 'embed' : 'redirect')),
         landing_page_id: isPageBehavior ? (document.getElementById('siteLandingPageId').value || null) : null,
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
         default_link_params: (document.getElementById('siteMetaLinkParams').value || '').trim(),
@@ -5349,7 +5356,7 @@
 
     document.getElementById('visitorModal').addEventListener('click', e => { if (e.target.id === 'visitorModal') closeVisitorModal(); });
     document.getElementById('siteModal').addEventListener('click', e => { if (e.target.id === 'siteModal') closeSiteModal(); });
-    [document.getElementById('siteBlockBehaviorRedirect'), document.getElementById('siteBlockBehaviorEmbed'), document.getElementById('siteBlockBehaviorPage')].forEach(el => {
+    [document.getElementById('siteBlockBehaviorStealth'), document.getElementById('siteBlockBehaviorRedirect'), document.getElementById('siteBlockBehaviorEmbed'), document.getElementById('siteBlockBehaviorPage')].forEach(el => {
       if (el) el.addEventListener('change', () => { document.getElementById('sitePageSelectBox').style.display = document.getElementById('siteBlockBehaviorPage').checked ? 'block' : 'none'; });
     });
     document.getElementById('userModal').addEventListener('click', e => { if (e.target.id === 'userModal') document.getElementById('userModal').classList.remove('active'); });
