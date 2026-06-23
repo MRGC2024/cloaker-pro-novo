@@ -2308,10 +2308,10 @@
               <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorEmbed" value="embed"> Mostrar o conteúdo da URL nesta mesma página (embed)</label>
               <label class="radio-label"><input type="radio" name="siteBlockBehavior" id="siteBlockBehaviorPage" value="page"> Usar minha página (HTML definido em Páginas — fica no mesmo domínio)</label>
             </div>
-            <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 8px;">No modo <strong>Stealth</strong>, bots/crawlers do Meta veem a página segura embutida (mesma URL). Leads reais são enviados à oferta sem redirect 302 visível — reduz detecção de cloaking.</small>
+            <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 8px;">No modo <strong>Stealth</strong>, crawler e lead recebem o <strong>mesmo HTML</strong> na URL do link. Leads reais só avançam após validação interna. Crie uma página em <strong>Páginas</strong> (mesmo tema da oferta) e selecione abaixo — evita reprovação por “link enganoso”.</small>
           </div>
           <div id="sitePageSelectBox" style="display: none; margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
-            <label class="form-label" style="margin-bottom: 6px;">Qual página usar?</label>
+            <label class="form-label" style="margin-bottom: 6px;">Página da ponte / white page (recomendado no Stealth)</label>
             <select class="form-select" id="siteLandingPageId">
               <option value="">— Selecione —</option>
             </select>
@@ -2823,7 +2823,7 @@
       document.getElementById('siteBlockBehaviorRedirect').checked = false;
       document.getElementById('siteBlockBehaviorEmbed').checked = false;
       document.getElementById('siteBlockBehaviorPage').checked = false;
-      document.getElementById('sitePageSelectBox').style.display = 'none';
+      document.getElementById('sitePageSelectBox').style.display = 'block';
       fillSiteModalDomainsAndPages();
       document.getElementById('siteSelectedDomain').value = '';
       document.getElementById('siteLandingPageId').value = '';
@@ -2874,7 +2874,7 @@
       document.getElementById('siteBlockBehaviorRedirect').checked = !isStealth && !isEmbed && !isPage;
       document.getElementById('siteBlockBehaviorEmbed').checked = isEmbed;
       document.getElementById('siteBlockBehaviorPage').checked = isPage;
-      document.getElementById('sitePageSelectBox').style.display = isPage ? 'block' : 'none';
+      document.getElementById('sitePageSelectBox').style.display = (isStealth || isPage) ? 'block' : 'none';
       fillSiteModalDomainsAndPages();
       document.getElementById('siteSelectedDomain').value = site.selected_domain || '';
       document.getElementById('siteLandingPageId').value = site.landing_page_id || '';
@@ -2929,7 +2929,7 @@
         target_url: document.getElementById('siteTargetUrl').value,
         redirect_url: document.getElementById('siteRedirectUrl').value,
         block_behavior: isPageBehavior ? 'page' : (isStealthBehavior ? 'stealth' : (isEmbedBehavior ? 'embed' : 'redirect')),
-        landing_page_id: isPageBehavior ? (document.getElementById('siteLandingPageId').value || null) : null,
+        landing_page_id: (isPageBehavior || isStealthBehavior) ? (document.getElementById('siteLandingPageId').value || null) : null,
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
         default_link_params: (document.getElementById('siteMetaLinkParams').value || '').trim(),
         block_desktop: document.getElementById('siteBlockDesktop').checked,
@@ -5369,7 +5369,10 @@
     document.getElementById('visitorModal').addEventListener('click', e => { if (e.target.id === 'visitorModal') closeVisitorModal(); });
     document.getElementById('siteModal').addEventListener('click', e => { if (e.target.id === 'siteModal') closeSiteModal(); });
     [document.getElementById('siteBlockBehaviorStealth'), document.getElementById('siteBlockBehaviorRedirect'), document.getElementById('siteBlockBehaviorEmbed'), document.getElementById('siteBlockBehaviorPage')].forEach(el => {
-      if (el) el.addEventListener('change', () => { document.getElementById('sitePageSelectBox').style.display = document.getElementById('siteBlockBehaviorPage').checked ? 'block' : 'none'; });
+      if (el) el.addEventListener('change', () => {
+        const showPage = document.getElementById('siteBlockBehaviorPage').checked || document.getElementById('siteBlockBehaviorStealth').checked;
+        document.getElementById('sitePageSelectBox').style.display = showPage ? 'block' : 'none';
+      });
     });
     const sitePathPrefixRandomBtn = document.getElementById('sitePathPrefixRandomBtn');
     if (sitePathPrefixRandomBtn) sitePathPrefixRandomBtn.addEventListener('click', () => { fillRandomPathPrefix(); });

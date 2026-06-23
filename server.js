@@ -1509,7 +1509,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
   } else if (isStealthMode(site)) {
     metaRisk.push({
       level: 'info',
-      message: 'Modo Stealth: bloqueio e oferta respondem na mesma URL do link (HTTP 200), reduzindo detecção de redirect diferente.'
+      message: 'Modo Stealth (ponte unificada): mesma resposta HTML para crawler e clique. Cadastre white page em Páginas com o mesmo tema da oferta.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2138,14 +2138,143 @@ function isStealthMode(site) {
 /** Bloqueio na mesma URL (200) — reduz detecção de redirect diferente pelo Meta. */
 function shouldEmbedBlock(site, userAgent) {
   const behavior = normalizeBlockBehavior(site && site.block_behavior);
-  if (behavior === 'embed' || behavior === 'stealth') return true;
+  if (behavior === 'stealth') return false;
+  if (behavior === 'embed') return true;
   if (behavior === 'page') return false;
   return isMetaCrawlerUA(userAgent);
 }
 
 /** Oferta via HTML 200 + redirect client-side — evita 302 para domínio diferente do bloqueio. */
 function shouldSoftRedirectOffer(site) {
-  return isStealthMode(site);
+  return false; // substituído pela ponte unificada no modo stealth
+}
+
+/** Conteúdo neutro exibido a todos no modo Stealth (crawler e lead veem o mesmo HTML). */
+const STEALTH_DEFAULT_BRIDGE_HTML = `
+<article>
+  <h1>Dicas de bem-estar no dia a dia</h1>
+  <p>Pequenas mudanças de hábito podem fazer diferença na sua rotina. Hidratação, sono de qualidade e movimento leve são pilares que sustentam mais energia ao longo da semana.</p>
+  <p>Especialistas recomendam reservar alguns minutos para pausas conscientes, especialmente quem passa muitas horas em frente às telas. Alongamentos simples e uma caminhada curta ajudam na circulação e no foco.</p>
+  <h2>Alimentação equilibrada</h2>
+  <p>Priorize alimentos in natura, fibras e proteínas de boa fonte. Não é preciso restringir tudo de uma vez — ajustes graduais tendem a ser mais sustentáveis.</p>
+  <p><small>Conteúdo informativo. Consulte um profissional de saúde para orientação personalizada.</small></p>
+</article>`;
+
+function buildStealthNavScript(prefix, code) {
+  const navPath = '/api/n/' + prefix + '/' + code;
+  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;var q=location.search||'';var ref=document.referrer||'';if(!/fbclid=|utm_source=(FB|facebook|instagram)/i.test(q+ref))return;if(!/mobile|iphone|ipod|android|instagram|fban|fbav|fb_iab|fbios|fb4a/i.test(u))return;fetch(p+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(d&&d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
+}
+
+async function getStealthBridgeInnerHtml(site) {
+  if (site.landing_page_id && site.user_id) {
+    const page = await db.get('SELECT html_content FROM landing_pages WHERE id = ? AND user_id = ?', [site.landing_page_id, site.user_id]);
+    if (page && page.html_content != null && String(page.html_content).trim()) return String(page.html_content);
+  }
+  return STEALTH_DEFAULT_BRIDGE_HTML;
+}
+
+async function sendStealthBridgeResponse(res, site, prefix, code) {
+  const inner = await getStealthBridgeInnerHtml(site);
+  const navScript = buildStealthNavScript(prefix, code);
+  let html;
+  if (/<html[\s>]/i.test(inner)) {
+    html = /<\/body>/i.test(inner) ? inner.replace(/<\/body>/i, navScript + '</body>') : inner + navScript;
+  } else {
+    html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${navScript}</body></html>`;
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.status(200).send(html);
+}
+
+function extractClientIp(req) {
+  let ip = (req.headers['cf-connecting-ip'] || req.headers['true-client-ip'] || req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || '').toString();
+  ip = ip.split(',')[0].trim();
+  if (ip === '::1') ip = '127.0.0.1';
+  return ip || 'unknown';
+}
+
+function appendQueryString(url, qs) {
+  if (!qs) return url;
+  return url + (url.includes('?') ? '&' : '?') + qs;
+}
+
+async function resolveLinkVisitContext(req, site, options = {}) {
+  const { skipRefCheck = false, enforceRefOnNavigate = false } = options;
+  const userAgent = req.headers['user-agent'] || '';
+  const referer = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
+  const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+  const ua = new UAParser(userAgent).getResult();
+  const deviceType = resolveDeviceType(userAgent, ua, req.headers);
+  const ip = extractClientIp(req);
+  const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
+
+  let refBlocked = false;
+  if ((enforceRefOnNavigate || !skipRefCheck) && !isRefTokenSatisfied(site, req.query, userAgent, referer, req.headers)) {
+    refBlocked = true;
+  }
+
+  const rateCheck = checkRateLimit(ip);
+  const headerCountry = getCountryFromHeaders(req);
+  const geo = headerCountry
+    ? { country: headerCountry, city: null, region: null, isp: null, vpn: false, proxy: false, tor: false, hosting: false }
+    : await getGeoByIP(ip);
+  const country = geo.country;
+  const suspectedReviewer = isSuspectedReviewerIP(ip);
+  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
+
+  let decision = evaluateLinkVisit(site, {
+    query: req.query,
+    userAgent,
+    referer,
+    fullUrl,
+    headers: req.headers,
+    country,
+    deviceType,
+    uaParserResult: ua,
+    allowMetaReviewers,
+    suspectedReviewer,
+    ip,
+    geo
+  });
+
+  if (refBlocked) {
+    decision = { ...decision, blocked: true, blockReason: 'Acesso sem parâmetro de rastreamento (não veio do Ads)', redirectMode: 'bridge' };
+  } else if (rateCheck.blocked) {
+    decision = { ...decision, blocked: true, blockReason: rateCheck.reason, redirectMode: 'bridge' };
+  }
+
+  const utm_source = (req.query.utm_source || '').trim() || null;
+  const utm_medium = (req.query.utm_medium || '').trim() || null;
+  const utm_campaign = (req.query.utm_campaign || '').trim() || null;
+  const utm_term = (req.query.utm_term || '').trim() || null;
+  const utm_content = (req.query.utm_content || '').trim() || null;
+  const fbclid = (req.query.fbclid || '').trim() || null;
+  const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
+  const suspectedRev = suspectedReviewer ? 1 : 0;
+  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
+  const visitorParams = [
+    site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null,
+    deviceType, ua.browser?.name || null, ua.os?.name || null, decision.blocked ? 1 : 0, decision.blockReason,
+    isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+    facebookParams, req.path, suspectedRev
+  ];
+
+  const destUrl = getEffectiveTargetUrl(site);
+  const destWithQs = appendQueryString(destUrl, qs);
+
+  return { ip, userAgent, referer, fullUrl, ua, deviceType, geo, country, decision, qs, visitorSql, visitorParams, destUrl, destWithQs };
+}
+
+async function validateSiteLinkPrefix(req, site) {
+  const prefix = (req.params.prefix || '').toLowerCase().trim();
+  if (site.path_prefix) {
+    return prefix === (site.path_prefix || '').toLowerCase().trim();
+  }
+  const pool = await getPathPrefixPool();
+  const legacy = new Set(['go', 'r', 'l', 'v']);
+  return pool.includes(prefix) || legacy.has(prefix);
 }
 
 const HOSTING_ISP_MARKERS = [
@@ -2895,11 +3024,12 @@ function evaluateLinkVisit(site, ctx) {
   if (out.blocked) {
     out.redirectTarget = safeUrl;
     if (blockBehavior === 'page') out.redirectMode = 'page';
+    else if (blockBehavior === 'stealth') out.redirectMode = 'bridge';
     else if (shouldEmbedBlock(site, userAgent)) out.redirectMode = 'embed';
     else out.redirectMode = 'safe';
   } else {
     out.redirectTarget = destUrl;
-    out.redirectMode = shouldSoftRedirectOffer(site) ? 'soft_offer' : 'offer';
+    out.redirectMode = blockBehavior === 'stealth' ? 'bridge' : (shouldSoftRedirectOffer(site) ? 'soft_offer' : 'offer');
   }
   return out;
 }
@@ -2916,7 +3046,7 @@ function getMetaLinkConfigWarnings(site) {
   if (!target) warnings.push({ level: 'error', code: 'no_target', message: 'URL da oferta (landing) não configurada.' });
   if (safe.includes('google.com')) warnings.push({ level: 'high', code: 'safe_google', message: 'URL de bloqueio é Google — destino muito diferente da oferta (Meta costuma marcar como link enganoso). Prefira uma página no mesmo tema/domínio.' });
   if (normalizeBlockBehavior(site.block_behavior) === 'stealth') {
-    warnings.push({ level: 'info', code: 'stealth', message: 'Modo Stealth ativo: bloqueio e oferta respondem HTTP 200 na mesma URL do link (recomendado para Meta Ads).' });
+    warnings.push({ level: 'info', code: 'stealth', message: 'Modo Stealth (ponte unificada): crawler e lead recebem o mesmo HTML na URL do link. Cadastre uma página em Páginas (mesmo tema da oferta) para melhor aprovação.' });
   } else if (normalizeBlockBehavior(site.block_behavior) === 'embed') {
     warnings.push({ level: 'medium', code: 'embed', message: 'Modo embed: bloqueio na mesma URL; leads ainda usam redirect 302 (Meta pode comparar).' });
   }
@@ -3000,6 +3130,38 @@ const LINK_HEALTH_PROFILES = [
   }
 ];
 
+// Navegação pós-ponte Stealth — destino só via POST (não aparece no HTML inicial)
+async function handleStealthNavigation(req, res) {
+  const prefix = (req.params.prefix || '').toLowerCase().trim();
+  const code = (req.params.code || '').toLowerCase();
+  const ip = extractClientIp(req);
+  const ua = req.headers['user-agent'] || '';
+  if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
+  if (!checkTrackPostRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
+  if (isMetaCrawlerUA(ua) || isBotUserAgent(ua, req.headers)) return res.json({ next: null });
+
+  const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
+  const destUrl = getEffectiveTargetUrl(site);
+  if (!site || !destUrl || !isStealthMode(site)) return res.status(404).json({ error: 'Not found' });
+  if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
+
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true, enforceRefOnNavigate: true });
+  void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth nav:', err.message));
+
+  if (ctx.decision.blocked || ctx.decision.reviewerBypass) {
+    return res.json({ next: null });
+  }
+  return res.json({ next: ctx.destWithQs });
+}
+
+async function handleStealthLinkGet(req, res, site) {
+  const prefix = (req.params.prefix || '').toLowerCase().trim();
+  const code = (req.params.code || '').toLowerCase();
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true });
+  void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
+  return sendStealthBridgeResponse(res, site, prefix, code);
+}
+
 // Handler compartilhado para links (/:prefix/:code)
 async function handleLinkRedirect(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
@@ -3009,16 +3171,12 @@ async function handleLinkRedirect(req, res) {
   if (!site || !destUrl) {
     return redirectWithDelay(res, 'https://www.google.com/');
   }
-  if (site.path_prefix) {
-    if (prefix !== (site.path_prefix || '').toLowerCase().trim()) {
-      return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
-    }
-  } else {
-    const pool = await getPathPrefixPool();
-    const legacy = new Set(['go', 'r', 'l', 'v']);
-    if (!pool.includes(prefix) && !legacy.has(prefix)) {
-      return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
-    }
+  if (!(await validateSiteLinkPrefix(req, site))) {
+    return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+  }
+
+  if (isStealthMode(site)) {
+    return handleStealthLinkGet(req, res, site);
   }
 
   const userAgentEarly = req.headers['user-agent'] || '';
@@ -3030,7 +3188,7 @@ async function handleLinkRedirect(req, res) {
   if (!isRefTokenSatisfied(site, req.query, userAgentEarly, refererEarly, req.headers)) {
     const blockReasonRef = 'Acesso sem parâmetro de rastreamento (não veio do Ads)';
     const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    let ipRef = (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim() || 'unknown';
+    let ipRef = extractClientIp(req);
     await db.run(
       `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, device_type, browser, os, was_blocked, block_reason, is_bot, request_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, datetime('now'))`,
       [site.site_id, ipRef, userAgentEarly, refererEarly, fullUrl, null, deviceTypeEarly, uaEarly.browser?.name || null, uaEarly.os?.name || null, blockReasonRef, req.path]
@@ -3039,85 +3197,23 @@ async function handleLinkRedirect(req, res) {
     return deliverBlockedResponse(res, site, blockUrl, userAgentEarly);
   }
 
-  // IP: prioridade cf-connecting-ip (Cloudflare), true-client-ip, x-forwarded-for (1º = cliente), x-real-ip, socket
-  let ip = (req.headers['cf-connecting-ip'] || req.headers['true-client-ip'] || req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || '').toString();
-  ip = ip.split(',')[0].trim();
-  if (ip === '::1') ip = '127.0.0.1';
-  if (!ip) ip = 'unknown';
-
-  // Rate limit: bloqueio temporário por excesso de requisições
-  const rateCheck = checkRateLimit(ip);
-  if (rateCheck.blocked) {
-    const pageUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, was_blocked, block_reason, request_path, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, datetime('now'))`,
-      [site.site_id, ip, req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), pageUrl, rateCheck.reason, req.path]);
-    const blockUrl = site.redirect_url || 'https://www.google.com/';
-    return deliverBlockedResponse(res, site, blockUrl, req.headers['user-agent'] || '');
-  }
-
-  const userAgent = userAgentEarly;
-  const referer = refererEarly;
-  const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-  const ua = uaEarly;
-  const deviceType = deviceTypeEarly;
-
-  const headerCountry = getCountryFromHeaders(req);
-  const geo = headerCountry
-    ? { country: headerCountry, city: null, region: null, isp: null, vpn: false, proxy: false, tor: false, hosting: false }
-    : await getGeoByIP(ip);
-  const country = geo.country;
-  const suspectedReviewer = isSuspectedReviewerIP(ip);
-  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
-
-  const decision = evaluateLinkVisit(site, {
-    query: req.query,
-    userAgent,
-    referer,
-    fullUrl,
-    headers: req.headers,
-    country,
-    deviceType,
-    uaParserResult: ua,
-    allowMetaReviewers,
-    suspectedReviewer,
-    ip,
-    geo
-  });
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true });
+  const { decision, visitorSql, visitorParams, destWithQs, userAgent } = ctx;
 
   if (decision.reviewerBypass) {
     const blockUrl = site.redirect_url || 'https://www.google.com/';
     await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, block_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, datetime('now'))`,
-      [site.site_id, ip, userAgent, referer, fullUrl, country || null, req.path, decision.blockReason || 'Revisor Meta']);
+      [site.site_id, ctx.ip, userAgent, ctx.referer, ctx.fullUrl, ctx.country || null, req.path, decision.blockReason || 'Revisor Meta']);
     return deliverBlockedResponse(res, site, blockUrl, userAgent);
   }
 
-  const wasBlocked = decision.blocked;
-  const blockReason = decision.blockReason;
-
-  // UTMs e parâmetros dos Ads (vêm na URL do clique) – repassados para o link de oferta no redirect
-  const utm_source = (req.query.utm_source || '').trim() || null;
-  const utm_medium = (req.query.utm_medium || '').trim() || null;
-  const utm_campaign = (req.query.utm_campaign || '').trim() || null;
-  const utm_term = (req.query.utm_term || '').trim() || null;
-  const utm_content = (req.query.utm_content || '').trim() || null;
-  const fbclid = (req.query.fbclid || '').trim() || null;
-  const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
-
-  const suspectedRev = suspectedReviewer ? 1 : 0;
-  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
-  const visitorParams = [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev];
-
-  if (wasBlocked) {
+  if (decision.blocked) {
     await db.run(visitorSql, visitorParams);
     const blockUrl = site.redirect_url || 'https://www.google.com/';
     return deliverBlockedResponse(res, site, blockUrl, userAgent);
   }
 
-  // Redireciona para a oferta com a mesma query string (UTMs, fbclid, etc.) para a landing receber
-  let dest = destUrl;
-  const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
-  if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
-  deliverOfferResponse(res, site, dest);
+  deliverOfferResponse(res, site, destWithQs);
   void db.run(visitorSql, visitorParams).catch((err) => console.error('[visitor] insert (clique liberado):', err.message));
 }
 
@@ -3134,6 +3230,10 @@ app.get('/', (req, res) => {
 });
 
 // Rota dinâmica por último: /:prefix/:code – prefix no pool (evita padrão único identificável)
+app.post('/api/n/:prefix/:code', (req, res) => {
+  handleStealthNavigation(req, res).catch((err) => { console.error(err); res.status(500).json({ error: 'Erro interno' }); });
+});
+
 app.get('/:prefix/:code', (req, res, next) => {
   const prefix = (req.params.prefix || '').trim().toLowerCase();
   if (RESERVED_PREFIXES.has(prefix) || prefix.includes('.')) return next();
