@@ -106,6 +106,8 @@ function isPanelRoute(path, method) {
   if (path.startsWith('/t/')) return false;
   if (path === '/api/track') return false; // script da landing + beacon (qualquer domínio / CORS)
   if (method === 'GET' && path.match(/^\/api\/config\/[^/]+$/)) return false;
+  if (method === 'GET' && path.match(/^\/api\/b\/[^/]+$/)) return false;
+  if (method === 'POST' && path.match(/^\/api\/n\/[\w-]{1,32}\/[\w-]{1,64}$/)) return false;
   if (path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/) && !path.startsWith('/api') && !path.startsWith('/login')) return false;
   return true;
 }
@@ -152,6 +154,8 @@ const sessionMiddleware = session(sessionOpts);
 function shouldAttachSession(req) {
   if (req.path === '/api/track') return false;
   if (req.method === 'GET' && /^\/api\/config\/[^/]+$/.test(req.path)) return false;
+  if (req.method === 'GET' && /^\/api\/b\/[^/]+$/.test(req.path)) return false;
+  if (req.method === 'POST' && /^\/api\/n\/[\w-]{1,32}\/[\w-]{1,64}$/.test(req.path)) return false;
   if (req.method === 'GET' && req.path.startsWith('/t/') && /\.js$/i.test(req.path)) return false;
   if (req.method === 'GET' && /^\/[\w-]{1,32}\/[\w-]{1,64}$/.test(req.path) && !req.path.startsWith('/api')) return false;
   return true;
@@ -190,6 +194,8 @@ app.use((req, res, next) => {
   if (req.path === '/login' && req.method === 'GET') return next();
   if (req.path.startsWith('/t/') || req.path.match(/^\/[\w-]{1,32}\/[\w-]{1,64}$/)) return next();
   if (req.path.match(/^\/api\/config\//) && req.method === 'GET') return next();
+  if (req.path.match(/^\/api\/b\//) && req.method === 'GET') return next();
+  if (req.path.match(/^\/api\/n\/[\w-]{1,32}\/[\w-]{1,64}$/) && req.method === 'POST') return next();
   if (req.path === '/api/track') return next();
   if (req.path === '/' && req.method === 'GET' && (!req.session || !req.session.userId)) return res.redirect('/login');
   if (req.path === '/api/login' || req.path === '/api/setup' || req.path === '/api/setup/check' || req.path === '/api/setup/promote-first-admin' || req.path === '/api/signup') return next();
@@ -2131,8 +2137,17 @@ function normalizeBlockBehavior(value) {
   return 'redirect';
 }
 
+/** Stealth só para sites novos (criados após o lançamento). Campanhas antigas permanecem redirect. */
+const STEALTH_LAUNCH_DATE = '2026-06-23';
+
+/** Stealth só com white page configurada + site criado após o lançamento (campanhas antigas = redirect). */
 function isStealthMode(site) {
-  return normalizeBlockBehavior(site && site.block_behavior) === 'stealth';
+  if (!site) return false;
+  if (normalizeBlockBehavior(site.block_behavior) !== 'stealth') return false;
+  const created = (site.created_at || '').toString().slice(0, 10);
+  if (created && created < STEALTH_LAUNCH_DATE) return false;
+  if (!site.landing_page_id) return false;
+  return true;
 }
 
 /** Bloqueio na mesma URL (200) — reduz detecção de redirect diferente pelo Meta. */
@@ -3142,7 +3157,11 @@ function getMetaLinkConfigWarnings(site) {
   if (!target) warnings.push({ level: 'error', code: 'no_target', message: 'URL da oferta (landing) não configurada.' });
   if (safe.includes('google.com')) warnings.push({ level: 'high', code: 'safe_google', message: 'URL de bloqueio é Google — destino muito diferente da oferta (Meta costuma marcar como link enganoso). Prefira uma página no mesmo tema/domínio.' });
   if (normalizeBlockBehavior(site.block_behavior) === 'stealth') {
-    warnings.push({ level: 'info', code: 'stealth', message: 'Modo Stealth (ponte unificada): crawler e lead recebem o mesmo HTML na URL do link. Cadastre uma página em Páginas (mesmo tema da oferta) para melhor aprovação.' });
+    if (!site.landing_page_id) {
+      warnings.push({ level: 'high', code: 'stealth_no_page', message: 'Modo Stealth marcado, mas sem página da ponte selecionada — o link funciona como redirect (302) até você escolher uma página em Páginas.' });
+    } else {
+      warnings.push({ level: 'info', code: 'stealth', message: 'Modo Stealth ativo com white page: crawler e lead recebem o mesmo HTML na URL do link.' });
+    }
   } else if (normalizeBlockBehavior(site.block_behavior) === 'embed') {
     warnings.push({ level: 'medium', code: 'embed', message: 'Modo embed: bloqueio na mesma URL; leads ainda usam redirect 302 (Meta pode comparar).' });
   }
