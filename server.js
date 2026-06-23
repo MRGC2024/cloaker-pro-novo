@@ -1295,10 +1295,11 @@ app.get('/api/sites', async (req, res) => {
   res.json(sites);
 });
 
+const LINK_SLUG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+
 async function generateLinkCode() {
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
   let code = '';
-  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 8; i++) code += LINK_SLUG_CHARS[Math.floor(Math.random() * LINK_SLUG_CHARS.length)];
   if (await db.get('SELECT 1 FROM sites WHERE link_code = ?', [code])) return generateLinkCode();
   return code;
 }
@@ -1306,6 +1307,13 @@ async function generateLinkCode() {
 function generateRefToken() {
   return crypto.randomBytes(10).toString('hex');
 }
+
+// API: gerar prefixo aleatório para preview no painel
+app.get('/api/sites/random-path-prefix', (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const length = parseInt(req.query.length, 10) || 8;
+  res.json({ path_prefix: generateRandomPathPrefix(length) });
+});
 
 // API: Criar site (padrão: apenas Brasil; gera link para usar nos Ads) – pertence ao usuário logado
 app.post('/api/sites', async (req, res) => {
@@ -1326,10 +1334,10 @@ app.post('/api/sites', async (req, res) => {
   const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
   let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
   if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
-    const pathPool = await getPathPrefixPool();
-    pathPrefix = pathPool[Math.floor(Math.random() * pathPool.length)] || 'go';
+    pathPrefix = generateRandomPathPrefix(8);
   } else {
     pathPrefix = pathPrefix.toLowerCase();
+    if (RESERVED_PREFIXES.has(pathPrefix)) pathPrefix = generateRandomPathPrefix(8);
   }
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
@@ -2669,6 +2677,18 @@ function getEffectiveTargetUrl(site) {
 // Pool de prefixos de link – cada site usa um, dificulta identificação em massa pelo Meta
 const DEFAULT_PATH_POOL = ['go', 'r', 'l', 'v', 'visit', 'link', 'out', 'gate', 'lp', 'rd', 'view', 'entry', 'access', 'p', 'c', 'n', 'x7k2m', 'a9p4q', 'm5n8r', 'land', 'redir', 'go2', 'r2', 'v2', 'l2', 'entrar', 'acesso', 'pag'];
 const RESERVED_PREFIXES = new Set(['api', 'login', 'logout', 't', 'static', 'assets', 'favicon.ico', '']);
+
+/** Prefixo aleatório por link (ex: k7m2n9p4) — evita padrões fixos tipo /go/ detectáveis pelo Meta. */
+function generateRandomPathPrefix(length = 8) {
+  const len = Math.max(4, Math.min(32, parseInt(length, 10) || 8));
+  for (let attempt = 0; attempt < 30; attempt++) {
+    let prefix = '';
+    for (let i = 0; i < len; i++) prefix += LINK_SLUG_CHARS[Math.floor(Math.random() * LINK_SLUG_CHARS.length)];
+    prefix = prefix.toLowerCase();
+    if (!RESERVED_PREFIXES.has(prefix)) return prefix;
+  }
+  return crypto.randomBytes(Math.ceil(len / 2)).toString('hex').slice(0, len);
+}
 
 const PATH_PREFIX_POOL_CACHE_MS = 60 * 1000;
 let pathPrefixPoolMemo = { pool: null, expiresAt: 0 };

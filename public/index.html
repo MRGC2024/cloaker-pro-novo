@@ -2291,9 +2291,11 @@
         </div>
         <div class="form-group">
           <label class="form-label">Prefixo do link (o que aparece na URL)</label>
-          <input type="text" class="form-input" id="sitePathPrefix" placeholder="Ex: go, visit, out, x7k2m" list="sitePathPrefixSuggestions" maxlength="32" pattern="[a-zA-Z0-9_-]{0,32}" autocomplete="off">
-          <datalist id="sitePathPrefixSuggestions"></datalist>
-          <small style="color: var(--text-secondary); font-size: 12px;">Escolha o prefixo do link (ex: <strong>visit</strong> → seulink.com/<strong>visit</strong>/abc123). Deixe em branco para sortear automaticamente do pool. Só letras, números, _ e - (até 32 caracteres).</small>
+          <div style="display: flex; gap: 8px; align-items: stretch;">
+            <input type="text" class="form-input" id="sitePathPrefix" placeholder="Ex: k7m2n9p4" maxlength="32" pattern="[a-zA-Z0-9_-]{1,32}" autocomplete="off" style="flex: 1;">
+            <button type="button" class="btn btn-secondary" id="sitePathPrefixRandomBtn" title="Gerar prefixo aleatório" style="white-space: nowrap; padding: 0 14px;">Gerar aleatório</button>
+          </div>
+          <small style="color: var(--text-secondary); font-size: 12px;">Cada link recebe um prefixo único e aleatório (ex: <strong>k7m2n9p4</strong> → seulink.com/<strong>k7m2n9p4</strong>/abc123). Ao criar um site novo, um prefixo é gerado automaticamente. Clique em <strong>Gerar aleatório</strong> para trocar.</small>
         </div>
         <div class="form-group">
           <label class="form-label">URL de Redirecionamento (quando bloquear)</label>
@@ -2789,7 +2791,28 @@
       }
     }
 
-    function openNewSiteModal() {
+    function generateRandomPathPrefixClient(len) {
+      const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+      const n = Math.max(4, Math.min(32, len || 8));
+      let s = '';
+      for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    }
+
+    async function fillRandomPathPrefix() {
+      const input = document.getElementById('sitePathPrefix');
+      if (!input) return;
+      try {
+        const res = await apiGet('/api/sites/random-path-prefix?length=8');
+        if (res && res.ok) {
+          const d = await res.json();
+          if (d.path_prefix) { input.value = d.path_prefix; return; }
+        }
+      } catch (e) {}
+      input.value = generateRandomPathPrefixClient(8);
+    }
+
+    async function openNewSiteModal() {
       document.getElementById('siteModalTitle').textContent = 'Novo Site';
       document.getElementById('editSiteId').value = '';
       document.getElementById('siteName').value = '';
@@ -2820,8 +2843,7 @@
       document.getElementById('siteFallbackOverrideStatus').style.display = 'none';
       setSiteEffectiveTargetUI(null);
       document.getElementById('siteUseFallback').checked = true;
-      document.getElementById('sitePathPrefix').value = '';
-      fillSitePathPrefixSuggestions();
+      await fillRandomPathPrefix();
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -2878,22 +2900,12 @@
       document.getElementById('siteMetaLinkParams').value = siteParams.meta || '';
       document.getElementById('siteTikTokLinkParams').value = siteParams.tiktok || '';
       document.getElementById('sitePathPrefix').value = (site.path_prefix || '').trim();
-      fillSitePathPrefixSuggestions();
       regenerateRefOnSave = false;
       document.getElementById('siteModal').classList.add('active');
     }
 
     async function fillSitePathPrefixSuggestions() {
-      const list = document.getElementById('sitePathPrefixSuggestions');
-      if (!list) return;
-      try {
-        const res = await apiGet('/api/settings/path-pool');
-        if (res && res.ok) {
-          const d = await res.json();
-          const arr = d.path_pool || [];
-          list.innerHTML = Array.isArray(arr) ? arr.map(function(p) { return '<option value="' + String(p).replace(/"/g, '&quot;') + '">'; }).join('') : '';
-        }
-      } catch (e) {}
+      /* mantido por compatibilidade — prefixos agora são gerados aleatoriamente */
     }
 
     function setRegenerateRefOnSave(v) { regenerateRefOnSave = v; }
@@ -5359,6 +5371,8 @@
     [document.getElementById('siteBlockBehaviorStealth'), document.getElementById('siteBlockBehaviorRedirect'), document.getElementById('siteBlockBehaviorEmbed'), document.getElementById('siteBlockBehaviorPage')].forEach(el => {
       if (el) el.addEventListener('change', () => { document.getElementById('sitePageSelectBox').style.display = document.getElementById('siteBlockBehaviorPage').checked ? 'block' : 'none'; });
     });
+    const sitePathPrefixRandomBtn = document.getElementById('sitePathPrefixRandomBtn');
+    if (sitePathPrefixRandomBtn) sitePathPrefixRandomBtn.addEventListener('click', () => { fillRandomPathPrefix(); });
     document.getElementById('userModal').addEventListener('click', e => { if (e.target.id === 'userModal') document.getElementById('userModal').classList.remove('active'); });
     document.getElementById('changePasswordModal').addEventListener('click', e => { if (e.target.id === 'changePasswordModal') closeChangePasswordModal(); });
     document.getElementById('domainModal').addEventListener('click', e => { if (e.target.id === 'domainModal') document.getElementById('domainModal').classList.remove('active'); });
