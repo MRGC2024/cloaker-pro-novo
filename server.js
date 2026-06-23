@@ -2932,10 +2932,98 @@ function isFromFacebookReferer(referer, fullUrl) {
 }
 
 /**
- * Decide bloqueio/liberação (mesma lógica do /:prefix/:code).
- * ctx: { query, userAgent, referer, fullUrl, headers, country, deviceType, uaParserResult, allowMetaReviewers, ip, suspectedReviewer }
+ * Lógica original — sites redirect/embed/page (campanhas antigas, sem alteração).
  */
-function evaluateLinkVisit(site, ctx) {
+function evaluateLinkVisitLegacy(site, ctx) {
+  const destUrl = getEffectiveTargetUrl(site);
+  const safeUrl = (site && site.redirect_url) ? site.redirect_url.trim() : 'https://www.google.com/';
+  const blockBehavior = (site && site.block_behavior) || 'redirect';
+  const out = {
+    blocked: false,
+    blockReason: null,
+    reviewerBypass: false,
+    offerUrl: destUrl,
+    safeUrl,
+    blockBehavior,
+    redirectTarget: destUrl,
+    redirectMode: 'offer'
+  };
+  if (!site || !destUrl) {
+    out.blocked = true;
+    out.blockReason = 'Site ou URL de destino inválidos';
+    out.redirectTarget = safeUrl;
+    out.redirectMode = 'safe';
+    return out;
+  }
+
+  const userAgent = ctx.userAgent || '';
+  const referer = (ctx.referer || '').toLowerCase();
+  const fullUrl = ctx.fullUrl || '';
+  const query = ctx.query || {};
+  const headers = ctx.headers || {};
+  const country = ctx.country || null;
+  const deviceType = ctx.deviceType || 'desktop';
+  const ua = ctx.uaParserResult || {};
+  const hasFbclid = !!(query.fbclid || '').toString().trim();
+  const refFromMeta = referer.includes('facebook') || referer.includes('fb.') || referer.includes('instagram') || referer.includes('m.facebook');
+  const reviewerUa = /facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot/i.test(userAgent.toLowerCase());
+  const suspectedReviewer = !!ctx.suspectedReviewer;
+  const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
+
+  if (ctx.allowMetaReviewers && seemsActualReviewer && destUrl) {
+    out.reviewerBypass = true;
+    out.redirectTarget = destUrl;
+    out.redirectMode = 'offer';
+    return out;
+  }
+
+  const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+  const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
+  const utmMed = (query.utm_medium || '').toString().trim();
+  const metaInApp = isMetaInAppMobileUA(userAgent, headers);
+  const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
+  const fromMetaAds = metaInApp || hasFbclid || refFromMeta ||
+    ((utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') && (utmMed || hasFbclid));
+  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
+  const likelyRealFromAds = isHandheld && fromMetaAds && countryOk;
+
+  let blockReason = null;
+  if (site.block_bots && isBotUserAgent(userAgent, headers)) {
+    if (!likelyRealFromAds) blockReason = 'Bot detectado';
+  } else if (isEmulatorUserAgent(userAgent, ua)) {
+    blockReason = 'Emulador detectado (apenas celular real permitido)';
+  } else if (site.block_desktop && isDesktopUserAgent(userAgent, headers)) {
+    blockReason = 'Desktop detectado';
+  } else if (site.block_facebook_library && isFromFacebookReferer(referer, fullUrl) && isDesktopUserAgent(userAgent, headers)) {
+    blockReason = 'Biblioteca Facebook';
+  } else if (allowedList.length > 0) {
+    const countryUpper = country ? country.toUpperCase() : null;
+    if (!countryUpper) {
+      if (!likelyRealFromAds) blockReason = 'País não identificado pelo IP (bloqueado por segurança)';
+    } else if (!allowedList.includes(countryUpper)) {
+      blockReason = `País não permitido: ${countryUpper}`;
+    } else if (blockedList.length > 0 && blockedList.includes(countryUpper)) {
+      blockReason = `País bloqueado: ${countryUpper}`;
+    }
+  } else if (country && blockedList.includes(country.toUpperCase())) {
+    blockReason = `País bloqueado: ${country}`;
+  }
+
+  out.blocked = !!blockReason;
+  out.blockReason = blockReason;
+  if (out.blocked) {
+    out.redirectTarget = safeUrl;
+    out.redirectMode = blockBehavior === 'page' ? 'page' : (blockBehavior === 'embed' ? 'embed' : 'safe');
+  } else {
+    out.redirectTarget = destUrl;
+    out.redirectMode = 'offer';
+  }
+  return out;
+}
+
+/** Lógica Stealth — apenas sites novos com block_behavior = stealth. */
+function evaluateLinkVisitStealth(site, ctx) {
   const destUrl = getEffectiveTargetUrl(site);
   const safeUrl = (site && site.redirect_url) ? site.redirect_url.trim() : 'https://www.google.com/';
   const blockBehavior = normalizeBlockBehavior(site && site.block_behavior);
@@ -3035,6 +3123,11 @@ function evaluateLinkVisit(site, ctx) {
     out.redirectMode = blockBehavior === 'stealth' ? 'bridge' : (shouldSoftRedirectOffer(site) ? 'soft_offer' : 'offer');
   }
   return out;
+}
+
+function evaluateLinkVisit(site, ctx) {
+  if (!isStealthMode(site)) return evaluateLinkVisitLegacy(site, ctx);
+  return evaluateLinkVisitStealth(site, ctx);
 }
 
 function getMetaLinkConfigWarnings(site) {
@@ -3182,41 +3275,100 @@ async function handleLinkRedirect(req, res) {
     return handleStealthLinkGet(req, res, site);
   }
 
+  // ——— Sites antigos (redirect / embed / page): fluxo original, sem ponte Stealth ———
   const userAgentEarly = req.headers['user-agent'] || '';
   const refererEarly = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
   const uaEarly = new UAParser(userAgentEarly).getResult();
   const deviceTypeEarly = resolveDeviceType(userAgentEarly, uaEarly, req.headers);
 
-  // ref=TOKEN ou sinais de clique real no app Meta (Instagram costuma não repassar ref na URL)
   if (!isRefTokenSatisfied(site, req.query, userAgentEarly, refererEarly, req.headers)) {
     const blockReasonRef = 'Acesso sem parâmetro de rastreamento (não veio do Ads)';
     const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    let ipRef = extractClientIp(req);
+    const ipRef = extractClientIp(req);
     await db.run(
       `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, device_type, browser, os, was_blocked, block_reason, is_bot, request_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, datetime('now'))`,
       [site.site_id, ipRef, userAgentEarly, refererEarly, fullUrl, null, deviceTypeEarly, uaEarly.browser?.name || null, uaEarly.os?.name || null, blockReasonRef, req.path]
     );
     const blockUrl = site.redirect_url || 'https://www.google.com/';
-    return deliverBlockedResponse(res, site, blockUrl, userAgentEarly);
+    const legacyBehavior = (site.block_behavior || 'redirect');
+    if (legacyBehavior === 'page') { if (await sendCustomPage(res, site)) return; }
+    if (legacyBehavior === 'embed') return sendEmbeddedPage(res, blockUrl);
+    return redirectWithDelay(res, blockUrl);
   }
 
-  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true });
-  const { decision, visitorSql, visitorParams, destWithQs, userAgent } = ctx;
+  const ip = extractClientIp(req);
+  const rateCheck = checkRateLimit(ip);
+  if (rateCheck.blocked) {
+    const pageUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, was_blocked, block_reason, request_path, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, datetime('now'))`,
+      [site.site_id, ip, req.headers['user-agent'] || '', (req.headers['referer'] || req.headers['referrer'] || ''), pageUrl, rateCheck.reason, req.path]);
+    const blockUrl = site.redirect_url || 'https://www.google.com/';
+    return redirectWithDelay(res, blockUrl);
+  }
+
+  const userAgent = userAgentEarly;
+  const referer = refererEarly;
+  const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+  const ua = uaEarly;
+  const deviceType = deviceTypeEarly;
+
+  const headerCountry = getCountryFromHeaders(req);
+  const geo = headerCountry ? { country: headerCountry, city: null, region: null, isp: null } : await getGeoByIP(ip);
+  const country = geo.country;
+  const suspectedReviewer = isSuspectedReviewerIP(ip);
+  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
+
+  const decision = evaluateLinkVisitLegacy(site, {
+    query: req.query,
+    userAgent,
+    referer,
+    fullUrl,
+    headers: req.headers,
+    country,
+    deviceType,
+    uaParserResult: ua,
+    allowMetaReviewers,
+    suspectedReviewer,
+    ip
+  });
 
   if (decision.reviewerBypass) {
-    const blockUrl = site.redirect_url || 'https://www.google.com/';
-    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, block_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, datetime('now'))`,
-      [site.site_id, ctx.ip, userAgent, ctx.referer, ctx.fullUrl, ctx.country || null, req.path, decision.blockReason || 'Revisor Meta']);
-    return deliverBlockedResponse(res, site, blockUrl, userAgent);
+    let dest = destUrl;
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
+    if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
+    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now'))`,
+      [site.site_id, ip, userAgent, referer, fullUrl, country || null, req.path]);
+    return redirectWithDelay(res, dest);
   }
 
-  if (decision.blocked) {
+  const wasBlocked = decision.blocked;
+  const blockReason = decision.blockReason;
+
+  const utm_source = (req.query.utm_source || '').trim() || null;
+  const utm_medium = (req.query.utm_medium || '').trim() || null;
+  const utm_campaign = (req.query.utm_campaign || '').trim() || null;
+  const utm_term = (req.query.utm_term || '').trim() || null;
+  const utm_content = (req.query.utm_content || '').trim() || null;
+  const fbclid = (req.query.fbclid || '').trim() || null;
+  const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
+
+  const suspectedRev = suspectedReviewer ? 1 : 0;
+  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
+  const visitorParams = [site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null, deviceType, ua.browser?.name || null, ua.os?.name || null, wasBlocked ? 1 : 0, blockReason, isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebookParams, req.path, suspectedRev];
+
+  if (wasBlocked) {
     await db.run(visitorSql, visitorParams);
     const blockUrl = site.redirect_url || 'https://www.google.com/';
-    return deliverBlockedResponse(res, site, blockUrl, userAgent);
+    const legacyBehavior = (site.block_behavior || 'redirect');
+    if (legacyBehavior === 'page') { if (await sendCustomPage(res, site)) return; }
+    if (legacyBehavior === 'embed') return sendEmbeddedPage(res, blockUrl);
+    return redirectWithDelay(res, blockUrl);
   }
 
-  deliverOfferResponse(res, site, destWithQs);
+  let dest = destUrl;
+  const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
+  if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
+  redirectWithDelay(res, dest);
   void db.run(visitorSql, visitorParams).catch((err) => console.error('[visitor] insert (clique liberado):', err.message));
 }
 

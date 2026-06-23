@@ -2866,7 +2866,7 @@
       setSiteEffectiveTargetUI(site);
       document.getElementById('siteUseFallback').checked = site.use_fallback !== 0 && site.use_fallback !== false;
       document.getElementById('siteRedirectUrl').value = site.redirect_url || 'https://www.google.com/';
-      const behavior = site.block_behavior || 'stealth';
+      const behavior = site.block_behavior || 'redirect';
       const isStealth = behavior === 'stealth';
       const isEmbed = behavior === 'embed';
       const isPage = behavior === 'page';
