@@ -7,29 +7,28 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M16 7l7 4v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9v-6l7-4z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #000000;
-      --bg-card: #111111;
-      --bg-input: #0a0a0a;
-      --accent: #6366f1;
-      --accent-hover: #818cf8;
-      --success: #22c55e;
-      --danger: #ef4444;
-      --text-primary: #fafafa;
-      --text-secondary: #a3a3a3;
-      --text-tertiary: #737373;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(99, 102, 241, 0.55);
+      --bg: #030308;
+      --cyan: #22d3ee;
+      --violet: #818cf8;
+      --indigo: #6366f1;
+      --magenta: #c084fc;
+      --text: #f4f4f5;
+      --muted: #94a3b8;
+      --dim: #64748b;
+      --glass: rgba(8, 8, 16, 0.72);
+      --glass-border: rgba(129, 140, 248, 0.22);
+      --danger: #f87171;
     }
     html { color-scheme: dark; }
     body {
       font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       min-height: 100dvh;
       display: flex;
@@ -38,227 +37,446 @@
       padding: 24px;
       padding-top: max(24px, env(safe-area-inset-top));
       padding-bottom: max(24px, env(safe-area-inset-bottom));
-      position: relative;
       overflow: hidden;
+      position: relative;
     }
-    body::before {
-      content: '';
+
+    /* —— Background futurista —— */
+    .bg-scene {
       position: fixed;
       inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99, 102, 241, 0.08), transparent);
+      z-index: 0;
+      overflow: hidden;
       pointer-events: none;
     }
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+      animation: orbFloat 14s ease-in-out infinite;
+    }
+    .bg-orb-1 {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.55), transparent 70%);
+      top: -120px; left: 50%;
+      transform: translateX(-50%);
+      animation-delay: 0s;
+    }
+    .bg-orb-2 {
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.35), transparent 70%);
+      bottom: -80px; right: -60px;
+      animation-delay: -4s;
+    }
+    .bg-orb-3 {
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(192, 132, 252, 0.3), transparent 70%);
+      bottom: 20%; left: -80px;
+      animation-delay: -8s;
+    }
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(20px, -15px) scale(1.05); }
+      66% { transform: translate(-15px, 10px) scale(0.95); }
+    }
+    .bg-orb-1 { animation-name: orbFloatCenter; }
+    @keyframes orbFloatCenter {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(25px); }
+    }
+
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 20%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 20%, transparent 75%);
+      animation: gridPulse 8s ease-in-out infinite;
+    }
+    @keyframes gridPulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .bg-horizon {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      height: 45%;
+      background: linear-gradient(to top, rgba(99, 102, 241, 0.12) 0%, transparent 100%);
+      transform: perspective(500px) rotateX(60deg);
+      transform-origin: bottom;
+    }
+
+    .scanline {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* —— Layout —— */
     .login-wrap {
       position: relative;
+      z-index: 1;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
+      animation: cardIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .card-glow {
+      position: absolute;
+      inset: -1px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--cyan), var(--indigo), var(--magenta), var(--cyan));
+      background-size: 300% 300%;
+      animation: borderGlow 6s ease infinite;
+      opacity: 0.65;
+      filter: blur(1px);
+    }
+    @keyframes borderGlow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
     .login-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 40px 36px;
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      position: relative;
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 42px 38px 38px;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 32px 64px rgba(0, 0, 0, 0.55),
+        0 0 80px rgba(99, 102, 241, 0.08);
     }
     @media (max-width: 480px) {
-      .login-card { padding: 32px 24px; border-radius: 16px; }
+      .login-card { padding: 32px 22px 28px; border-radius: 20px; }
     }
-    .brand {
-      text-align: center;
-      margin-bottom: 36px;
+
+    /* —— Brand —— */
+    .brand { text-align: center; margin-bottom: 32px; }
+    .brand-ring {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 18px;
     }
+    .brand-ring::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      border-top-color: var(--cyan);
+      border-right-color: var(--indigo);
+      animation: spin 4s linear infinite;
+    }
+    .brand-ring::after {
+      content: '';
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      border: 1px dashed rgba(129, 140, 248, 0.25);
+      animation: spin 12s linear infinite reverse;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .brand-mark {
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 16px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(129, 140, 248, 0.25), rgba(99, 102, 241, 0.08));
+      border: 1px solid rgba(129, 140, 248, 0.35);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
+      font-size: 32px;
       color: #fff;
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.4), 0 0 60px rgba(34, 211, 238, 0.12);
+      position: relative;
+      z-index: 1;
     }
     .brand h1 {
-      font-size: 22px;
+      font-size: 26px;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 6px;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+      background: linear-gradient(90deg, #fff 0%, var(--violet) 50%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    .brand p {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-    .form-group { margin-bottom: 20px; }
-    .form-label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--text-secondary);
-      font-size: 13px;
+    .brand-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
       font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 8px;
     }
-    .input-wrap {
-      position: relative;
+    .brand-tag .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: blink 2s ease-in-out infinite;
     }
-    .input-wrap i {
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .brand p { font-size: 14px; color: var(--muted); }
+
+    /* —— Form —— */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .form-label i { font-size: 14px; color: var(--indigo); }
+    .input-wrap { position: relative; }
+    .input-wrap > i.field-icon {
       position: absolute;
-      left: 14px;
+      left: 15px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--text-tertiary);
+      color: var(--dim);
       font-size: 18px;
       pointer-events: none;
+      transition: color 0.25s;
     }
     .form-input {
       width: 100%;
-      padding: 13px 14px 13px 44px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--bg-input);
-      color: var(--text-primary);
+      padding: 14px 16px 14px 46px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(0, 0, 0, 0.45);
+      color: var(--text);
       font-size: 16px;
       font-family: inherit;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
     }
+    .form-input::placeholder { color: #475569; }
     .form-input:focus {
       outline: none;
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      border-color: rgba(34, 211, 238, 0.45);
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1), 0 0 24px rgba(99, 102, 241, 0.15);
     }
+    .input-wrap:focus-within > i.field-icon { color: var(--cyan); }
+
     .btn-login {
+      position: relative;
       width: 100%;
-      padding: 14px 20px;
-      margin-top: 8px;
-      border-radius: 12px;
-      border: none;
+      padding: 15px 20px;
+      margin-top: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(129, 140, 248, 0.4);
       font-size: 15px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       color: #fff;
-      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(79, 70, 229, 0.95) 50%, rgba(34, 211, 238, 0.25) 100%);
+      background-size: 200% 200%;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: opacity 0.2s, transform 0.15s;
-      min-height: 48px;
+      gap: 10px;
+      min-height: 50px;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.25s;
+      box-shadow: 0 4px 24px rgba(99, 102, 241, 0.35), 0 0 40px rgba(34, 211, 238, 0.08);
     }
-    .btn-login:hover { opacity: 0.92; }
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0% { left: -100%; }
+      40%, 100% { left: 150%; }
+    }
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(99, 102, 241, 0.45), 0 0 50px rgba(34, 211, 238, 0.15);
+    }
     .btn-login:active { transform: scale(0.98); }
-    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-login:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .btn-login span, .btn-login i { position: relative; z-index: 1; }
+
     .msg {
       margin-top: 16px;
       padding: 12px 14px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 13px;
       line-height: 1.45;
       display: none;
     }
     .msg.error {
-      display: block;
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      color: #fecaca;
     }
     .msg.success {
       display: block;
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.3);
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.35);
       color: #86efac;
     }
+
     #setupBox {
       display: none;
       margin-top: 28px;
       padding-top: 28px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid rgba(129, 140, 248, 0.15);
     }
     .setup-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 11px;
-      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--accent-hover);
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      padding: 4px 10px;
-      border-radius: 6px;
+      color: var(--magenta);
+      background: rgba(192, 132, 252, 0.1);
+      border: 1px solid rgba(192, 132, 252, 0.3);
+      padding: 5px 12px;
+      border-radius: 8px;
       margin-bottom: 12px;
     }
     .setup-title {
       font-size: 14px;
-      color: var(--text-secondary);
+      color: var(--muted);
       margin-bottom: 20px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
+
     .footer-note {
       text-align: center;
-      margin-top: 24px;
-      font-size: 12px;
-      color: var(--text-tertiary);
+      margin-top: 28px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--dim);
+    }
+    .footer-note span { color: rgba(34, 211, 238, 0.7); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="bg-scene" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-horizon"></div>
+    <div class="scanline"></div>
+  </div>
+
   <div class="login-wrap">
+    <div class="card-glow" aria-hidden="true"></div>
     <div class="login-card">
       <div class="brand">
-        <div class="brand-mark"><i class="ri-shield-check-line"></i></div>
+        <div class="brand-ring">
+          <div class="brand-mark"><i class="ri-shield-check-line"></i></div>
+        </div>
+        <div class="brand-tag"><span class="dot"></span> Secure access</div>
         <h1>Cloaker Pro</h1>
-        <p>Acesso ao painel de controle</p>
+        <p>Painel de controle · tráfego protegido</p>
       </div>
 
       <form id="loginForm">
         <div class="form-group">
-          <label class="form-label" for="username">Usuário</label>
+          <label class="form-label" for="username"><i class="ri-fingerprint-line"></i> Identificação</label>
           <div class="input-wrap">
-            <i class="ri-user-line"></i>
-            <input type="text" class="form-input" id="username" name="username" required autocomplete="username" placeholder="Seu usuário">
+            <i class="ri-user-3-line field-icon"></i>
+            <input type="text" class="form-input" id="username" name="username" required autocomplete="username" placeholder="Usuário">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label" for="password">Senha</label>
+          <label class="form-label" for="password"><i class="ri-key-2-line"></i> Chave de acesso</label>
           <div class="input-wrap">
-            <i class="ri-lock-line"></i>
-            <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password" placeholder="Sua senha">
+            <i class="ri-lock-2-line field-icon"></i>
+            <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password" placeholder="Senha">
           </div>
         </div>
         <button type="submit" class="btn-login" id="loginBtn">
-          <i class="ri-login-box-line"></i> Entrar
+          <i class="ri-login-circle-line"></i>
+          <span>Iniciar sessão</span>
         </button>
         <div id="loginMsg" class="msg"></div>
       </form>
 
       <div id="setupBox">
-        <div class="setup-badge"><i class="ri-settings-3-line"></i> Configuração inicial</div>
-        <div class="setup-title">Nenhum administrador encontrado. Crie a conta principal para acessar o painel:</div>
+        <div class="setup-badge"><i class="ri-cpu-line"></i> Primeiro boot</div>
+        <div class="setup-title">Sistema sem administrador. Configure a conta principal:</div>
         <form id="setupForm">
           <div class="form-group">
-            <label class="form-label" for="setupUsername">Usuário (admin)</label>
+            <label class="form-label" for="setupUsername"><i class="ri-user-star-line"></i> Usuário admin</label>
             <div class="input-wrap">
-              <i class="ri-user-star-line"></i>
+              <i class="ri-user-star-line field-icon"></i>
               <input type="text" class="form-input" id="setupUsername" required minlength="2" placeholder="admin">
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="setupPassword">Senha (mín. 6 caracteres)</label>
+            <label class="form-label" for="setupPassword"><i class="ri-lock-password-line"></i> Senha</label>
             <div class="input-wrap">
-              <i class="ri-lock-password-line"></i>
-              <input type="password" class="form-input" id="setupPassword" required minlength="6" placeholder="••••••••">
+              <i class="ri-lock-password-line field-icon"></i>
+              <input type="password" class="form-input" id="setupPassword" required minlength="6" placeholder="Mín. 6 caracteres">
             </div>
           </div>
-          <button type="submit" class="btn-login"><i class="ri-user-add-line"></i> Criar administrador</button>
+          <button type="submit" class="btn-login">
+            <i class="ri-shield-user-line"></i>
+            <span>Criar administrador</span>
+          </button>
           <div id="setupMsg" class="msg"></div>
         </form>
       </div>
     </div>
-    <p class="footer-note">Acesso restrito · Horário de Brasília (BRT)</p>
+    <p class="footer-note"><span>◈</span> ENCRYPTED · BRT · RESTRICTED</p>
   </div>
 
   <script>
@@ -289,12 +507,12 @@
         return r.json().then(function(data) {
           if (r.ok) { window.location.href = '/'; return; }
           loginMsg.className = 'msg error';
-          loginMsg.textContent = data.error || 'Usuário ou senha incorretos';
+          loginMsg.innerHTML = '<i class="ri-error-warning-line"></i><span>' + (data.error || 'Credenciais inválidas') + '</span>';
           loginBtn.disabled = false;
         });
       }).catch(function() {
         loginMsg.className = 'msg error';
-        loginMsg.textContent = 'Erro de conexão. Tente novamente.';
+        loginMsg.innerHTML = '<i class="ri-wifi-off-line"></i><span>Erro de conexão. Tente novamente.</span>';
         loginBtn.disabled = false;
       });
     });
@@ -313,11 +531,11 @@
         return r.json().then(function(data) {
           if (r.ok) { window.location.href = '/'; return; }
           setupMsg.className = 'msg error';
-          setupMsg.textContent = data.error || 'Erro ao criar administrador';
+          setupMsg.innerHTML = '<i class="ri-error-warning-line"></i><span>' + (data.error || 'Erro ao criar administrador') + '</span>';
         });
       }).catch(function() {
         setupMsg.className = 'msg error';
-        setupMsg.textContent = 'Erro de conexão';
+        setupMsg.innerHTML = '<i class="ri-wifi-off-line"></i><span>Erro de conexão</span>';
       });
     });
   </script>
