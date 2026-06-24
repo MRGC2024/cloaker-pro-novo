@@ -1324,7 +1324,7 @@ app.post('/api/sites', async (req, res) => {
   const target = (target_url || '').trim() || null;
   const userId = req.session.userId;
   const behavior = normalizeBlockBehavior(block_behavior || 'stealth');
-  const lpId = behavior === 'page' && landing_page_id ? parseInt(landing_page_id, 10) : null;
+  const lpId = resolveLandingPageId(behavior, landing_page_id);
   const selDomain = (selected_domain || '').trim() || null;
   const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
   const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
@@ -1361,7 +1361,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
     else if (data.required_ref_token !== undefined) refToken = (data.required_ref_token || '').trim() || null;
     const blockBehavior = normalizeBlockBehavior(data.block_behavior);
     const defaultParams = (data.default_link_params || '').trim() || null;
-    const lpId = blockBehavior === 'page' && data.landing_page_id ? parseInt(data.landing_page_id, 10) : null;
+    const lpId = resolveLandingPageId(blockBehavior, data.landing_page_id);
     const selDomain = (data.selected_domain || '').trim() || null;
     const newTarget = (data.target_url || '').trim() || null;
     const targetChanged = ((existing.target_url || '').trim() || null) !== newTarget;
@@ -2132,6 +2132,14 @@ function normalizeBlockBehavior(value) {
   const v = (value || 'redirect').toLowerCase();
   if (v === 'page' || v === 'embed' || v === 'stealth') return v;
   return 'redirect';
+}
+
+/** White page / ponte Stealth — persiste para modos `page` e `stealth`. */
+function resolveLandingPageId(blockBehavior, landingPageId) {
+  const behavior = normalizeBlockBehavior(blockBehavior);
+  if ((behavior !== 'page' && behavior !== 'stealth') || landingPageId == null || landingPageId === '') return null;
+  const id = parseInt(landingPageId, 10);
+  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /** Stealth só para sites novos (criados após o lançamento). Campanhas antigas permanecem redirect. */
