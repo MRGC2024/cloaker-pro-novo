@@ -379,19 +379,9 @@ app.get('/api/settings/check-propagation', async (req, res) => {
   res.json({ ok, message, details });
 });
 
-// API: Solicitar conta (público – cria usuário com status pending)
+// API: Solicitar conta — desativado (acesso apenas por login / admin)
 app.post('/api/signup', async (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password || username.trim().length < 2 || password.length < 6) return res.status(400).json({ error: 'Usuário (mín. 2 caracteres) e senha (mín. 6 caracteres) obrigatórios' });
-  const exists = await db.get('SELECT id FROM users WHERE username = ?', [username.trim()]);
-  if (exists) return res.status(400).json({ error: 'Este usuário já está cadastrado.' });
-  const hash = bcrypt.hashSync(password, 10);
-  try {
-    await db.run('INSERT INTO users (username, password_hash, role, status) VALUES (?, ?, ?, ?)', [username.trim(), hash, 'user', 'pending']);
-    res.json({ success: true, message: 'Solicitação enviada. Aguarde a aprovação do administrador.' });
-  } catch (e) {
-    res.status(400).json({ error: 'Erro ao solicitar conta.' });
-  }
+  res.status(403).json({ error: 'Cadastro público desativado. Entre com sua conta ou peça ao administrador.' });
 });
 
 // API: Listar usuários (admin – ativos e pendentes)

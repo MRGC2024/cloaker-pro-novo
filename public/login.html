@@ -2,103 +2,270 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Cloaker Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Entrar — Cloaker Pro</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M16 7l7 4v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9v-6l7-4z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f23; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .card { background: #16213e; border: 1px solid #2a2a4a; border-radius: 20px; padding: 40px; max-width: 400px; width: 100%; }
-    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-    .logo i { font-size: 36px; color: #e94560; }
-    .logo h1 { font-size: 24px; font-weight: 600; }
+    :root {
+      --bg-primary: #000000;
+      --bg-card: #111111;
+      --bg-input: #0a0a0a;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --text-primary: #fafafa;
+      --text-secondary: #a3a3a3;
+      --text-tertiary: #737373;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.55);
+    }
+    html { color-scheme: dark; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      padding-top: max(24px, env(safe-area-inset-top));
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      position: relative;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99, 102, 241, 0.08), transparent);
+      pointer-events: none;
+    }
+    .login-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+    }
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+    @media (max-width: 480px) {
+      .login-card { padding: 32px 24px; border-radius: 16px; }
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .brand-mark {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    }
+    .brand h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .brand p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
     .form-group { margin-bottom: 20px; }
-    .form-label { display: block; margin-bottom: 8px; color: #a0a0b0; font-size: 14px; }
-    .form-input { width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid #2a2a4a; background: #1a1a2e; color: #fff; font-size: 14px; }
-    .form-input:focus { outline: none; border-color: #e94560; }
-    .btn { width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #e94560, #ff6b6b); color: white; margin-top: 10px; }
-    .btn:hover { opacity: 0.9; }
-    .msg { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 13px; display: none; }
-    .msg.error { background: rgba(220,53,69,0.2); color: #dc3545; display: block; }
-    .msg.success { background: rgba(0,217,165,0.2); color: #00d9a5; display: block; }
-    #setupBox { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #2a2a4a; }
-    .setup-title { font-size: 14px; color: #a0a0b0; margin-bottom: 15px; }
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      font-size: 18px;
+      pointer-events: none;
+    }
+    .form-input {
+      width: 100%;
+      padding: 13px 14px 13px 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 14px 20px;
+      margin-top: 8px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s, transform 0.15s;
+      min-height: 48px;
+    }
+    .btn-login:hover { opacity: 0.92; }
+    .btn-login:active { transform: scale(0.98); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+    .msg {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      display: none;
+    }
+    .msg.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    .msg.success {
+      display: block;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+    #setupBox {
+      display: none;
+      margin-top: 28px;
+      padding-top: 28px;
+      border-top: 1px solid var(--border);
+    }
+    .setup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent-hover);
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .setup-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .footer-note {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">
-      <i class="ri-shield-keyhole-fill"></i>
-      <h1>Cloaker Pro</h1>
-    </div>
-    <form id="loginForm">
-      <div class="form-group">
-        <label class="form-label">Usuário</label>
-        <input type="text" class="form-input" id="username" name="username" required autocomplete="username">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-mark"><i class="ri-shield-check-line"></i></div>
+        <h1>Cloaker Pro</h1>
+        <p>Acesso ao painel de controle</p>
       </div>
-      <div class="form-group">
-        <label class="form-label">Senha</label>
-        <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password">
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="username">Usuário</label>
+          <div class="input-wrap">
+            <i class="ri-user-line"></i>
+            <input type="text" class="form-input" id="username" name="username" required autocomplete="username" placeholder="Seu usuário">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <div class="input-wrap">
+            <i class="ri-lock-line"></i>
+            <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password" placeholder="Sua senha">
+          </div>
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">
+          <i class="ri-login-box-line"></i> Entrar
+        </button>
+        <div id="loginMsg" class="msg"></div>
+      </form>
+
+      <div id="setupBox">
+        <div class="setup-badge"><i class="ri-settings-3-line"></i> Configuração inicial</div>
+        <div class="setup-title">Nenhum administrador encontrado. Crie a conta principal para acessar o painel:</div>
+        <form id="setupForm">
+          <div class="form-group">
+            <label class="form-label" for="setupUsername">Usuário (admin)</label>
+            <div class="input-wrap">
+              <i class="ri-user-star-line"></i>
+              <input type="text" class="form-input" id="setupUsername" required minlength="2" placeholder="admin">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="setupPassword">Senha (mín. 6 caracteres)</label>
+            <div class="input-wrap">
+              <i class="ri-lock-password-line"></i>
+              <input type="password" class="form-input" id="setupPassword" required minlength="6" placeholder="••••••••">
+            </div>
+          </div>
+          <button type="submit" class="btn-login"><i class="ri-user-add-line"></i> Criar administrador</button>
+          <div id="setupMsg" class="msg"></div>
+        </form>
       </div>
-      <button type="submit" class="btn"><i class="ri-login-box-line"></i> Entrar</button>
-      <div id="loginMsg" class="msg"></div>
-    </form>
-    <div id="signupBox" style="margin-top: 25px; padding-top: 25px; border-top: 1px solid #2a2a4a;">
-      <div class="setup-title">Não tem conta? Solicite acesso (o administrador irá aprovar):</div>
-      <form id="signupForm">
-        <div class="form-group">
-          <label class="form-label">Usuário desejado</label>
-          <input type="text" class="form-input" id="signupUsername" required minlength="2" placeholder="nome de login">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Senha (mín. 6 caracteres)</label>
-          <input type="password" class="form-input" id="signupPassword" required minlength="6" placeholder="••••••••">
-        </div>
-        <button type="submit" class="btn" style="background: var(--bg-card); border: 1px solid #2a2a4a;"><i class="ri-user-add-line"></i> Solicitar acesso</button>
-        <div id="signupMsg" class="msg"></div>
-      </form>
     </div>
-    <div id="setupBox">
-      <div class="setup-title">Primeiro acesso? Crie o usuário administrador:</div>
-      <form id="setupForm">
-        <div class="form-group">
-          <label class="form-label">Usuário (admin)</label>
-          <input type="text" class="form-input" id="setupUsername" required minlength="2">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Senha (mín. 6 caracteres)</label>
-          <input type="password" class="form-input" id="setupPassword" required minlength="6">
-        </div>
-        <button type="submit" class="btn"><i class="ri-user-add-line"></i> Criar administrador</button>
-        <div id="setupMsg" class="msg"></div>
-      </form>
-    </div>
+    <p class="footer-note">Acesso restrito · Horário de Brasília (BRT)</p>
   </div>
+
   <script>
     var loginMsg = document.getElementById('loginMsg');
     var setupBox = document.getElementById('setupBox');
     var setupMsg = document.getElementById('setupMsg');
-    var signupMsg = document.getElementById('signupMsg');
-
-    document.getElementById('signupForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      signupMsg.className = 'msg'; signupMsg.textContent = '';
-      var form = document.getElementById('signupForm');
-      fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: document.getElementById('signupUsername').value.trim(), password: document.getElementById('signupPassword').value })
-      }).then(function(r) {
-        return r.json().then(function(data) {
-          if (r.ok) {
-            signupMsg.className = 'msg success'; signupMsg.textContent = data.message || 'Solicitação enviada. Aguarde a aprovação.';
-            document.getElementById('signupUsername').value = ''; document.getElementById('signupPassword').value = '';
-          } else {
-            signupMsg.className = 'msg error'; signupMsg.textContent = data.error || 'Erro ao solicitar';
-          }
-        });
-      }).catch(function() { signupMsg.className = 'msg error'; signupMsg.textContent = 'Erro de conexão'; });
-    });
+    var loginBtn = document.getElementById('loginBtn');
 
     fetch('/api/me', { credentials: 'include' }).then(function(r) {
       if (r.ok) { window.location.href = '/'; return; }
@@ -109,7 +276,9 @@
 
     document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      loginMsg.className = 'msg'; loginMsg.textContent = '';
+      loginMsg.className = 'msg';
+      loginMsg.textContent = '';
+      loginBtn.disabled = true;
       var form = e.target;
       fetch('/api/login', {
         method: 'POST',
@@ -119,14 +288,21 @@
       }).then(function(r) {
         return r.json().then(function(data) {
           if (r.ok) { window.location.href = '/'; return; }
-          loginMsg.className = 'msg error'; loginMsg.textContent = data.error || 'Erro ao entrar';
+          loginMsg.className = 'msg error';
+          loginMsg.textContent = data.error || 'Usuário ou senha incorretos';
+          loginBtn.disabled = false;
         });
-      }).catch(function() { loginMsg.className = 'msg error'; loginMsg.textContent = 'Erro de conexão'; });
+      }).catch(function() {
+        loginMsg.className = 'msg error';
+        loginMsg.textContent = 'Erro de conexão. Tente novamente.';
+        loginBtn.disabled = false;
+      });
     });
 
     document.getElementById('setupForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      setupMsg.className = 'msg'; setupMsg.textContent = '';
+      setupMsg.className = 'msg';
+      setupMsg.textContent = '';
       var form = e.target;
       fetch('/api/setup', {
         method: 'POST',
@@ -136,11 +312,14 @@
       }).then(function(r) {
         return r.json().then(function(data) {
           if (r.ok) { window.location.href = '/'; return; }
-          setupMsg.className = 'msg error'; setupMsg.textContent = data.error || 'Erro ao criar';
+          setupMsg.className = 'msg error';
+          setupMsg.textContent = data.error || 'Erro ao criar administrador';
         });
-      }).catch(function() { setupMsg.className = 'msg error'; setupMsg.textContent = 'Erro de conexão'; });
+      }).catch(function() {
+        setupMsg.className = 'msg error';
+        setupMsg.textContent = 'Erro de conexão';
+      });
     });
-
-      </script>
+  </script>
 </body>
 </html>
