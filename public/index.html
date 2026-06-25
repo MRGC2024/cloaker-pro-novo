@@ -71,6 +71,21 @@
       line-height: 1.5;
     }
     .stealth-warning-banner i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .stealth-sim-panel {
+      margin-top: 14px; padding: 14px 16px; border-radius: 12px;
+      border: 1px solid rgba(52, 211, 153, 0.25); background: rgba(52, 211, 153, 0.05);
+    }
+    .stealth-sim-table { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 12px; }
+    .stealth-sim-table th, .stealth-sim-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .stealth-sim-table th { color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stealth-sim-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .stealth-sim-badge.white { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .stealth-sim-badge.gray { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .stealth-sim-badge.offer { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+    .stealth-sim-badge.redirect { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+    .stealth-sim-desc { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
     .behavior-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     @media (max-width: 560px) { .behavior-cards { grid-template-columns: 1fr; } }
     .behavior-card {
@@ -1586,6 +1601,14 @@
           </div>
         </div>
       </div>
+      <div class="card" style="border: 1px solid var(--accent-primary);">
+        <div class="card-header"><h3 class="card-title"><i class="ri-radar-line"></i> Simulador Stealth — quem vê o quê</h3></div>
+        <div class="card-body">
+          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 13px;">Simula <strong>9 perfis de visita</strong> e mostra a página entregue no <strong>primeiro carregamento</strong>: white, gray ou oferta — sem delay. Use para validar antes de subir o anúncio.</p>
+          <button type="button" class="btn btn-primary" onclick="runStealthSimulatorFromScript()"><i class="ri-play-circle-line"></i> Simular site selecionado</button>
+          <div id="stealthSimulatorScriptResults" style="display: none; margin-top: 16px;"></div>
+        </div>
+      </div>
       <div class="card" style="border: 1px solid var(--warning);">
         <div class="card-header"><h3 class="card-title"><i class="ri-shield-check-line"></i> Diagnóstico Meta (link do anúncio)</h3></div>
         <div class="card-body">
@@ -2344,6 +2367,16 @@
               <small style="color: var(--text-secondary); font-size: 12px;">Lead aprovado recebe este HTML <strong>na mesma URL do link</strong> — sem 302 para outro domínio.</small>
             </div>
           </div>
+          <div id="stealthSimulatorBox" class="stealth-sim-panel" style="display: none;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+              <div>
+                <strong style="font-size:14px;"><i class="ri-radar-line"></i> Simulador de visitas Stealth</strong>
+                <p style="font-size:12px; color:var(--text-secondary); margin:6px 0 0;">Mostra qual página cada tipo de visitante recebe <strong>no primeiro carregamento</strong> (sem delay).</p>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary" id="stealthSimulatorBtn" onclick="runStealthSimulatorFromModal()"><i class="ri-play-circle-line"></i> Simular</button>
+            </div>
+            <div id="stealthSimulatorResults"></div>
+          </div>
         </div>
         <div class="form-group" style="margin-top: 8px;">
           <label class="form-label">URL de redirecionamento (quando bloquear)</label>
@@ -3041,6 +3074,9 @@
       if (pageBox) pageBox.style.display = (isStealth || isPage) ? 'block' : 'none';
       if (funnelBox) funnelBox.style.display = isStealth ? 'block' : 'none';
       if (reqTag) reqTag.style.display = isStealth ? 'inline' : 'none';
+      const simBox = document.getElementById('stealthSimulatorBox');
+      const siteId = (document.getElementById('editSiteId').value || '').trim();
+      if (simBox) simBox.style.display = (isStealth && siteId) ? 'block' : 'none';
       document.querySelectorAll('.behavior-card').forEach(function(card) {
         const input = card.querySelector('input[type=radio]');
         card.classList.toggle('selected', !!(input && input.checked));
@@ -4504,6 +4540,68 @@
     
     function escapeHtml(str) {
       return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function stealthSimBadgeClass(kind) {
+      if (kind === 'white') return 'white';
+      if (kind === 'gray') return 'gray';
+      if (kind === 'offer') return 'offer';
+      return 'redirect';
+    }
+
+    function renderStealthSimulatorResults(data, boxEl) {
+      if (!boxEl) return;
+      boxEl.style.display = 'block';
+      if (!data || !data.simulations) {
+        boxEl.innerHTML = '<p style="color:var(--danger)">Sem dados de simulação.</p>';
+        return;
+      }
+      let html = '';
+      if (!data.stealth_configured) {
+        html += '<p style="color:var(--warning); margin-bottom:10px;">Este site não está em modo Stealth.</p>';
+      } else if (!data.stealth_active) {
+        html += '<p style="padding:10px; border-radius:8px; background:rgba(251,191,36,0.1); border-left:3px solid var(--warning); font-size:12px; margin-bottom:12px;">Stealth configurado mas <strong>ainda não ativo</strong> — vincule a white page e salve. A simulação usa as regras Stealth mesmo assim.</p>';
+      }
+      html += '<p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Revisores Meta: opção global <strong>' + (data.allow_meta_reviewers ? 'ativa' : 'inativa') + '</strong> · Oferta: <strong>' + (data.offer_delivery === 'page' ? 'Zero-Redirect' : 'URL externa') + '</strong></p>';
+      html += '<table class="stealth-sim-table"><thead><tr><th>Perfil</th><th>Página no GET</th><th>Detalhe</th></tr></thead><tbody>';
+      data.simulations.forEach(function(s) {
+        const badge = '<span class="stealth-sim-badge ' + stealthSimBadgeClass(s.delivery_kind) + '">' + escapeHtml(s.delivery_label) + '</span>';
+        let detail = '';
+        if (s.block_reason) detail += escapeHtml(s.block_reason);
+        if (s.reviewer_bypass) detail += (detail ? '<br>' : '') + '<small>Revisor Meta (white)</small>';
+        if (s.strong_attribution) detail += (detail ? '<br>' : '') + '<small style="color:var(--success)">Atribuição forte ✓</small>';
+        else if (s.likely_from_ads) detail += (detail ? '<br>' : '') + '<small>Atribuição fraca</small>';
+        if (s.redirect_url && s.delivery_kind === 'redirect') detail += (detail ? '<br>' : '') + '<small style="word-break:break-all">' + escapeHtml(s.redirect_url.substring(0, 90)) + (s.redirect_url.length > 90 ? '…' : '') + '</small>';
+        html += '<tr><td><strong>' + escapeHtml(s.label) + '</strong><div class="stealth-sim-desc">' + escapeHtml(s.description) + '</div></td><td>' + badge + '</td><td><small>' + (detail || '—') + '</small></td></tr>';
+      });
+      html += '</tbody></table>';
+      boxEl.innerHTML = html;
+    }
+
+    async function runStealthSimulator(siteId, resultsElId) {
+      const box = typeof resultsElId === 'string' ? document.getElementById(resultsElId) : resultsElId;
+      if (!siteId) { alert('Salve o site primeiro ou selecione um site.'); return; }
+      if (box) {
+        box.style.display = 'block';
+        box.innerHTML = '<p style="color:var(--text-secondary)">Simulando perfis...</p>';
+      }
+      try {
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/stealth-simulator', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro na simulação');
+        renderStealthSimulatorResults(data, box);
+      } catch (e) {
+        if (box) box.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(e.message || 'Falha') + '</p>';
+      }
+    }
+
+    function runStealthSimulatorFromModal() {
+      runStealthSimulator((document.getElementById('editSiteId').value || '').trim(), 'stealthSimulatorResults');
+    }
+
+    function runStealthSimulatorFromScript() {
+      const siteId = document.getElementById('scriptSiteSelector').value;
+      runStealthSimulator(siteId, 'stealthSimulatorScriptResults');
     }
 
     async function runLinkHealthCheck() {

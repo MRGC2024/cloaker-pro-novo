@@ -1541,6 +1541,36 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
   });
 });
 
+// API: Simulador de visitas Stealth — qual página cada perfil recebe no GET
+app.get('/api/sites/:siteId/stealth-simulator', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [req.params.siteId]);
+  const access = await assertSiteAccessForUser(site, req.session.userId);
+  if (!access.ok) return res.status(access.status).json({ error: access.error });
+
+  const allowMetaReviewers = await getAllowMetaReviewersEnabled();
+  const simulations = [];
+  for (const profile of STEALTH_SIMULATOR_PROFILES) {
+    simulations.push(await simulateStealthVisitForProfile(site, profile, allowMetaReviewers));
+  }
+  const publicUrl = await buildSiteAdsLinkUrl(site, req.session.userId, req.query.host || null);
+  const stealthConfigured = normalizeBlockBehavior(site.block_behavior) === 'stealth';
+
+  res.json({
+    site_id: site.site_id,
+    site_name: site.name,
+    stealth_active: isStealthMode(site),
+    stealth_configured: stealthConfigured,
+    allow_meta_reviewers: allowMetaReviewers,
+    public_link: publicUrl,
+    has_white_page: !!site.landing_page_id,
+    has_gray_page: !!site.gray_page_id,
+    has_offer_page: !!site.offer_page_id,
+    offer_delivery: normalizeOfferDelivery(site.offer_delivery),
+    simulations
+  });
+});
+
 // API: Atualizar domínio selecionado do site
 app.put('/api/sites/:siteId/selected-domain', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -2334,6 +2364,202 @@ async function stealthDeliveryToJson(site, ctx, delivery) {
     return { next: ctx.destWithQs };
   }
   return { next: delivery.url || ctx.destWithQs };
+}
+
+function stealthDeliveryLabel(kind) {
+  const map = {
+    white: 'White page',
+    gray: 'Gray page',
+    offer: 'Página da oferta (Zero-Redirect)',
+    redirect: 'Redirect — URL externa da oferta'
+  };
+  return map[kind] || kind;
+}
+
+const STEALTH_SIMULATOR_PROFILES = [
+  {
+    id: 'meta_crawler',
+    label: 'Crawler Meta',
+    description: 'facebookexternalhit — bot que o Meta manda revisar o anúncio.',
+    userAgent: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    referer: '',
+    deviceType: 'desktop',
+    country: 'US',
+    omitDefaultAdParams: true,
+    query: {}
+  },
+  {
+    id: 'lead_instagram_app',
+    label: 'Lead real — Instagram in-app',
+    description: 'Clique pelo app Instagram no iPhone (navegador interno Meta).',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 312.0.0.23.111 (iPhone14,3; iOS 17_0; pt_BR; pt; scale=3.00) NW/3',
+    referer: 'https://www.instagram.com/',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"iOS"' },
+    includeFbclid: true,
+    includeRef: true
+  },
+  {
+    id: 'lead_facebook_app',
+    label: 'Lead real — Facebook in-app',
+    description: 'Clique pelo app Facebook no Android (FB_IAB).',
+    userAgent: 'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0.6099.193 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/440.0.0.32.86;]',
+    referer: 'http://m.facebook.com/',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"Android"' },
+    includeFbclid: true
+  },
+  {
+    id: 'lead_mobile_fbclid',
+    label: 'Lead real — Mobile + fbclid',
+    description: 'Safari mobile com fbclid na URL (clique típico de anúncio).',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    referer: 'https://l.facebook.com/',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"iOS"' },
+    includeFbclid: true,
+    includeRef: true
+  },
+  {
+    id: 'meta_reviewer',
+    label: 'Revisor Meta (IP suspeito)',
+    description: 'IP da lista Meta + fbclid — revisão humana (se “Permitir revisores” estiver ativo).',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    referer: 'https://l.facebook.com/',
+    deviceType: 'mobile',
+    country: 'US',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"iOS"' },
+    includeFbclid: true,
+    suspectedReviewer: true
+  },
+  {
+    id: 'desktop_chrome',
+    label: 'Desktop — Windows Chrome',
+    description: 'Acesso pelo computador (regra “bloquear desktop” ativa por padrão).',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    referer: '',
+    deviceType: 'desktop',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?0', 'sec-ch-ua-platform': '"Windows"' },
+    includeFbclid: true
+  },
+  {
+    id: 'devtools_emulation',
+    label: 'Inspecionar — UTMs sem fbclid',
+    description: 'DevTools simulando celular, só UTMs/referrer copiados (sem app Meta).',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    referer: 'https://l.facebook.com/',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"Windows"' },
+    includeFbclid: false,
+    query: { utm_source: 'FB', utm_medium: 'cpc', utm_campaign: 'teste' }
+  },
+  {
+    id: 'direct_access',
+    label: 'Link colado direto',
+    description: 'Sem fbclid, sem UTMs, sem app Meta — compartilhou o link nu.',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    referer: '',
+    deviceType: 'mobile',
+    country: 'BR',
+    headers: { 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"iOS"' },
+    omitDefaultAdParams: true,
+    query: {}
+  },
+  {
+    id: 'bot_headless',
+    label: 'Bot / Headless',
+    description: 'Automação ou crawler genérico sem sinal de anúncio.',
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36',
+    referer: '',
+    deviceType: 'desktop',
+    country: 'BR',
+    omitDefaultAdParams: true,
+    query: {}
+  }
+];
+
+async function simulateStealthVisitForProfile(site, profile, allowMetaReviewers) {
+  const query = { ...(profile.query || {}) };
+  if (!profile.omitDefaultAdParams) {
+    if (!query.utm_source) query.utm_source = 'FB';
+    if (!query.utm_medium) query.utm_medium = 'cpc';
+    if (profile.includeFbclid && !query.fbclid) query.fbclid = 'IwAR_simulator_test';
+  }
+  if (profile.includeRef && site.required_ref_token) query.ref = site.required_ref_token;
+
+  const userAgent = profile.userAgent || '';
+  const referer = (profile.referer || '').toLowerCase();
+  const headers = profile.headers || {};
+  const country = profile.country || 'BR';
+  const deviceType = profile.deviceType || 'mobile';
+  const geo = profile.geo || { country, vpn: false, proxy: false, hosting: false, tor: false };
+  const suspectedReviewer = !!profile.suspectedReviewer;
+  const qs = new URLSearchParams(query).toString();
+  const fullUrl = 'https://cloaker.test/go/' + (site.link_code || 'sim') + (qs ? '?' + qs : '');
+
+  let refBlocked = false;
+  if (!isRefTokenSatisfied(site, query, userAgent, referer, headers)) {
+    refBlocked = true;
+  }
+
+  let decision = normalizeBlockBehavior(site.block_behavior) === 'stealth'
+    ? evaluateLinkVisitStealth(site, {
+      query, userAgent, referer, fullUrl, headers, country, deviceType,
+      uaParserResult: {}, allowMetaReviewers, suspectedReviewer, ip: profile.ip || '203.0.113.1', geo
+    })
+    : evaluateLinkVisit(site, {
+      query, userAgent, referer, fullUrl, headers, country, deviceType,
+      uaParserResult: {}, allowMetaReviewers, suspectedReviewer, ip: profile.ip || '203.0.113.1', geo
+    });
+
+  if (refBlocked) {
+    decision = {
+      ...decision,
+      blocked: true,
+      blockReason: 'Acesso sem parâmetro de rastreamento (não veio do Ads)',
+      redirectMode: 'bridge'
+    };
+  }
+
+  const destWithQs = appendQueryString(getEffectiveTargetUrl(site) || '', qs);
+  const ctx = { userAgent, decision, destWithQs };
+  let delivery;
+  if (normalizeBlockBehavior(site.block_behavior) === 'stealth') {
+    delivery = await resolveStealthDelivery(site, ctx);
+  } else if (decision.blocked) {
+    delivery = { kind: 'redirect', reason: 'legacy_blocked', url: decision.redirectTarget || site.redirect_url };
+  } else {
+    delivery = { kind: 'redirect', reason: 'legacy_offer', url: decision.redirectTarget || destWithQs };
+  }
+
+  return {
+    id: profile.id,
+    label: profile.label,
+    description: profile.description || '',
+    blocked: !!decision.blocked,
+    reviewer_bypass: !!decision.reviewerBypass,
+    block_reason: decision.blockReason || null,
+    delivery_kind: delivery.kind,
+    delivery_label: stealthDeliveryLabel(delivery.kind),
+    delivery_reason: delivery.reason || null,
+    redirect_url: delivery.kind === 'redirect' ? (delivery.url || destWithQs) : null,
+    likely_from_ads: isLikelyRealFromMetaAds(site, { query, userAgent, referer, headers, country, deviceType }),
+    strong_attribution: hasStrongAdAttribution(site, query, userAgent, referer, headers)
+  };
+}
+
+async function assertSiteAccessForUser(site, sessionUserId) {
+  if (!site) return { ok: false, status: 404, error: 'Site não encontrado' };
+  if (site.user_id != null && Number(site.user_id) !== Number(sessionUserId)) {
+    const admin = await db.get('SELECT role FROM users WHERE id = ?', [sessionUserId]);
+    if (!admin || admin.role !== 'admin') return { ok: false, status: 403, error: 'Acesso negado' };
+  }
+  return { ok: true };
 }
 
 function extractClientIp(req) {
