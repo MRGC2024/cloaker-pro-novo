@@ -2241,8 +2241,8 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  // Crawlers param no HTML; demais browsers fazem POST — resposta inline (zero-redirect) ou next URL
-  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
+  // Fallback legado (cache): decisão principal no GET pelo servidor — sem delay artificial.
+  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)location.replace(d.next)}).catch(function(){})}catch(e){}})();</script>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2265,19 +2265,75 @@ async function getStealthBridgeInnerHtml(site) {
   return STEALTH_DEFAULT_BRIDGE_HTML;
 }
 
-async function sendStealthBridgeResponse(res, site, prefix, code) {
-  const inner = await getStealthBridgeInnerHtml(site);
-  const navScript = buildStealthNavScript(prefix, code);
-  let html;
+function composeStealthHtml(inner, navScript) {
+  const script = navScript || '';
   if (/<html[\s>]/i.test(inner)) {
-    html = /<\/body>/i.test(inner) ? inner.replace(/<\/body>/i, navScript + '</body>') : inner + navScript;
-  } else {
-    html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${navScript}</body></html>`;
+    if (!script) return inner;
+    return /<\/body>/i.test(inner) ? inner.replace(/<\/body>/i, script + '</body>') : inner + script;
   }
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${script}</body></html>`;
+}
+
+function sendStealthHtmlResponse(res, html) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, private');
   res.setHeader('Pragma', 'no-cache');
   res.status(200).send(html);
+}
+
+async function sendStealthBridgeResponse(res, site, prefix, code, options = {}) {
+  const inner = await getStealthBridgeInnerHtml(site);
+  const navScript = options.includeNavScript === false ? '' : buildStealthNavScript(prefix, code);
+  sendStealthHtmlResponse(res, composeStealthHtml(inner, navScript));
+}
+
+async function resolveStealthDelivery(site, ctx) {
+  const ua = ctx.userAgent || '';
+  if (isMetaCrawlerUA(ua)) return { kind: 'white', reason: 'crawler' };
+  if (ctx.decision.reviewerBypass) return { kind: 'white', reason: 'reviewer' };
+  if (ctx.decision.blocked) {
+    if (site.gray_page_id) return { kind: 'gray', reason: ctx.decision.blockReason };
+    return { kind: 'white', reason: ctx.decision.blockReason };
+  }
+  if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
+    return { kind: 'offer', reason: 'allowed' };
+  }
+  return { kind: 'redirect', url: ctx.destWithQs, reason: 'allowed' };
+}
+
+async function sendStealthDelivery(res, site, delivery, navOpts) {
+  if (delivery.kind === 'redirect') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, private');
+    return res.redirect(302, delivery.url);
+  }
+  let inner = null;
+  if (delivery.kind === 'white') inner = await getStealthBridgeInnerHtml(site);
+  else if (delivery.kind === 'gray') {
+    inner = await getUserPageHtml(site.gray_page_id, site.user_id);
+    if (!inner) inner = await getStealthBridgeInnerHtml(site);
+  } else if (delivery.kind === 'offer') {
+    inner = await getUserPageHtml(site.offer_page_id, site.user_id);
+    if (!inner) inner = await getStealthBridgeInnerHtml(site);
+  }
+  const navScript = (navOpts && navOpts.includeNavScript) ? buildStealthNavScript(navOpts.prefix, navOpts.code) : '';
+  sendStealthHtmlResponse(res, composeStealthHtml(wrapPageHtmlFragment(inner || ''), navScript));
+}
+
+async function stealthDeliveryToJson(site, ctx, delivery) {
+  if (delivery.kind === 'white' || (delivery.kind === 'gray' && !site.gray_page_id)) {
+    return { next: null };
+  }
+  if (delivery.kind === 'gray') {
+    const grayHtml = await getUserPageHtml(site.gray_page_id, site.user_id);
+    if (grayHtml) return { inline: true, html: wrapPageHtmlFragment(grayHtml) };
+    return { next: null };
+  }
+  if (delivery.kind === 'offer') {
+    const offerHtml = await getUserPageHtml(site.offer_page_id, site.user_id);
+    if (offerHtml) return { inline: true, html: wrapPageHtmlFragment(offerHtml) };
+    return { next: ctx.destWithQs };
+  }
+  return { next: delivery.url || ctx.destWithQs };
 }
 
 function extractClientIp(req) {
@@ -2965,20 +3021,59 @@ function resolveDeviceType(userAgent, uaParserResult, headers = {}) {
   return 'mobile';
 }
 
-/** ref=TOKEN no link OU clique legítimo pelo app Meta no celular (fbclid/UTM/referrer). */
+/** fbclid, ref=TOKEN ou navegador in-app Meta (Instagram/Facebook no celular). */
+function hasStrongAdAttribution(site, query, userAgent, referer, headers) {
+  const hasFbclid = !!(query.fbclid || '').toString().trim();
+  if (hasFbclid) return true;
+  if (site && site.required_ref_token && String(query.ref || '').trim() === String(site.required_ref_token).trim()) return true;
+  if (isMetaInAppMobileUA(userAgent, headers)) return true;
+  return false;
+}
+
+/** UTMs / referrer Meta — só confiáveis dentro do app Meta ou com fbclid/ref. */
+function hasSupplementalAdAttribution(query, referer) {
+  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
+  const refLow = (referer || '').toLowerCase();
+  if (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') return true;
+  if (refLow.includes('instagram') || refLow.includes('facebook') || refLow.includes('fb.')) return true;
+  return !!(query.utm_medium || '').toString().trim() || !!(query.utm_campaign || '').toString().trim();
+}
+
+/** DevTools simulando celular: UA mobile mas Client Hints indicam desktop. */
+function isClientHintsDesktopMismatch(userAgent, headers = {}) {
+  const platform = String(headers['sec-ch-ua-platform'] || '').replace(/"/g, '').trim();
+  if (!platform) return false;
+  const u = (userAgent || '').toLowerCase();
+  const uaLooksMobile = /iphone|ipod|android|mobile/i.test(u);
+  const platformIsDesktop = /windows|macos|linux|cros/i.test(platform) && !/android/i.test(platform);
+  if (uaLooksMobile && platformIsDesktop && !isMetaInAppMobileUA(userAgent, headers)) return true;
+  return false;
+}
+
+function isLikelyRealFromMetaAds(site, ctx) {
+  const query = ctx.query || {};
+  const userAgent = ctx.userAgent || '';
+  const referer = ctx.referer || '';
+  const headers = ctx.headers || {};
+  const country = ctx.country || null;
+  const deviceType = ctx.deviceType || 'desktop';
+  const metaInApp = isMetaInAppMobileUA(userAgent, headers);
+  const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
+  const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
+  if (!isHandheld || !countryOk) return false;
+  if (hasStrongAdAttribution(site, query, userAgent, referer, headers)) return true;
+  if (metaInApp && hasSupplementalAdAttribution(query, referer)) return true;
+  return false;
+}
+
+/** ref=TOKEN no link OU atribuição forte de anúncio (fbclid / app Meta). */
 function isRefTokenSatisfied(site, query, userAgent, referer, headers) {
   if (!site || !site.required_ref_token) return true;
   const token = String(site.required_ref_token).trim();
   if (!token) return true;
   if (String(query.ref || '').trim() === token) return true;
-  if (!isMetaInAppMobileUA(userAgent, headers)) return false;
-  const hasFbclid = !!(query.fbclid || '').toString().trim();
-  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
-  const refLow = (referer || '').toLowerCase();
-  if (hasFbclid) return true;
-  if (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') return true;
-  if (refLow.includes('instagram') || refLow.includes('facebook') || refLow.includes('fb.')) return true;
-  return false;
+  return hasStrongAdAttribution(site, query, userAgent, referer, headers);
 }
 
 /** Desktop: evita falso positivo em iPad (Macintosh) e navegadores mobile sinalizados pelo client hints. */
@@ -3164,22 +3259,18 @@ function evaluateLinkVisitStealth(site, ctx) {
 
   const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
   const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
-  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
-  const utmMed = (query.utm_medium || '').toString().trim();
   const metaInApp = isMetaInAppMobileUA(userAgent, headers);
-  const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
-  const refTokenMatches = !!(site.required_ref_token && String(query.ref || '').trim() === String(site.required_ref_token).trim());
-  const fromMetaAds = metaInApp || hasFbclid || refFromMeta || refTokenMatches ||
-    utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM' ||
-    (isHandheld && !!(utmMed || query.utm_campaign || query.utm_content));
-  const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
-  const likelyRealFromAds = isHandheld && fromMetaAds && countryOk;
+  const likelyRealFromAds = isLikelyRealFromMetaAds(site, {
+    query, userAgent, referer, headers, country, deviceType, uaParserResult: ua
+  });
 
   let blockReason = null;
   if (site.block_bots && isBotUserAgent(userAgent, headers)) {
     if (!likelyRealFromAds) blockReason = 'Bot detectado';
   } else if (isEmulatorUserAgent(userAgent, ua)) {
     blockReason = 'Emulador detectado (apenas celular real permitido)';
+  } else if (isClientHintsDesktopMismatch(userAgent, headers) && !hasStrongAdAttribution(site, query, userAgent, referer, headers)) {
+    blockReason = 'Emulação de celular detectada (DevTools/inspecionar)';
   } else if (site.block_desktop && isDesktopUserAgent(userAgent, headers)) {
     blockReason = 'Desktop detectado';
   } else if (site.block_facebook_library && isFromFacebookReferer(referer, fullUrl) && isDesktopUserAgent(userAgent, headers)) {
@@ -3199,6 +3290,10 @@ function evaluateLinkVisitStealth(site, ctx) {
     }
   } else if (country && blockedList.includes(country.toUpperCase())) {
     blockReason = `País bloqueado: ${country}`;
+  }
+
+  if (!blockReason && !likelyRealFromAds) {
+    blockReason = 'Tráfego não identificado como vindo do anúncio';
   }
 
   out.blocked = !!blockReason;
@@ -3328,7 +3423,7 @@ const LINK_HEALTH_PROFILES = [
   }
 ];
 
-// Navegação pós-ponte Stealth — destino via POST (inline na mesma URL ou redirect externo)
+// Navegação pós-ponte Stealth — fallback para HTML em cache; GET já decide no servidor.
 async function handleStealthNavigation(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
@@ -3342,31 +3437,18 @@ async function handleStealthNavigation(req, res) {
   if (!site || !isStealthMode(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
-  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, enforceRefOnNavigate: !!site.required_ref_token });
-  void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth nav:', err.message));
-
-  if (ctx.decision.blocked || ctx.decision.reviewerBypass) {
-    if (site.gray_page_id) {
-      const grayHtml = await getUserPageHtml(site.gray_page_id, site.user_id);
-      if (grayHtml) return res.json({ inline: true, html: wrapPageHtmlFragment(grayHtml) });
-    }
-    return res.json({ next: null });
-  }
-
-  if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
-    const offerHtml = await getUserPageHtml(site.offer_page_id, site.user_id);
-    if (offerHtml) return res.json({ inline: true, html: wrapPageHtmlFragment(offerHtml) });
-  }
-
-  return res.json({ next: ctx.destWithQs });
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
+  const delivery = await resolveStealthDelivery(site, ctx);
+  return res.json(await stealthDeliveryToJson(site, ctx, delivery));
 }
 
 async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
-  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: true });
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
   void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
-  return sendStealthBridgeResponse(res, site, prefix, code);
+  const delivery = await resolveStealthDelivery(site, ctx);
+  return sendStealthDelivery(res, site, delivery);
 }
 
 // Handler compartilhado para links (/:prefix/:code)
