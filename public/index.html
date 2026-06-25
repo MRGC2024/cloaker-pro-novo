@@ -2034,15 +2034,61 @@
     <section id="pages" class="section">
       <div class="header">
         <h2>Minhas Páginas</h2>
-        <button class="btn btn-primary" onclick="openPageModal()"><i class="ri-add-line"></i> Nova página</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="openStealthPackModal()"><i class="ri-magic-line"></i> Gerar pacote Stealth</button>
+          <button class="btn btn-primary" onclick="openPageModal()"><i class="ri-add-line"></i> Nova página</button>
+        </div>
       </div>
-      <p style="color: var(--text-secondary); margin-bottom: 20px;">Crie páginas em HTML para exibir quando um visitante for bloqueado (em vez de redirecionar). Assim o visitante continua no mesmo domínio. Use em <strong>Meus Sites</strong> a opção &quot;Usar minha página&quot; e escolha qual página exibir.</p>
+      <p style="color: var(--text-secondary); margin-bottom: 12px;">Páginas HTML usadas no funil <strong>Stealth</strong> (mesmo domínio, sem redirect externo na liberação):</p>
+      <ul style="color: var(--text-secondary); margin: 0 0 20px 20px; font-size: 0.95rem;">
+        <li><strong>White page</strong> — o que todos veem no GET (inclui revisores Meta)</li>
+        <li><strong>Gray page</strong> — conteúdo alternativo para visitantes bloqueados</li>
+        <li><strong>Oferta</strong> — página interna exibida quando o visitante é liberado (Zero-Redirect)</li>
+      </ul>
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três de uma vez com o mesmo tema visual, depois personalize textos e CTA. Em <strong>Meus Sites</strong> vincule cada papel no modo Stealth.</p>
       <div id="pagesList" class="info-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
         <div class="loading" style="grid-column: 1/-1;"><div class="spinner"></div></div>
       </div>
       <p id="pagesEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhuma página criada. Clique em &quot;Nova página&quot; para adicionar HTML customizado.</p>
     </section>
   </main>
+
+  <!-- Modal Pacote Stealth -->
+  <div class="modal" id="stealthPackModal">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>Gerar pacote Stealth</h3>
+        <button class="modal-close" onclick="closeStealthPackModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Cria automaticamente <strong>white</strong>, <strong>gray</strong> e <strong>oferta</strong> com o mesmo visual. Depois edite textos e o link do botão da oferta para combinar com seu criativo.</p>
+        <div class="form-group">
+          <label class="form-label">Tema</label>
+          <select class="form-select" id="stealthPackTheme"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome da marca (opcional)</label>
+          <input type="text" class="form-input" id="stealthPackBrand" placeholder="Ex: Vida Ativa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome do produto / oferta (opcional)</label>
+          <input type="text" class="form-input" id="stealthPackProduct" placeholder="Ex: Programa 21 dias">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Texto do botão da oferta (opcional)</label>
+          <input type="text" class="form-input" id="stealthPackCta" placeholder="Ex: Quero conhecer">
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL do botão da oferta (opcional)</label>
+          <input type="url" class="form-input" id="stealthPackCtaUrl" placeholder="https://... (edite depois em Páginas)">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button class="btn btn-primary" id="stealthPackSubmitBtn" onclick="generateStealthPack()"><i class="ri-magic-line"></i> Gerar 3 páginas</button>
+          <button class="btn btn-secondary" onclick="closeStealthPackModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Página (criar/editar) -->
   <div class="modal" id="pageModal">
@@ -5334,6 +5380,73 @@
     }
 
     // ---------- Páginas HTML ----------
+    var stealthThemesCache = [];
+    async function loadStealthThemes() {
+      if (stealthThemesCache.length) return stealthThemesCache;
+      try {
+        var res = await apiGet('/api/pages/stealth-themes');
+        if (!res || !res.ok) return [];
+        stealthThemesCache = await res.json();
+        return stealthThemesCache;
+      } catch (e) { return []; }
+    }
+    async function openStealthPackModal() {
+      var sel = document.getElementById('stealthPackTheme');
+      if (sel) {
+        sel.innerHTML = '<option value="">Carregando...</option>';
+        var themes = await loadStealthThemes();
+        sel.innerHTML = themes.length
+          ? themes.map(function(t) { return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>'; }).join('')
+          : '<option value="geral">Conteúdo geral</option>';
+      }
+      ['stealthPackBrand', 'stealthPackProduct', 'stealthPackCta', 'stealthPackCtaUrl'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('stealthPackModal').classList.add('active');
+    }
+    function closeStealthPackModal() {
+      document.getElementById('stealthPackModal').classList.remove('active');
+    }
+    async function generateStealthPack() {
+      var btn = document.getElementById('stealthPackSubmitBtn');
+      var theme = (document.getElementById('stealthPackTheme').value || 'geral').trim();
+      var body = {
+        theme: theme,
+        brandName: (document.getElementById('stealthPackBrand').value || '').trim(),
+        productName: (document.getElementById('stealthPackProduct').value || '').trim(),
+        ctaText: (document.getElementById('stealthPackCta').value || '').trim(),
+        ctaUrl: (document.getElementById('stealthPackCtaUrl').value || '').trim()
+      };
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ri-loader-4-line"></i> Gerando...'; }
+      try {
+        var res = await fetch('/api/pages/stealth-pack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        });
+        var data = {};
+        try { data = await res.json(); } catch (e) {}
+        if (!res.ok) {
+          alert((data && data.error) ? data.error : 'Erro ao gerar pacote.');
+          return;
+        }
+        closeStealthPackModal();
+        await loadPages();
+        var names = [];
+        if (data.pages) {
+          if (data.pages.white) names.push('White: ' + data.pages.white.name);
+          if (data.pages.gray) names.push('Gray: ' + data.pages.gray.name);
+          if (data.pages.offer) names.push('Oferta: ' + data.pages.offer.name);
+        }
+        alert((data.message || 'Pacote criado.') + (names.length ? '\n\n' + names.join('\n') : '') + '\n\nVá em Meus Sites → Stealth e vincule as três páginas.');
+      } catch (e) {
+        alert('Erro ao gerar pacote. Verifique sua conexão.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-magic-line"></i> Gerar 3 páginas'; }
+      }
+    }
     async function loadPages() {
       const listEl = document.getElementById('pagesList');
       const emptyEl = document.getElementById('pagesEmpty');
@@ -5438,7 +5551,7 @@
     async function deletePage(id) {
       var p = pagesList.find(function(x) { return String(x.id) === String(id); });
       var name = p ? (p.name || 'Página ' + id) : '';
-      if (!confirm('Excluir a página "' + name + '"? Sites que usam ela voltarão a usar redirecionamento.')) return;
+      if (!confirm('Excluir a página "' + name + '"? Sites que usam ela (white, gray ou oferta) perderão o vínculo.')) return;
       try {
         var res = await fetch('/api/pages/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'include' });
         if (!res.ok) { alert('Erro ao excluir. Tente novamente.'); return; }

@@ -20,6 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
+const { getStealthPagePack, listStealthThemes } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1586,7 +1587,39 @@ app.delete('/api/pages/:id', async (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Página não encontrada' });
   await db.run('DELETE FROM landing_pages WHERE id = ?', [req.params.id]);
   await db.run('UPDATE sites SET landing_page_id = NULL WHERE landing_page_id = ?', [req.params.id]);
+  await db.run('UPDATE sites SET gray_page_id = NULL WHERE gray_page_id = ?', [req.params.id]);
+  await db.run('UPDATE sites SET offer_page_id = NULL WHERE offer_page_id = ?', [req.params.id]);
   res.json({ success: true });
+});
+
+app.get('/api/pages/stealth-themes', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  res.json(listStealthThemes());
+});
+
+app.post('/api/pages/stealth-pack', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const userId = req.session.userId;
+  const { theme, brandName, productName, ctaText, ctaUrl } = req.body || {};
+  const pack = getStealthPagePack(theme || 'geral', {
+    brandName: brandName || '',
+    productName: productName || '',
+    ctaText: ctaText || '',
+    ctaUrl: ctaUrl || '#',
+    suffix: ''
+  });
+  const created = {};
+  for (const p of pack.pages) {
+    await db.run('INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?)', [userId, p.name, p.html_content]);
+    const row = await db.get('SELECT id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+    created[p.role] = row;
+  }
+  res.status(201).json({
+    theme: pack.theme,
+    themeLabel: pack.themeLabel,
+    pages: created,
+    message: 'Pacote Stealth criado. Vincule white, gray e oferta em Meus Sites → modo Stealth.'
+  });
 });
 
 // API: Deletar site (apenas se pertencer ao usuário)
