@@ -203,6 +203,10 @@ async function initPg() {
     try { await client.query('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE users ADD COLUMN cloaker_path TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer SMALLINT DEFAULT 0'); } catch (e) {}
+    try { await client.query('ALTER TABLE visitors ADD COLUMN stealth_delivery TEXT'); } catch (e) {}
+    try { await client.query('ALTER TABLE visitors ADD COLUMN ref_param TEXT'); } catch (e) {}
+    try { await client.query('ALTER TABLE visitors ADD COLUMN has_ad_click SMALLINT DEFAULT 0'); } catch (e) {}
+    try { await client.query('ALTER TABLE visitors ADD COLUMN traffic_source TEXT'); } catch (e) {}
     const metaCount = await client.query('SELECT COUNT(*) as c FROM meta_reviewer_ips');
     if (metaCount.rows[0] && metaCount.rows[0].c === 0) {
       const defaults = ['31.13.24.0/21', '31.13.64.0/18', '66.220.144.0/20', '69.171.224.0/19', '157.240.0.0/17', '173.252.64.0/18'];
@@ -408,6 +412,11 @@ async function initSqlite() {
   try { db.run('CREATE TABLE IF NOT EXISTS meta_reviewer_ips (id INTEGER PRIMARY KEY AUTOINCREMENT, ip_or_cidr TEXT UNIQUE NOT NULL, description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)'); } catch (e) {}
   try { db.run('ALTER TABLE visitors ADD COLUMN request_path TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE visitors ADD COLUMN is_suspected_reviewer INTEGER DEFAULT 0'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN stealth_delivery TEXT'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN ref_param TEXT'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN has_ad_click INTEGER DEFAULT 0'); } catch (e) {}
+  try { db.run('ALTER TABLE visitors ADD COLUMN traffic_source TEXT'); } catch (e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_visitors_stealth_delivery ON visitors(site_id, stealth_delivery, created_at)'); } catch (e) {}
   try {
     const st = db.prepare('SELECT COUNT(*) as c FROM meta_reviewer_ips');
     const cnt = st.step() ? st.getAsObject() : { c: 0 };

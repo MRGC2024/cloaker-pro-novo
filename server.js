@@ -1766,17 +1766,37 @@ app.get('/api/visitors', async (req, res) => {
   else if (filter === 'bots') where.push('v.is_bot = 1');
   else if (filter === 'mobile') where.push("v.device_type IN ('mobile', 'tablet')");
   else if (filter === 'desktop') where.push("(v.device_type = 'desktop' OR v.device_type IS NULL)");
+  else if (filter === 'from_ads') where.push('v.has_ad_click = 1');
+  else if (filter === 'page_white') where.push("v.stealth_delivery = 'white'");
+  else if (filter === 'page_gray') where.push("v.stealth_delivery = 'gray'");
+  else if (filter === 'page_offer') where.push("v.stealth_delivery = 'offer'");
+  else if (filter === 'page_redirect') where.push("v.stealth_delivery = 'redirect'");
+
+  const deliveryFilter = (req.query.delivery || '').toString().trim().toLowerCase();
+  if (deliveryFilter && ['white', 'gray', 'offer', 'redirect'].includes(deliveryFilter)) {
+    where.push('v.stealth_delivery = ?');
+    params.push(deliveryFilter);
+  }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const visitorCols = 'v.id, v.site_id, v.ip, v.country, v.city, v.region, v.device_type, v.browser, v.os, v.was_blocked, v.block_reason, v.is_bot, v.referrer, v.utm_source, v.utm_medium, v.utm_campaign, v.created_at';
+  const visitorCols = 'v.id, v.site_id, v.ip, v.country, v.city, v.region, v.device_type, v.browser, v.os, v.was_blocked, v.block_reason, v.is_bot, v.referrer, v.page_url, v.utm_source, v.utm_medium, v.utm_campaign, v.utm_term, v.utm_content, v.facebook_params, v.stealth_delivery, v.ref_param, v.has_ad_click, v.traffic_source, v.is_suspected_reviewer, v.created_at';
   const visitors = await db.all(`SELECT ${visitorCols} FROM visitors v ${whereClause} ORDER BY v.created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
   const total = await db.get(`SELECT COUNT(*) as count FROM visitors v ${whereClause}`, params);
+
+  let deliveryBreakdown = [];
+  try {
+    deliveryBreakdown = await db.all(
+      `SELECT COALESCE(v.stealth_delivery, 'unknown') as stealth_delivery, COUNT(*) as count FROM visitors v ${whereClause} GROUP BY COALESCE(v.stealth_delivery, 'unknown') ORDER BY count DESC`,
+      params
+    );
+  } catch (e) { deliveryBreakdown = []; }
 
   res.json({
     visitors,
     total: total?.count || 0,
     page,
-    pages: Math.ceil((total?.count || 0) / limit)
+    pages: Math.ceil((total?.count || 0) / limit),
+    delivery_breakdown: deliveryBreakdown
   });
 });
 
@@ -1827,6 +1847,11 @@ app.get('/api/export', async (req, res) => {
   else if (filter === 'allowed') { sql += ' AND v.was_blocked = 0'; }
   else if (filter === 'bots') { sql += ' AND v.is_bot = 1'; }
   else if (filter === 'suspected_reviewer') { sql += ' AND v.is_suspected_reviewer = 1'; }
+  else if (filter === 'from_ads') { sql += ' AND v.has_ad_click = 1'; }
+  else if (filter === 'page_white') { sql += " AND v.stealth_delivery = 'white'"; }
+  else if (filter === 'page_gray') { sql += " AND v.stealth_delivery = 'gray'"; }
+  else if (filter === 'page_offer') { sql += " AND v.stealth_delivery = 'offer'"; }
+  else if (filter === 'page_redirect') { sql += " AND v.stealth_delivery = 'redirect'"; }
   sql += ' ORDER BY v.created_at DESC';
 
   const visitors = await db.all(sql, params);
@@ -2574,6 +2599,45 @@ function appendQueryString(url, qs) {
   return url + (url.includes('?') ? '&' : '?') + qs;
 }
 
+function inferLegacyDelivery(decision) {
+  if (!decision) return 'unknown';
+  if (decision.blocked) {
+    if (decision.redirectMode === 'page') return 'custom_page';
+    if (decision.redirectMode === 'embed') return 'embed';
+    return 'redirect_blocked';
+  }
+  if (decision.redirectMode === 'inline_offer') return 'offer';
+  return 'redirect_offer';
+}
+
+function inferTrafficSource(query, referer, hasAdClick) {
+  const q = query || {};
+  const hasFbclid = !!(q.fbclid || '').toString().trim();
+  const ref = (referer || '').toLowerCase();
+  if (hasAdClick && hasFbclid) return 'meta_ads_fbclid';
+  if (hasAdClick && (q.ref || '').toString().trim()) return 'meta_ads_ref';
+  if (ref.includes('instagram')) return 'referrer_instagram';
+  if (ref.includes('facebook') || ref.includes('fb.') || ref.includes('fb.me')) return 'referrer_facebook';
+  const utm = (q.utm_source || '').toString().trim();
+  if (utm) return 'utm_' + utm.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+  if (!ref) return 'direct';
+  return 'referrer_other';
+}
+
+function trafficSourceLabel(key) {
+  const map = {
+    meta_ads_fbclid: 'Meta Ads (fbclid)',
+    meta_ads_ref: 'Meta Ads (ref)',
+    referrer_instagram: 'Referrer Instagram',
+    referrer_facebook: 'Referrer Facebook',
+    direct: 'Acesso direto',
+    referrer_other: 'Outro referrer'
+  };
+  if (map[key]) return map[key];
+  if (key && key.startsWith('utm_')) return 'UTM: ' + key.slice(4).replace(/_/g, ' ');
+  return key || '—';
+}
+
 async function resolveLinkVisitContext(req, site, options = {}) {
   const { skipRefCheck = false, enforceRefOnNavigate = false } = options;
   const userAgent = req.headers['user-agent'] || '';
@@ -2627,18 +2691,29 @@ async function resolveLinkVisitContext(req, site, options = {}) {
   const fbclid = (req.query.fbclid || '').trim() || null;
   const facebookParams = fbclid ? JSON.stringify({ fbclid }) : null;
   const suspectedRev = suspectedReviewer ? 1 : 0;
-  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
+  const destUrl = getEffectiveTargetUrl(site);
+  const destWithQs = appendQueryString(destUrl, qs);
+
+  let stealthDelivery = 'unknown';
+  if (normalizeBlockBehavior(site.block_behavior) === 'stealth') {
+    const delivery = await resolveStealthDelivery(site, { userAgent, decision, destWithQs });
+    stealthDelivery = delivery.kind;
+  } else {
+    stealthDelivery = inferLegacyDelivery(decision);
+  }
+  const refParam = (req.query.ref || '').toString().trim() || null;
+  const hasAdClick = hasAdClickProof(site, req.query) ? 1 : 0;
+  const trafficSource = inferTrafficSource(req.query, referer, hasAdClick);
+
+  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, stealth_delivery, ref_param, has_ad_click, traffic_source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
   const visitorParams = [
     site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null,
     deviceType, ua.browser?.name || null, ua.os?.name || null, decision.blocked ? 1 : 0, decision.blockReason,
     isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content,
-    facebookParams, req.path, suspectedRev
+    facebookParams, req.path, suspectedRev, stealthDelivery, refParam, hasAdClick, trafficSource
   ];
 
-  const destUrl = getEffectiveTargetUrl(site);
-  const destWithQs = appendQueryString(destUrl, qs);
-
-  return { ip, userAgent, referer, fullUrl, ua, deviceType, geo, country, decision, qs, visitorSql, visitorParams, destUrl, destWithQs };
+  return { ip, userAgent, referer, fullUrl, ua, deviceType, geo, country, decision, qs, visitorSql, visitorParams, destUrl, destWithQs, stealthDelivery, trafficSource, hasAdClick, refParam };
 }
 
 async function validateSiteLinkPrefix(req, site) {

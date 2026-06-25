@@ -1281,26 +1281,31 @@
       <div class="header">
         <div>
           <h2>Visitantes</h2>
-          <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Atualização automática a cada 30s.</p>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Filtre por página entregue (white / gray / oferta), origem e UTMs. Atualização automática a cada 30s.</p>
         </div>
         <div class="header-actions">
           <select class="form-select site-selector" id="visitorsSiteFilter" onchange="loadVisitors()">
             <option value="all">Todos os Sites</option>
           </select>
-          <div class="filters">
+          <div class="filters" style="flex-wrap:wrap;">
             <button class="filter-btn active" data-filter="all">Todos</button>
             <button class="filter-btn" data-filter="allowed">Permitidos</button>
             <button class="filter-btn" data-filter="blocked">Bloqueados</button>
+            <button class="filter-btn" data-filter="from_ads">Do anúncio</button>
             <button class="filter-btn" data-filter="bots">Bots</button>
-            <button class="filter-btn" data-filter="mobile">Mobile</button>
+            <button class="filter-btn" data-filter="page_white">White</button>
+            <button class="filter-btn" data-filter="page_gray">Gray</button>
+            <button class="filter-btn" data-filter="page_offer">Oferta</button>
+            <button class="filter-btn" data-filter="page_redirect">Redirect</button>
           </div>
           <button class="btn btn-secondary" onclick="openExportModal()"><i class="ri-download-line"></i> Exportar</button>
         </div>
       </div>
+      <div id="visitorsDeliverySummary" style="display:none; margin-bottom:14px; padding:12px 16px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; font-size:12px; color:var(--text-secondary);"></div>
       <div class="card"><div class="card-body">
         <div class="table-container">
           <table>
-            <thead><tr><th>Data</th><th>IP</th><th>Site</th><th>Status</th><th>País</th><th>Dispositivo</th><th>UTM Source</th><th>UTM Medium</th><th>UTM Campaign</th><th>Navegador</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Data</th><th>IP</th><th>Site</th><th>Página</th><th>Origem</th><th>Status</th><th>País</th><th>Device</th><th>UTMs</th><th>ref / fbclid</th><th>Ações</th></tr></thead>
             <tbody id="visitorsTable"><tr><td colspan="11" class="loading"><div class="spinner"></div></td></tr></tbody>
           </table>
         </div>
@@ -2145,7 +2150,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Filtro</label>
-          <select class="form-select" id="exportFilter"><option value="all">Todos</option><option value="blocked">Bloqueados</option><option value="allowed">Permitidos</option><option value="bots">Bots</option><option value="suspected_reviewer">Suspeitos (revisores)</option></select>
+          <select class="form-select" id="exportFilter"><option value="all">Todos</option><option value="blocked">Bloqueados</option><option value="allowed">Permitidos</option><option value="from_ads">Do anúncio (fbclid/ref)</option><option value="page_white">Página White</option><option value="page_gray">Página Gray</option><option value="page_offer">Página Oferta</option><option value="page_redirect">Redirect externo</option><option value="bots">Bots</option><option value="suspected_reviewer">Suspeitos (revisores)</option></select>
         </div>
         <div class="form-group">
           <label class="form-label">Formato</label>
@@ -3998,6 +4003,45 @@
     }
 
     // Visitors
+    function visitorDeliveryLabel(kind) {
+      const m = { white: 'White', gray: 'Gray', offer: 'Oferta', redirect: 'Redirect', redirect_offer: 'Redirect oferta', redirect_blocked: 'Redirect bloqueio', custom_page: 'Página custom', embed: 'Embed', unknown: '—' };
+      return m[kind] || kind || '—';
+    }
+    function visitorDeliveryBadge(kind) {
+      const cls = stealthSimBadgeClass(kind === 'redirect_offer' || kind === 'redirect_blocked' ? 'redirect' : (kind || 'white'));
+      return '<span class="stealth-sim-badge ' + cls + '">' + escapeHtml(visitorDeliveryLabel(kind)) + '</span>';
+    }
+    function visitorTrafficLabel(key) {
+      const m = { meta_ads_fbclid: 'Meta (fbclid)', meta_ads_ref: 'Meta (ref)', referrer_instagram: 'Instagram', referrer_facebook: 'Facebook', direct: 'Direto', referrer_other: 'Referrer' };
+      if (m[key]) return m[key];
+      if (key && key.indexOf('utm_') === 0) return 'UTM ' + key.slice(4).replace(/_/g, ' ');
+      return key || '—';
+    }
+    function visitorUtmSummary(v) {
+      const parts = [];
+      if (v.utm_source) parts.push('src:' + v.utm_source);
+      if (v.utm_medium) parts.push('med:' + v.utm_medium);
+      if (v.utm_campaign) parts.push('camp:' + (v.utm_campaign.length > 14 ? v.utm_campaign.slice(0, 14) + '…' : v.utm_campaign));
+      return parts.length ? parts.join(' · ') : '—';
+    }
+    function visitorAdProof(v) {
+      const bits = [];
+      if (v.has_ad_click) bits.push('<span style="color:var(--success)">ads ✓</span>');
+      if (v.ref_param) bits.push('ref');
+      var fb = '';
+      try { if (v.facebook_params) { var fp = JSON.parse(v.facebook_params); if (fp.fbclid) fb = 'fbclid'; } } catch (e) {}
+      if (fb) bits.push(fb);
+      return bits.length ? bits.join(' · ') : '—';
+    }
+    function renderVisitorsDeliverySummary(breakdown, total) {
+      const el = document.getElementById('visitorsDeliverySummary');
+      if (!el || !breakdown || !breakdown.length) { if (el) el.style.display = 'none'; return; }
+      el.style.display = 'block';
+      const parts = breakdown.map(function(row) {
+        return visitorDeliveryLabel(row.stealth_delivery) + ': <strong>' + Number(row.count || 0).toLocaleString('pt-BR') + '</strong>';
+      });
+      el.innerHTML = '<strong style="color:var(--text-primary)">' + Number(total || 0).toLocaleString('pt-BR') + ' visitas no filtro</strong> — ' + parts.join(' · ');
+    }
     async function loadVisitors() {
       const siteId = document.getElementById('visitorsSiteFilter') ? document.getElementById('visitorsSiteFilter').value : 'all';
       const tbody = document.getElementById('visitorsTable');
@@ -4007,6 +4051,7 @@
         if (!res) return;
         const data = await res.json();
         const list = Array.isArray(data && data.visitors) ? data.visitors : [];
+        renderVisitorsDeliverySummary(data.delivery_breakdown, data.total);
         if (list.length === 0) {
           tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-secondary)">Nenhum visitante encontrado</td></tr>';
           if (document.getElementById('pagination')) document.getElementById('pagination').innerHTML = '';
@@ -4017,13 +4062,13 @@
             <td>${formatDateBR(v.created_at)}</td>
             <td><code style="font-size:11px">${v.ip || '-'}</code></td>
             <td><span class="badge badge-info">${v.site_id || 'default'}</span></td>
-            <td>${v.was_blocked ? '<span class="badge badge-danger"><i class="ri-close-line"></i> Bloqueado</span>' : '<span class="badge badge-success"><i class="ri-check-line"></i> OK</span>'}${v.is_bot ? ' <span class="badge badge-warning">Bot</span>' : ''}</td>
+            <td>${visitorDeliveryBadge(v.stealth_delivery)}</td>
+            <td title="${escapeHtml(v.traffic_source || '')}"><small>${escapeHtml(visitorTrafficLabel(v.traffic_source))}</small></td>
+            <td>${v.was_blocked ? '<span class="badge badge-danger">Bloq.</span>' : '<span class="badge badge-success">OK</span>'}${v.is_bot ? ' <span class="badge badge-warning">Bot</span>' : ''}${v.is_suspected_reviewer ? ' <span class="badge badge-warning">Rev.</span>' : ''}</td>
             <td>${v.country || '-'}</td>
             <td><i class="ri-${v.device_type === 'mobile' ? 'smartphone' : 'computer'}-line"></i> ${v.device_type || 'desktop'}</td>
-            <td title="${(v.utm_source || '').replace(/"/g, '')}">${v.utm_source ? (v.utm_source.length > 12 ? v.utm_source.substring(0, 12) + '…' : v.utm_source) : '-'}</td>
-            <td title="${(v.utm_medium || '').replace(/"/g, '')}">${v.utm_medium ? (v.utm_medium.length > 12 ? v.utm_medium.substring(0, 12) + '…' : v.utm_medium) : '-'}</td>
-            <td title="${(v.utm_campaign || '').replace(/"/g, '')}">${v.utm_campaign ? (v.utm_campaign.length > 12 ? v.utm_campaign.substring(0, 12) + '…' : v.utm_campaign) : '-'}</td>
-            <td>${v.browser || '-'}</td>
+            <td title="${escapeHtml(visitorUtmSummary(v))}"><small>${escapeHtml(visitorUtmSummary(v))}</small></td>
+            <td><small>${visitorAdProof(v)}</small></td>
             <td><button class="btn btn-secondary btn-sm" onclick="viewVisitor(${v.id})"><i class="ri-eye-line"></i></button></td>
           </tr>
         `).join('');
@@ -4242,9 +4287,19 @@
         const res = await apiGet(`/api/visitors/${id}`);
         if (!res) return;
         const v = await res.json();
+        var fbclidVal = '—';
+        try { if (v.facebook_params) { var fp = JSON.parse(v.facebook_params); if (fp.fbclid) fbclidVal = fp.fbclid; } } catch (e) {}
         document.getElementById('visitorDetails').innerHTML = `
           <div class="info-grid">
-            <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">📍 Localização</h4>
+            <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Funil Stealth</h4>
+              <div class="info-item"><span class="info-label">Página entregue</span><span class="info-value">${visitorDeliveryBadge(v.stealth_delivery)}</span></div>
+              <div class="info-item"><span class="info-label">Origem do tráfego</span><span class="info-value">${escapeHtml(visitorTrafficLabel(v.traffic_source))}</span></div>
+              <div class="info-item"><span class="info-label">Clique no anúncio?</span><span class="info-value">${v.has_ad_click ? '✅ Sim (fbclid ou ref)' : '❌ Não'}</span></div>
+              <div class="info-item"><span class="info-label">Parâmetro ref</span><span class="info-value">${v.ref_param ? escapeHtml(v.ref_param) : '—'}</span></div>
+              <div class="info-item"><span class="info-label">fbclid</span><span class="info-value" style="word-break:break-all;font-size:11px">${escapeHtml(fbclidVal)}</span></div>
+              <div class="info-item"><span class="info-label">URL acessada</span><span class="info-value" style="word-break:break-all;font-size:11px">${escapeHtml(v.page_url || '—')}</span></div>
+            </div>
+            <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Localização</h4>
               <div class="info-item"><span class="info-label">IP</span><span class="info-value">${v.ip||'-'}</span></div>
               <div class="info-item"><span class="info-label">País</span><span class="info-value">${v.country||'-'}</span></div>
               <div class="info-item"><span class="info-label">Região</span><span class="info-value">${v.region||'-'}</span></div>
@@ -4263,17 +4318,18 @@
               <div class="info-item"><span class="info-label">Bot?</span><span class="info-value">${v.is_bot?'⚠️ Sim':'Não'}</span></div>
               <div class="info-item"><span class="info-label">Site</span><span class="info-value">${v.site_id||'default'}</span></div>
             </div>
-            <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">🔗 Rastreamento / UTMs (Ads)</h4>
-              <div class="info-item"><span class="info-label">Referrer</span><span class="info-value">${v.referrer||'-'}</span></div>
-              <div class="info-item"><span class="info-label">UTM Source</span><span class="info-value">${v.utm_source||'-'}</span></div>
-              <div class="info-item"><span class="info-label">UTM Medium</span><span class="info-value">${v.utm_medium||'-'}</span></div>
-              <div class="info-item"><span class="info-label">UTM Campaign</span><span class="info-value">${v.utm_campaign||'-'}</span></div>
-              <div class="info-item"><span class="info-label">UTM Term</span><span class="info-value">${v.utm_term||'-'}</span></div>
-              <div class="info-item"><span class="info-label">UTM Content</span><span class="info-value">${v.utm_content||'-'}</span></div>
+            <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Rastreamento / UTMs</h4>
+              <div class="info-item"><span class="info-label">Referrer</span><span class="info-value" style="word-break:break-all;font-size:11px">${escapeHtml(v.referrer || '—')}</span></div>
+              <div class="info-item"><span class="info-label">UTM Source</span><span class="info-value">${escapeHtml(v.utm_source || '—')}</span></div>
+              <div class="info-item"><span class="info-label">UTM Medium</span><span class="info-value">${escapeHtml(v.utm_medium || '—')}</span></div>
+              <div class="info-item"><span class="info-label">UTM Campaign</span><span class="info-value">${escapeHtml(v.utm_campaign || '—')}</span></div>
+              <div class="info-item"><span class="info-label">UTM Term</span><span class="info-value">${escapeHtml(v.utm_term || '—')}</span></div>
+              <div class="info-item"><span class="info-label">UTM Content</span><span class="info-value">${escapeHtml(v.utm_content || '—')}</span></div>
               <div class="info-item"><span class="info-label">Data (Brasília)</span><span class="info-value">${formatDateTimeBR(v.created_at)}</span></div>
             </div>
           </div>
-          <div style="margin-top:20px"><h4 style="margin-bottom:10px;color:var(--accent-solid)">User-Agent</h4><div class="code-block" style="font-size:11px;word-break:break-all">${v.user_agent||'-'}</div></div>
+          <div style="margin-top:20px"><h4 style="margin-bottom:10px;color:var(--accent-solid)">User-Agent</h4><div class="code-block" style="font-size:11px;word-break:break-all">${escapeHtml(v.user_agent || '—')}</div></div>
+          ${v.block_reason ? '<div style="margin-top:12px;padding:10px;border-radius:8px;background:rgba(248,113,113,0.1);font-size:13px"><strong>Motivo bloqueio:</strong> ' + escapeHtml(v.block_reason) + '</div>' : ''}
         `;
       } catch (e) { document.getElementById('visitorDetails').innerHTML = '<p style="color:var(--danger)">Erro ao carregar</p>'; }
     }
