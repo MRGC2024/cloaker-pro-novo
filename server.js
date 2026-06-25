@@ -1600,12 +1600,10 @@ app.get('/api/pages/stealth-themes', async (req, res) => {
 app.post('/api/pages/stealth-pack', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
-  const { theme, brandName, productName, ctaText, ctaUrl } = req.body || {};
+  const { theme, brandName, productName } = req.body || {};
   const pack = getStealthPagePack(theme || 'geral', {
     brandName: brandName || '',
     productName: productName || '',
-    ctaText: ctaText || '',
-    ctaUrl: ctaUrl || '#',
     suffix: ''
   });
   const created = {};

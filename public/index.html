@@ -2045,7 +2045,7 @@
         <li><strong>Gray page</strong> — conteúdo alternativo para visitantes bloqueados</li>
         <li><strong>Oferta</strong> — página interna exibida quando o visitante é liberado (Zero-Redirect)</li>
       </ul>
-      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três de uma vez com o mesmo tema visual, depois personalize textos e CTA. Em <strong>Meus Sites</strong> vincule cada papel no modo Stealth.</p>
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três com visual profissional e o mesmo tema. A <strong>URL externa da oferta</strong> (checkout, Hotmart etc.) você configura em <strong>Meus Sites</strong> ao criar o link — não aqui.</p>
       <div id="pagesList" class="info-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
         <div class="loading" style="grid-column: 1/-1;"><div class="spinner"></div></div>
       </div>
@@ -2061,7 +2061,7 @@
         <button class="modal-close" onclick="closeStealthPackModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-secondary); margin-bottom: 16px;">Cria automaticamente <strong>white</strong>, <strong>gray</strong> e <strong>oferta</strong> com o mesmo visual. Depois edite textos e o link do botão da oferta para combinar com seu criativo.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Cria <strong>white</strong>, <strong>gray</strong> e <strong>oferta</strong> com layout profissional. Depois edite textos em Páginas e vincule em Meus Sites. O link externo da oferta (checkout) é definido lá, não neste gerador.</p>
         <div class="form-group">
           <label class="form-label">Tema</label>
           <select class="form-select" id="stealthPackTheme"></select>
@@ -2073,14 +2073,6 @@
         <div class="form-group">
           <label class="form-label">Nome do produto / oferta (opcional)</label>
           <input type="text" class="form-input" id="stealthPackProduct" placeholder="Ex: Programa 21 dias">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Texto do botão da oferta (opcional)</label>
-          <input type="text" class="form-input" id="stealthPackCta" placeholder="Ex: Quero conhecer">
-        </div>
-        <div class="form-group">
-          <label class="form-label">URL do botão da oferta (opcional)</label>
-          <input type="url" class="form-input" id="stealthPackCtaUrl" placeholder="https://... (edite depois em Páginas)">
         </div>
         <div style="display: flex; gap: 10px; margin-top: 15px;">
           <button class="btn btn-primary" id="stealthPackSubmitBtn" onclick="generateStealthPack()"><i class="ri-magic-line"></i> Gerar 3 páginas</button>
@@ -5399,7 +5391,7 @@
           ? themes.map(function(t) { return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>'; }).join('')
           : '<option value="geral">Conteúdo geral</option>';
       }
-      ['stealthPackBrand', 'stealthPackProduct', 'stealthPackCta', 'stealthPackCtaUrl'].forEach(function(id) {
+      ['stealthPackBrand', 'stealthPackProduct'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = '';
       });
@@ -5414,9 +5406,7 @@
       var body = {
         theme: theme,
         brandName: (document.getElementById('stealthPackBrand').value || '').trim(),
-        productName: (document.getElementById('stealthPackProduct').value || '').trim(),
-        ctaText: (document.getElementById('stealthPackCta').value || '').trim(),
-        ctaUrl: (document.getElementById('stealthPackCtaUrl').value || '').trim()
+        productName: (document.getElementById('stealthPackProduct').value || '').trim()
       };
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ri-loader-4-line"></i> Gerando...'; }
       try {
