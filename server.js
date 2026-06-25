@@ -2549,7 +2549,7 @@ async function simulateStealthVisitForProfile(site, profile, allowMetaReviewers)
     delivery_reason: delivery.reason || null,
     redirect_url: delivery.kind === 'redirect' ? (delivery.url || destWithQs) : null,
     likely_from_ads: isLikelyRealFromMetaAds(site, { query, userAgent, referer, headers, country, deviceType }),
-    strong_attribution: hasStrongAdAttribution(site, query, userAgent, referer, headers)
+    strong_attribution: hasAdClickProof(site, query)
   };
 }
 
@@ -2669,14 +2669,18 @@ function isVpnOrProxy(geo) {
   return !!(geo.vpn || geo.proxy || geo.tor);
 }
 
-/** Navegador in-app Meta (Instagram/Facebook) em celular — NÃO é bot/crawler. */
-function isMetaInAppMobileUA(userAgent, headers = {}) {
+/** Marcadores reais no UA do navegador in-app Instagram/Facebook (não DevTools). */
+function hasMetaInAppUaMarkers(userAgent) {
   const u = (userAgent || '').toLowerCase();
-  if (isDesktopUserAgent(userAgent, headers)) return false;
-  if (/instagram|fban|fbav|fb_iab|fbios|fb4a|fbid|fbpn|fbdv|fbbv|fbmd|messenger|iabmv|iab\/|iphone\d*,\d/i.test(u)) return true;
+  if (/instagram|fban|fbav|fb_iab|fbios|fb4a|fbid|fbpn|fbdv|fbbv|fbmd|messenger|iabmv|iab\//i.test(u)) return true;
   if (/iphone|ipod|android|mobile/i.test(u) && (u.includes('facebook') || u.includes('instagram'))) return true;
-  if (String(headers['sec-ch-ua-mobile'] || '').trim() === '?1') return true;
   return false;
+}
+
+/** Navegador in-app Meta em celular — usado só para não classificar como bot (não libera oferta). */
+function isMetaInAppMobileUA(userAgent, headers = {}) {
+  if (isDesktopUserAgent(userAgent, headers)) return false;
+  return hasMetaInAppUaMarkers(userAgent);
 }
 
 /** Padrões que nunca devem bloquear (apps Meta no celular). */
@@ -3247,59 +3251,64 @@ function resolveDeviceType(userAgent, uaParserResult, headers = {}) {
   return 'mobile';
 }
 
-/** fbclid, ref=TOKEN ou navegador in-app Meta (Instagram/Facebook no celular). */
-function hasStrongAdAttribution(site, query, userAgent, referer, headers) {
-  const hasFbclid = !!(query.fbclid || '').toString().trim();
+/** Prova de clique no anúncio: fbclid (Meta) ou ref=TOKEN configurado no Ads. */
+function hasAdClickProof(site, query) {
+  const q = query || {};
+  const hasFbclid = !!(q.fbclid || '').toString().trim();
   if (hasFbclid) return true;
-  if (site && site.required_ref_token && String(query.ref || '').trim() === String(site.required_ref_token).trim()) return true;
-  if (isMetaInAppMobileUA(userAgent, headers)) return true;
+  const token = site && site.required_ref_token ? String(site.required_ref_token).trim() : '';
+  if (token && String(q.ref || '').trim() === token) return true;
   return false;
 }
 
-/** UTMs / referrer Meta — só confiáveis dentro do app Meta ou com fbclid/ref. */
-function hasSupplementalAdAttribution(query, referer) {
-  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
-  const refLow = (referer || '').toLowerCase();
-  if (utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') return true;
-  if (refLow.includes('instagram') || refLow.includes('facebook') || refLow.includes('fb.')) return true;
-  return !!(query.utm_medium || '').toString().trim() || !!(query.utm_campaign || '').toString().trim();
+/** @deprecated use hasAdClickProof — mantido para compatibilidade interna */
+function hasStrongAdAttribution(site, query) {
+  return hasAdClickProof(site, query);
 }
 
-/** DevTools simulando celular: UA mobile mas Client Hints indicam desktop. */
+/** DevTools / Inspecionar simulando celular (Client Hints de desktop + UA mobile). */
 function isClientHintsDesktopMismatch(userAgent, headers = {}) {
   const platform = String(headers['sec-ch-ua-platform'] || '').replace(/"/g, '').trim();
   if (!platform) return false;
   const u = (userAgent || '').toLowerCase();
   const uaLooksMobile = /iphone|ipod|android|mobile/i.test(u);
   const platformIsDesktop = /windows|macos|linux|cros/i.test(platform) && !/android/i.test(platform);
-  if (uaLooksMobile && platformIsDesktop && !isMetaInAppMobileUA(userAgent, headers)) return true;
+  if (uaLooksMobile && platformIsDesktop && !hasMetaInAppUaMarkers(userAgent)) return true;
+  return false;
+}
+
+function isLikelyDevToolsRequest(userAgent, headers = {}) {
+  if (hasMetaInAppUaMarkers(userAgent)) return false;
+  if (isClientHintsDesktopMismatch(userAgent, headers)) return true;
+  const secChUa = String(headers['sec-ch-ua'] || '').toLowerCase();
+  const u = (userAgent || '').toLowerCase();
+  if (/iphone|ipod|android|mobile/i.test(u) && /"google chrome"|"chromium"|"microsoft edge"/i.test(secChUa)) {
+    const platform = String(headers['sec-ch-ua-platform'] || '').replace(/"/g, '');
+    if (/windows|macos|linux|cros/i.test(platform)) return true;
+  }
   return false;
 }
 
 function isLikelyRealFromMetaAds(site, ctx) {
   const query = ctx.query || {};
   const userAgent = ctx.userAgent || '';
-  const referer = ctx.referer || '';
   const headers = ctx.headers || {};
   const country = ctx.country || null;
   const deviceType = ctx.deviceType || 'desktop';
+  if (!hasAdClickProof(site, query)) return false;
   const metaInApp = isMetaInAppMobileUA(userAgent, headers);
   const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
   const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
   const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
-  if (!isHandheld || !countryOk) return false;
-  if (hasStrongAdAttribution(site, query, userAgent, referer, headers)) return true;
-  if (metaInApp && hasSupplementalAdAttribution(query, referer)) return true;
-  return false;
+  return isHandheld && countryOk;
 }
 
-/** ref=TOKEN no link OU atribuição forte de anúncio (fbclid / app Meta). */
+/** Exige ref=TOKEN ou fbclid quando o site tem token de rastreamento. */
 function isRefTokenSatisfied(site, query, userAgent, referer, headers) {
   if (!site || !site.required_ref_token) return true;
   const token = String(site.required_ref_token).trim();
   if (!token) return true;
-  if (String(query.ref || '').trim() === token) return true;
-  return hasStrongAdAttribution(site, query, userAgent, referer, headers);
+  return hasAdClickProof(site, query);
 }
 
 /** Desktop: evita falso positivo em iPad (Macintosh) e navegadores mobile sinalizados pelo client hints. */
@@ -3391,14 +3400,10 @@ function evaluateLinkVisitLegacy(site, ctx) {
 
   const allowedList = (site.allowed_countries || 'BR').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
   const blockedList = (site.blocked_countries || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
-  const utmSrc = (query.utm_source || '').toString().trim().toUpperCase();
-  const utmMed = (query.utm_medium || '').toString().trim();
   const metaInApp = isMetaInAppMobileUA(userAgent, headers);
   const isHandheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
-  const fromMetaAds = metaInApp || hasFbclid || refFromMeta ||
-    ((utmSrc === 'FB' || utmSrc === 'FACEBOOK' || utmSrc === 'INSTAGRAM') && (utmMed || hasFbclid));
   const countryOk = !country || allowedList.length === 0 || allowedList.includes(country.toUpperCase());
-  const likelyRealFromAds = isHandheld && fromMetaAds && countryOk;
+  const likelyRealFromAds = isHandheld && hasAdClickProof(site, query) && countryOk;
 
   let blockReason = null;
   if (site.block_bots && isBotUserAgent(userAgent, headers)) {
@@ -3420,6 +3425,10 @@ function evaluateLinkVisitLegacy(site, ctx) {
     }
   } else if (country && blockedList.includes(country.toUpperCase())) {
     blockReason = `País bloqueado: ${country}`;
+  }
+
+  if (!blockReason && !hasAdClickProof(site, query)) {
+    blockReason = 'Tráfego não identificado como vindo do anúncio (sem fbclid ou ref)';
   }
 
   out.blocked = !!blockReason;
@@ -3495,7 +3504,9 @@ function evaluateLinkVisitStealth(site, ctx) {
     if (!likelyRealFromAds) blockReason = 'Bot detectado';
   } else if (isEmulatorUserAgent(userAgent, ua)) {
     blockReason = 'Emulador detectado (apenas celular real permitido)';
-  } else if (isClientHintsDesktopMismatch(userAgent, headers) && !hasStrongAdAttribution(site, query, userAgent, referer, headers)) {
+  } else if (site.block_devtools && isLikelyDevToolsRequest(userAgent, headers) && !hasAdClickProof(site, query)) {
+    blockReason = 'DevTools / inspeção detectada';
+  } else if (isClientHintsDesktopMismatch(userAgent, headers) && !hasAdClickProof(site, query)) {
     blockReason = 'Emulação de celular detectada (DevTools/inspecionar)';
   } else if (site.block_desktop && isDesktopUserAgent(userAgent, headers)) {
     blockReason = 'Desktop detectado';
@@ -3519,7 +3530,7 @@ function evaluateLinkVisitStealth(site, ctx) {
   }
 
   if (!blockReason && !likelyRealFromAds) {
-    blockReason = 'Tráfego não identificado como vindo do anúncio';
+    blockReason = 'Tráfego não identificado como vindo do anúncio (sem fbclid ou ref)';
   }
 
   out.blocked = !!blockReason;
