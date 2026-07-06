@@ -2096,7 +2096,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Nome da marca (opcional)</label>
-          <input type="text" class="form-input" id="stealthPackBrand" placeholder="Ex: Vida Ativa">
+          <input type="text" class="form-input" id="stealthPackBrand" placeholder="Ex: Central de Leituras">
         </div>
         <div class="form-group">
           <label class="form-label">Nome do produto / oferta (opcional)</label>
@@ -5542,8 +5542,12 @@
         sel.innerHTML = '<option value="">Carregando...</option>';
         var themes = await loadStealthThemes();
         sel.innerHTML = themes.length
-          ? themes.map(function(t) { return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>'; }).join('')
-          : '<option value="geral">Conteúdo geral</option>';
+          ? themes.map(function(t) {
+              var rec = t.id === 'central-leituras' ? ' ★' : '';
+              return '<option value="' + t.id + '">' + (t.label || t.id) + rec + '</option>';
+            }).join('')
+          : '<option value="central-leituras">Central de Leituras (editorial)</option>';
+        if (themes.some(function(t) { return t.id === 'central-leituras'; })) sel.value = 'central-leituras';
       }
       ['stealthPackBrand', 'stealthPackProduct'].forEach(function(id) {
         var el = document.getElementById(id);

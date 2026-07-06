@@ -144,6 +144,54 @@ const THEMES = {
         { q: 'Posso usar no trabalho?', a: 'Sim. O material é voltado para aplicação pessoal e profissional.' }
       ]
     }
+  },
+  'central-leituras': {
+    label: 'Central de Leituras (editorial)',
+    defaultBrand: 'Central de Leituras',
+    accent: '#7c3aed',
+    accentLight: '#8b5cf6',
+    accentSoft: '#f5f3ff',
+    accentMuted: '#ddd6fe',
+    white: {
+      title: 'Artigos e reflexões para o seu dia a dia',
+      lead: 'Seleção editorial de textos informativos sobre hábitos, bem-estar e produtividade. Leitura leve, sem compromisso de compra.',
+      category: 'Editorial',
+      readTime: '5 min de leitura',
+      sections: [
+        { h: 'Por que ler pouco, mas com frequência', p: 'Consumir conteúdo em doses curtas e regulares ajuda a absorver ideias sem sobrecarga. A Central de Leituras organiza temas para você explorar no seu ritmo.' },
+        { h: 'Temas que fazem sentido no cotidiano', p: 'Rotina, sono, organização e foco são assuntos que aparecem nas leituras mais acessadas — porque dialogam com a vida real, não com promessas vazias.' },
+        { h: 'Conteúdo pensado para leitura mobile', p: 'Textos com parágrafos curtos e linguagem clara funcionam melhor no celular, onde a maior parte das pessoas consome informação hoje.' }
+      ],
+      highlights: ['Portal editorial', 'Leitura gratuita', 'Temas variados']
+    },
+    gray: {
+      title: 'Leituras da semana: produtividade e hábitos digitais',
+      lead: 'Curadoria semanal da Central de Leituras — textos selecionados para quem quer usar a tecnologia com mais intenção.',
+      category: 'Curadoria semanal',
+      readTime: '4 min de leitura',
+      sections: [
+        { h: 'Menos notificações, mais foco', p: 'Desativar alertas não essenciais pela manhã é uma das mudanças mais simples citadas por leitores que buscam mais concentração.' },
+        { h: 'Pausas que restauram', p: 'Intervalos de cinco minutos longe da tela — sem scroll — ajudam a retomar tarefas com mais clareza mental.' },
+        { h: 'Leitura antes do sono', p: 'Trocar redes sociais por um artigo curto pode melhorar a qualidade do descanso, segundo relatos de rotina de nossos leitores.' }
+      ],
+      highlights: ['Seleção semanal', 'Temas atuais', 'Leitura rápida']
+    },
+    offer: {
+      title: 'Biblioteca completa Central de Leituras',
+      lead: 'Acesso integral aos artigos, guias e trilhas organizadas por tema — para consultar quando quiser, no seu ritmo.',
+      badge: 'Biblioteca digital',
+      features: [
+        { icon: '01', title: 'Artigos exclusivos', desc: 'Textos aprofundados além do que está aberto no portal.' },
+        { icon: '02', title: 'Trilhas por tema', desc: 'Sequências de leitura sobre foco, energia, organização e bem-estar.' },
+        { icon: '03', title: 'Guias práticos', desc: 'PDFs e checklists para aplicar o que você leu.' },
+        { icon: '04', title: 'Novidades toda semana', desc: 'Conteúdo novo adicionado regularmente à biblioteca.' }
+      ],
+      bullets: ['Leitura ilimitada na biblioteca', 'Organizado por módulos e temas', 'Acesso imediato após liberação'],
+      faq: [
+        { q: 'É assinatura?', a: 'O formato é acesso digital ao acervo da Central de Leituras, organizado para consulta contínua.' },
+        { q: 'Funciona no celular?', a: 'Sim. Todo o material foi pensado para leitura em dispositivos móveis.' }
+      ]
+    }
   }
 };
 
@@ -359,13 +407,17 @@ function buildOfferPage(themeKey, opts = {}) {
 function getStealthPagePack(themeKey = 'geral', opts = {}) {
   const key = THEMES[themeKey] ? themeKey : 'geral';
   const suffix = opts.suffix ? ` ${opts.suffix}` : '';
+  const mergedOpts = { ...opts };
+  if (!mergedOpts.brandName && THEMES[key].defaultBrand) {
+    mergedOpts.brandName = THEMES[key].defaultBrand;
+  }
   return {
     theme: key,
     themeLabel: THEMES[key].label,
     pages: [
-      { role: 'white', name: `[Stealth] White page — ${THEMES[key].label}${suffix}`, html_content: buildWhitePage(key, opts) },
-      { role: 'gray', name: `[Stealth] Gray page — ${THEMES[key].label}${suffix}`, html_content: buildGrayPage(key, opts) },
-      { role: 'offer', name: `[Stealth] Oferta — ${THEMES[key].label}${suffix}`, html_content: buildOfferPage(key, opts) }
+      { role: 'white', name: `[Stealth] White page — ${THEMES[key].label}${suffix}`, html_content: buildWhitePage(key, mergedOpts) },
+      { role: 'gray', name: `[Stealth] Gray page — ${THEMES[key].label}${suffix}`, html_content: buildGrayPage(key, mergedOpts) },
+      { role: 'offer', name: `[Stealth] Oferta — ${THEMES[key].label}${suffix}`, html_content: buildOfferPage(key, mergedOpts) }
     ]
   };
 }
