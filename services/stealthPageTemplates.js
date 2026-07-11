@@ -5,6 +5,27 @@
 
 const { composePageData, uniquePackId } = require('./stealthPageVariations');
 
+function formatPackStamp(d = new Date()) {
+  return d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function shortHeadline(text, max = 46) {
+  const t = String(text || '').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
+function stealthPageName(role, headline, stamp, packId) {
+  return `[Stealth] ${role} · ${shortHeadline(headline)} · ${stamp} · #${packId}`;
+}
+
 const THEMES = {
   'bem-estar': {
     label: 'Saúde e bem-estar',
@@ -152,19 +173,19 @@ function buildEditorialPage(t, pageData, opts, pageType) {
   return wrapHtml(pageData.title, body, proStyles(t));
 }
 
-function buildWhitePage(themeKey, opts = {}) {
+function buildWhitePage(themeKey, opts = {}, pageData) {
   const t = THEMES[themeKey] || THEMES.geral;
-  return buildEditorialPage(t, composePageData(themeKey, 'white'), opts, 'white');
+  return buildEditorialPage(t, pageData || composePageData(themeKey, 'white'), opts, 'white');
 }
 
-function buildGrayPage(themeKey, opts = {}) {
+function buildGrayPage(themeKey, opts = {}, pageData) {
   const t = THEMES[themeKey] || THEMES.geral;
-  return buildEditorialPage(t, composePageData(themeKey, 'gray'), opts, 'gray');
+  return buildEditorialPage(t, pageData || composePageData(themeKey, 'gray'), opts, 'gray');
 }
 
-function buildOfferPage(themeKey, opts = {}) {
+function buildOfferPage(themeKey, opts = {}, pageData) {
   const t = THEMES[themeKey] || THEMES.geral;
-  const o = composePageData(themeKey, 'offer');
+  const o = pageData || composePageData(themeKey, 'offer');
   const brand = esc(opts.brandName || 'Acesso Exclusivo');
   const product = esc(opts.productName || o.title);
   const year = new Date().getFullYear();
@@ -216,20 +237,42 @@ function buildOfferPage(themeKey, opts = {}) {
 function getStealthPagePack(themeKey = 'geral', opts = {}) {
   const key = THEMES[themeKey] ? themeKey : 'geral';
   const packId = opts.suffix || uniquePackId();
+  const generatedAt = formatPackStamp();
   const mergedOpts = { ...opts };
   if (!mergedOpts.brandName && THEMES[key].defaultBrand) {
     mergedOpts.brandName = THEMES[key].defaultBrand;
   }
   const label = THEMES[key].label;
-  const tag = ` #${packId}`;
+  const whiteData = composePageData(key, 'white');
+  const grayData = composePageData(key, 'gray');
+  const offerData = composePageData(key, 'offer');
+  const offerHeadline = mergedOpts.productName || offerData.title;
   return {
     theme: key,
     themeLabel: label,
     packId,
+    generatedAt,
+    titles: {
+      white: whiteData.title,
+      gray: grayData.title,
+      offer: offerHeadline
+    },
     pages: [
-      { role: 'white', name: `[Stealth] White — ${label}${tag}`, html_content: buildWhitePage(key, mergedOpts) },
-      { role: 'gray', name: `[Stealth] Gray — ${label}${tag}`, html_content: buildGrayPage(key, mergedOpts) },
-      { role: 'offer', name: `[Stealth] Oferta — ${label}${tag}`, html_content: buildOfferPage(key, mergedOpts) }
+      {
+        role: 'white',
+        name: stealthPageName('White', whiteData.title, generatedAt, packId),
+        html_content: buildWhitePage(key, mergedOpts, whiteData)
+      },
+      {
+        role: 'gray',
+        name: stealthPageName('Gray', grayData.title, generatedAt, packId),
+        html_content: buildGrayPage(key, mergedOpts, grayData)
+      },
+      {
+        role: 'offer',
+        name: stealthPageName('Oferta', offerHeadline, generatedAt, packId),
+        html_content: buildOfferPage(key, mergedOpts, offerData)
+      }
     ]
   };
 }

@@ -86,6 +86,55 @@
     .stealth-sim-badge.offer { background: rgba(52, 211, 153, 0.15); color: #34d399; }
     .stealth-sim-badge.redirect { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
     .stealth-sim-desc { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
+    .stealth-pack-group {
+      grid-column: 1 / -1;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--bg-secondary);
+      overflow: hidden;
+    }
+    .stealth-pack-group.is-new {
+      border-color: rgba(52, 211, 153, 0.55);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.15);
+    }
+    .stealth-pack-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.12);
+    }
+    .stealth-pack-header strong { font-size: 14px; color: var(--text-primary); }
+    .stealth-pack-meta { font-size: 12px; color: var(--text-secondary); }
+    .stealth-pack-new-tag {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--success); background: rgba(52, 211, 153, 0.12); padding: 4px 10px; border-radius: 999px;
+    }
+    .stealth-pack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      padding: 14px;
+    }
+    .page-card-stealth .page-role-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .page-role-badge.white { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .page-role-badge.gray { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .page-role-badge.offer { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+    .page-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.35; margin-bottom: 6px; }
+    .page-card-date { font-size: 12px; color: var(--text-tertiary); }
+    .page-card-id { font-size: 11px; color: var(--text-tertiary); font-family: ui-monospace, monospace; margin-top: 4px; }
     .behavior-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     @media (max-width: 560px) { .behavior-cards { grid-template-columns: 1fr; } }
     .behavior-card {
@@ -2073,8 +2122,8 @@
         <li><strong>Gray page</strong> — conteúdo alternativo para visitantes bloqueados</li>
         <li><strong>Oferta</strong> — página interna exibida quando o visitante é liberado (Zero-Redirect)</li>
       </ul>
-      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três com visual profissional e o mesmo tema. A <strong>URL externa da oferta</strong> (checkout, Hotmart etc.) você configura em <strong>Meus Sites</strong> ao criar o link — não aqui.</p>
-      <div id="pagesList" class="info-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três com visual profissional e o mesmo tema. Cada pacote aparece <strong>agrupado</strong> com data/hora e títulos sorteados (textos diferentes a cada geração). A <strong>URL externa da oferta</strong> (checkout, Hotmart etc.) você configura em <strong>Meus Sites</strong> ao criar o link — não aqui.</p>
+      <div id="pagesList" class="info-grid" style="grid-template-columns: 1fr;">
         <div class="loading" style="grid-column: 1/-1;"><div class="spinner"></div></div>
       </div>
       <p id="pagesEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhuma página criada. Clique em &quot;Nova página&quot; para adicionar HTML customizado.</p>
@@ -5581,19 +5630,108 @@
           return;
         }
         closeStealthPackModal();
+        window.__lastStealthPackId = data.packId || null;
         await loadPages();
-        var names = [];
-        if (data.pages) {
-          if (data.pages.white) names.push('White: ' + data.pages.white.name);
-          if (data.pages.gray) names.push('Gray: ' + data.pages.gray.name);
-          if (data.pages.offer) names.push('Oferta: ' + data.pages.offer.name);
+        var when = data.generatedAt || (data.pages && data.pages.white && data.pages.white.created_at ? formatDateTimeBR(data.pages.white.created_at) : '');
+        var lines = [];
+        if (data.titles) {
+          if (data.titles.white) lines.push('White: ' + data.titles.white);
+          if (data.titles.gray) lines.push('Gray: ' + data.titles.gray);
+          if (data.titles.offer) lines.push('Oferta: ' + data.titles.offer);
         }
-        alert((data.message || 'Pacote criado.') + (names.length ? '\n\n' + names.join('\n') : '') + '\n\nVá em Meus Sites → Stealth e vincule as três páginas.');
+        alert((data.message || 'Pacote criado.') + (when ? '\n\nGerado em: ' + when : '') + (lines.length ? '\n\nTítulos sorteados:\n' + lines.join('\n') : '') + '\n\nO pacote aparece no topo da lista com a data/hora. Vá em Meus Sites → Stealth e vincule as três páginas.');
       } catch (e) {
         alert('Erro ao gerar pacote. Verifique sua conexão.');
       } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-magic-line"></i> Gerar 3 páginas'; }
       }
+    }
+    function parseStealthPageMeta(name) {
+      if (!name || name.indexOf('[Stealth]') !== 0) return null;
+      var roleMatch = name.match(/^\[Stealth\]\s*(White|Gray|Oferta)/i);
+      var packMatch = name.match(/#([a-z0-9]+)\s*$/i);
+      var headline = '';
+      var parts = name.replace(/^\[Stealth\]\s*(White|Gray|Oferta)\s*[·—]\s*/i, '').replace(/\s*·\s*#[a-z0-9]+\s*$/i, '').split(/\s·\s/);
+      if (parts.length >= 2) {
+        headline = parts[0];
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(parts[parts.length - 1])) parts.pop();
+        if (parts.length) headline = parts[0];
+      } else {
+        headline = name.replace(/^\[Stealth\]\s*(White|Gray|Oferta)\s*[·—]\s*/i, '').replace(/\s*#\S+\s*$/, '').trim();
+      }
+      return {
+        role: roleMatch ? roleMatch[1] : null,
+        packId: packMatch ? packMatch[1] : null,
+        headline: headline
+      };
+    }
+    function stealthRoleClass(role) {
+      var r = (role || '').toLowerCase();
+      if (r === 'oferta') return 'offer';
+      return r || 'white';
+    }
+    function renderPageCard(p, meta) {
+      var pid = p.id;
+      var role = meta && meta.role ? meta.role : null;
+      var headline = meta && meta.headline ? meta.headline : (p.name || 'Página ' + pid);
+      var safeHeadline = String(headline).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      var dateStr = p.created_at ? formatDateTimeBR(p.created_at) : '-';
+      var roleBadge = role ? '<span class="page-role-badge ' + stealthRoleClass(role) + '">' + role + '</span>' : '';
+      return '<div class="card page-card-stealth" style="margin-bottom:0" data-page-id="' + pid + '">' +
+        '<div class="card-body" style="padding:16px">' +
+          roleBadge +
+          '<div class="page-card-title">' + safeHeadline + '</div>' +
+          '<div class="page-card-date"><i class="ri-time-line"></i> ' + dateStr + ' (Brasília)</div>' +
+          (meta && meta.packId ? '<div class="page-card-id">#' + meta.packId + '</div>' : '') +
+          '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+            '<button class="btn btn-sm btn-secondary" onclick="previewPage(\'' + pid + '\')" title="Ver como fica a página"><i class="ri-eye-line"></i> Ver</button>' +
+            '<button class="btn btn-sm btn-secondary" onclick="openPageModal(\'' + pid + '\')"><i class="ri-edit-line"></i></button>' +
+            '<button class="btn btn-sm btn-danger" onclick="deletePage(\'' + pid + '\')"><i class="ri-delete-bin-line"></i></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    function renderPagesListHtml(pages) {
+      var packs = {};
+      var standalone = [];
+      pages.forEach(function(p) {
+        var meta = parseStealthPageMeta(p.name);
+        if (meta && meta.packId) {
+          if (!packs[meta.packId]) packs[meta.packId] = { packId: meta.packId, pages: [], sortAt: p.created_at || '' };
+          packs[meta.packId].pages.push({ page: p, meta: meta });
+          if ((p.created_at || '') > (packs[meta.packId].sortAt || '')) packs[meta.packId].sortAt = p.created_at;
+        } else {
+          standalone.push({ page: p, meta: meta });
+        }
+      });
+      var packList = Object.keys(packs).map(function(id) { return packs[id]; });
+      packList.sort(function(a, b) { return String(b.sortAt).localeCompare(String(a.sortAt)); });
+      standalone.sort(function(a, b) { return String(b.page.created_at || '').localeCompare(String(a.page.created_at || '')); });
+      var html = [];
+      var highlightId = window.__lastStealthPackId || null;
+      packList.forEach(function(pack) {
+        var isNew = highlightId && pack.packId === highlightId;
+        var when = pack.sortAt ? formatDateTimeBR(pack.sortAt) : '-';
+        var roleOrder = { White: 0, Gray: 1, Oferta: 2 };
+        pack.pages.sort(function(a, b) {
+          return (roleOrder[a.meta.role] || 9) - (roleOrder[b.meta.role] || 9);
+        });
+        html.push('<div class="stealth-pack-group' + (isNew ? ' is-new' : '') + '" id="stealth-pack-' + pack.packId + '">' +
+          '<div class="stealth-pack-header">' +
+            '<div><strong>Pacote Stealth</strong><div class="stealth-pack-meta">Criado em ' + when + ' (Brasília) · #' + pack.packId + '</div></div>' +
+            (isNew ? '<span class="stealth-pack-new-tag">Recém-gerado</span>' : '') +
+          '</div>' +
+          '<div class="stealth-pack-grid">' +
+            pack.pages.map(function(item) { return renderPageCard(item.page, item.meta); }).join('') +
+          '</div>' +
+        '</div>');
+      });
+      if (standalone.length) {
+        html.push('<div class="stealth-pack-grid" style="padding:0">' +
+          standalone.map(function(item) { return renderPageCard(item.page, item.meta); }).join('') +
+        '</div>');
+      }
+      return html.join('');
     }
     async function loadPages() {
       const listEl = document.getElementById('pagesList');
@@ -5609,22 +5747,11 @@
           if (pagesList.length === 0) { listEl.innerHTML = ''; if (emptyEl) emptyEl.style.display = 'block'; }
           else {
             if (emptyEl) emptyEl.style.display = 'none';
-            listEl.innerHTML = pagesList.map(function(p) {
-              var pid = p.id;
-              var name = (p.name || 'Página ' + pid).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-              return '<div class="card" style="margin-bottom: 0;">' +
-                '<div class="card-body" style="padding: 16px;">' +
-                  '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-                    '<strong>' + name + '</strong>' +
-                    '<div style="display: flex; gap: 8px;">' +
-                      '<button class="btn btn-sm btn-secondary" onclick="previewPage(\'' + pid + '\')" title="Ver como fica a página"><i class="ri-eye-line"></i> Ver</button>' +
-                      '<button class="btn btn-sm btn-secondary" onclick="openPageModal(\'' + pid + '\')"><i class="ri-edit-line"></i></button>' +
-                      '<button class="btn btn-sm btn-danger" onclick="deletePage(\'' + pid + '\')"><i class="ri-delete-bin-line"></i></button>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
-              '</div>';
-            }).join('');
+            listEl.innerHTML = renderPagesListHtml(pagesList);
+            if (window.__lastStealthPackId) {
+              var el = document.getElementById('stealth-pack-' + window.__lastStealthPackId);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           }
         }
         fillSiteModalDomainsAndPages();

@@ -1585,7 +1585,7 @@ app.put('/api/sites/:siteId/selected-domain', async (req, res) => {
 // ---------- API: Páginas HTML (landing customizadas) ----------
 app.get('/api/pages', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const list = await db.all('SELECT id, user_id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY name', [req.session.userId]);
+  const list = await db.all('SELECT id, user_id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY created_at DESC, id DESC', [req.session.userId]);
   res.json(list);
 });
 app.post('/api/pages', async (req, res) => {
@@ -1633,8 +1633,7 @@ app.post('/api/pages/stealth-pack', async (req, res) => {
   const { theme, brandName, productName } = req.body || {};
   const pack = getStealthPagePack(theme || 'geral', {
     brandName: brandName || '',
-    productName: productName || '',
-    suffix: ''
+    productName: productName || ''
   });
   const created = {};
   for (const p of pack.pages) {
@@ -1645,8 +1644,11 @@ app.post('/api/pages/stealth-pack', async (req, res) => {
   res.status(201).json({
     theme: pack.theme,
     themeLabel: pack.themeLabel,
+    packId: pack.packId,
+    generatedAt: pack.generatedAt,
+    titles: pack.titles,
     pages: created,
-    message: 'Pacote Stealth criado. Vincule white, gray e oferta em Meus Sites → modo Stealth.'
+    message: `Pacote Stealth criado em ${pack.generatedAt}. Cada página sorteou textos únicos — vincule white, gray e oferta em Meus Sites → Stealth.`
   });
 });
 
