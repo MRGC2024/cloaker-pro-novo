@@ -2377,20 +2377,31 @@
               </div>
             </div>
             <ul class="stealth-checklist">
-              <li id="stealthCheckPage" class="fail"><i class="ri-close-circle-fill"></i> Selecionar <strong>white page</strong> em Páginas (obrigatório)</li>
-              <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> Oferta em <strong>Páginas (Zero-Redirect)</strong> ou URL externa</li>
-              <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> White page no <strong>mesmo tema</strong> do anúncio (evita reprovação)</li>
+              <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
+              <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
+              <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema alinhado ao nicho do anúncio (evita reprovação)</li>
               <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Só libera com <strong>fbclid</strong> ou <strong>ref=TOKEN</strong> na URL — link nu ou Inspecionar vão para gray page</li>
             </ul>
-            <div id="stealthWarningBanner" class="stealth-warning-banner">
+            <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
-              <span><strong>White page obrigatória.</strong> Sem ela o Stealth não ativa e o link funciona como redirect 302. Crie em <strong>Páginas</strong> e selecione abaixo.</span>
+              <span id="stealthWarningBannerText"><strong>White page obrigatória.</strong> Ative a criação automática ou selecione uma página em Páginas.</span>
             </div>
           </div>
           <div class="legacy-notice" id="legacyModeNotice" style="display:none;">
             <i class="ri-information-line"></i> Modo <strong>Redirect 302</strong>: comportamento clássico — lead vai direto à oferta. Recomendado para links que já estão em campanhas ativas.
           </div>
-          <div id="sitePageSelectBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: var(--bg-primary); border-radius: 12px; border: 1px solid var(--border);">
+          <div id="siteAutoStealthBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(52, 211, 153, 0.06); border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.25);">
+            <label class="radio-label" style="margin-bottom: 12px;">
+              <input type="checkbox" id="siteAutoStealthPages" checked>
+              <strong>Criar white + gray automaticamente</strong> — páginas únicas vinculadas a esta campanha ao salvar
+            </label>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Tema das páginas</label>
+              <select class="form-select" id="siteStealthTheme"></select>
+              <small style="color: var(--text-secondary); font-size: 12px;">Sorteia textos únicos a cada campanha. Domínio <strong>centraldeleituras</strong> usa o tema editorial automaticamente.</small>
+            </div>
+          </div>
+          <div id="sitePageSelectBox" style="display: none; margin-top: 14px; padding: 14px 16px; background: var(--bg-primary); border-radius: 12px; border: 1px solid var(--border);">
             <label class="form-label" style="margin-bottom: 8px;"><i class="ri-file-code-line"></i> White page / página da ponte <span id="whitePageRequiredTag" style="color:var(--danger);">*</span></label>
             <select class="form-select" id="siteLandingPageId">
               <option value="">— Selecione uma página —</option>
@@ -2399,7 +2410,7 @@
           </div>
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
-            <div class="form-group" style="margin-bottom: 12px;">
+            <div class="form-group" id="siteGrayManualBox" style="margin-bottom: 12px; display: none;">
               <label class="form-label"><i class="ri-contrast-drop-line"></i> Gray page — isca para bloqueados (opcional)</label>
               <select class="form-select" id="siteGrayPageId">
                 <option value="">— Ficar na white page —</option>
@@ -2409,8 +2420,8 @@
             <div class="form-group" style="margin-bottom: 8px;">
               <label class="form-label"><i class="ri-flashlight-line"></i> Entrega da oferta</label>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryPage" value="page" checked> <strong>Zero-Redirect</strong> — oferta em Páginas (recomendado Meta)</label>
-                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url"> URL externa (redirect após white page)</label>
+                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url" checked> <strong>URL externa</strong> — redirect para checkout / landing (padrão)</label>
+                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryPage" value="page"> <strong>Zero-Redirect</strong> — oferta em Páginas (HTML interno)</label>
               </div>
             </div>
             <div class="form-group" id="siteOfferPageBox" style="margin-bottom: 0;">
@@ -2511,8 +2522,8 @@
       <div class="modal-body">
         <p id="stealthConfirmIntro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:</p>
         <ul class="stealth-checklist" style="margin-bottom: 16px;">
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> White page selecionada — Meta vê essa página na revisão</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Leads reais no celular vão para a <strong>oferta</strong> após validação</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Leads reais vão para a <strong>URL externa da oferta</strong> após validação</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> deste site — não misture com links antigos (302)</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
         </ul>
@@ -2950,6 +2961,33 @@
       input.value = generateRandomPathPrefixClient(8);
     }
 
+    async function fillSiteStealthThemes() {
+      var sel = document.getElementById('siteStealthTheme');
+      if (!sel) return;
+      try {
+        var res = await apiGet('/api/pages/stealth-themes');
+        if (!res || !res.ok) return;
+        var themes = await res.json();
+        sel.innerHTML = (Array.isArray(themes) ? themes : []).map(function(t) {
+          return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>';
+        }).join('');
+        if (!sel.value) sel.value = 'central-leituras';
+      } catch (e) {}
+    }
+
+    function syncAutoStealthUI() {
+      var isStealth = document.getElementById('siteBlockBehaviorStealth') && document.getElementById('siteBlockBehaviorStealth').checked;
+      var isNew = !(document.getElementById('editSiteId').value || '').trim();
+      var autoBox = document.getElementById('siteAutoStealthBox');
+      var autoOn = document.getElementById('siteAutoStealthPages') && document.getElementById('siteAutoStealthPages').checked;
+      var pageBox = document.getElementById('sitePageSelectBox');
+      var grayManual = document.getElementById('siteGrayManualBox');
+      if (autoBox) autoBox.style.display = (isStealth && isNew) ? 'block' : 'none';
+      if (pageBox) pageBox.style.display = (isStealth || (document.getElementById('siteBlockBehaviorPage') && document.getElementById('siteBlockBehaviorPage').checked)) && (!isNew || !autoOn) ? 'block' : 'none';
+      if (grayManual) grayManual.style.display = (isStealth && (!isNew || !autoOn)) ? 'block' : 'none';
+      updateStealthChecklist();
+    }
+
     async function openNewSiteModal() {
       document.getElementById('siteModalTitle').textContent = 'Novo Site';
       document.getElementById('editSiteId').value = '';
@@ -2961,14 +2999,15 @@
       document.getElementById('siteBlockBehaviorRedirect').checked = false;
       document.getElementById('siteBlockBehaviorEmbed').checked = false;
       document.getElementById('siteBlockBehaviorPage').checked = false;
-      document.getElementById('sitePageSelectBox').style.display = 'block';
+      if (document.getElementById('siteAutoStealthPages')) document.getElementById('siteAutoStealthPages').checked = true;
+      await fillSiteStealthThemes();
       fillSiteModalDomainsAndPages();
       document.getElementById('siteSelectedDomain').value = '';
       document.getElementById('siteLandingPageId').value = '';
       document.getElementById('siteGrayPageId').value = '';
       document.getElementById('siteOfferPageId').value = '';
-      if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = true;
-      if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = false;
+      if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
+      if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
       document.getElementById('siteBlockDesktop').checked = true;
       document.getElementById('siteBlockFacebook').checked = true;
       document.getElementById('siteBlockBots').checked = true;
@@ -2986,8 +3025,9 @@
       setSiteEffectiveTargetUI(null);
       document.getElementById('siteUseFallback').checked = true;
       await fillRandomPathPrefix();
-      updateStealthUI();
       syncOfferDeliveryUI();
+      syncAutoStealthUI();
+      updateStealthUI();
       document.getElementById('siteModal').classList.add('active');
     }
 
@@ -3032,8 +3072,8 @@
       document.getElementById('siteBlockBehaviorRedirect').checked = !isStealth && !isEmbed && !isPage;
       document.getElementById('siteBlockBehaviorEmbed').checked = isEmbed;
       document.getElementById('siteBlockBehaviorPage').checked = isPage;
-      document.getElementById('sitePageSelectBox').style.display = (isStealth || isPage) ? 'block' : 'none';
       fillSiteModalDomainsAndPages();
+      syncAutoStealthUI();
       document.getElementById('siteSelectedDomain').value = site.selected_domain || '';
       document.getElementById('siteLandingPageId').value = site.landing_page_id || '';
       document.getElementById('siteGrayPageId').value = site.gray_page_id || '';
@@ -3120,12 +3160,10 @@
       const isRedirect = document.getElementById('siteBlockBehaviorRedirect').checked;
       const guide = document.getElementById('stealthGuidePanel');
       const legacy = document.getElementById('legacyModeNotice');
-      const pageBox = document.getElementById('sitePageSelectBox');
       const funnelBox = document.getElementById('stealthFunnelBox');
       const reqTag = document.getElementById('whitePageRequiredTag');
       if (guide) guide.style.display = isStealth ? 'block' : 'none';
       if (legacy) legacy.style.display = isRedirect ? 'block' : 'none';
-      if (pageBox) pageBox.style.display = (isStealth || isPage) ? 'block' : 'none';
       if (funnelBox) funnelBox.style.display = isStealth ? 'block' : 'none';
       if (reqTag) reqTag.style.display = isStealth ? 'inline' : 'none';
       const simBox = document.getElementById('stealthSimulatorBox');
@@ -3135,13 +3173,15 @@
         const input = card.querySelector('input[type=radio]');
         card.classList.toggle('selected', !!(input && input.checked));
       });
-      updateStealthChecklist();
+      syncAutoStealthUI();
     }
 
     function updateStealthChecklist() {
       const isStealth = document.getElementById('siteBlockBehaviorStealth').checked;
       if (!isStealth) return;
-      const hasPage = !!(document.getElementById('siteLandingPageId').value || '').trim();
+      const isNew = !(document.getElementById('editSiteId').value || '').trim();
+      const autoOn = document.getElementById('siteAutoStealthPages') && document.getElementById('siteAutoStealthPages').checked;
+      const hasPage = autoOn && isNew ? true : !!(document.getElementById('siteLandingPageId').value || '').trim();
       const offerPageMode = document.getElementById('siteOfferDeliveryPage') && document.getElementById('siteOfferDeliveryPage').checked;
       const hasOffer = offerPageMode
         ? !!(document.getElementById('siteOfferPageId').value || '').trim()
@@ -3177,17 +3217,31 @@
     async function performSaveSite(data, siteId) {
       try {
         let savedSiteId = siteId || '';
+        let createdPayload = null;
         if (siteId) {
           await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
         } else {
           const createdRes = await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
           if (createdRes && createdRes.ok) {
-            const createdSite = await createdRes.json();
-            savedSiteId = createdSite && createdSite.site_id ? createdSite.site_id : '';
+            createdPayload = await createdRes.json();
+            savedSiteId = createdPayload && createdPayload.site_id ? createdPayload.site_id : '';
           }
         }
         saveParamsForSite(savedSiteId, document.getElementById('siteMetaLinkParams').value || '', document.getElementById('siteTikTokLinkParams').value || '');
         closeSiteModal();
+        if (createdPayload && createdPayload.auto_pages) {
+          window.__lastStealthPackId = createdPayload.auto_pages.packId || null;
+          var ap = createdPayload.auto_pages;
+          var msg = 'Campanha criada com Stealth ativo.\n\nWhite + gray geradas e vinculadas automaticamente.';
+          if (ap.generatedAt) msg += '\nGerado em: ' + ap.generatedAt;
+          if (ap.titles) {
+            if (ap.titles.white) msg += '\n\nWhite: ' + ap.titles.white;
+            if (ap.titles.gray) msg += '\nGray: ' + ap.titles.gray;
+          }
+          msg += '\n\nLeads aprovados vão para a URL externa da oferta.';
+          alert(msg);
+          loadPages();
+        }
         loadSites();
       } catch (e) { alert('Erro ao salvar site'); }
     }
@@ -3198,16 +3252,20 @@
       const isPageBehavior = document.getElementById('siteBlockBehaviorPage').checked;
       const isStealthBehavior = document.getElementById('siteBlockBehaviorStealth').checked;
       const isEmbedBehavior = document.getElementById('siteBlockBehaviorEmbed').checked;
+      const isNewSite = !siteId;
+      const autoStealthPages = isNewSite && isStealthBehavior && document.getElementById('siteAutoStealthPages') && document.getElementById('siteAutoStealthPages').checked;
       const data = {
         name: document.getElementById('siteName').value,
         domain: document.getElementById('siteDomain').value,
         target_url: document.getElementById('siteTargetUrl').value,
         redirect_url: document.getElementById('siteRedirectUrl').value,
         block_behavior: isPageBehavior ? 'page' : (isStealthBehavior ? 'stealth' : (isEmbedBehavior ? 'embed' : 'redirect')),
-        landing_page_id: (isPageBehavior || isStealthBehavior) ? (document.getElementById('siteLandingPageId').value || null) : null,
-        gray_page_id: isStealthBehavior ? (document.getElementById('siteGrayPageId').value || null) : null,
+        landing_page_id: (isPageBehavior || (isStealthBehavior && !autoStealthPages)) ? (document.getElementById('siteLandingPageId').value || null) : null,
+        gray_page_id: isStealthBehavior && !autoStealthPages ? (document.getElementById('siteGrayPageId').value || null) : null,
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
+        auto_stealth_pages: autoStealthPages,
+        stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'geral',
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
         default_link_params: (document.getElementById('siteMetaLinkParams').value || '').trim(),
         block_desktop: document.getElementById('siteBlockDesktop').checked,
@@ -3236,9 +3294,10 @@
 
       if (isStealthBehavior) {
         updateStealthChecklist();
-        if (!data.landing_page_id) {
+        const autoPages = isNewSite && document.getElementById('siteAutoStealthPages') && document.getElementById('siteAutoStealthPages').checked;
+        if (!autoPages && !data.landing_page_id) {
           document.getElementById('stealthGuidePanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
-          alert('Modo Stealth exige uma white page.\n\n1. Vá em Páginas e crie o HTML\n2. Selecione a página no campo "White page"\n3. Salve novamente');
+          alert('Modo Stealth exige white page.\n\nMarque "Criar white + gray automaticamente" ou selecione uma página em Páginas.');
           return;
         }
         const offerPageMode = document.getElementById('siteOfferDeliveryPage').checked;
@@ -3247,7 +3306,7 @@
           return;
         }
         if (!offerPageMode && (!data.target_url || !data.target_url.trim())) {
-          alert('Informe a URL da oferta ou use Oferta em Páginas (Zero-Redirect).');
+          alert('Informe a URL externa da oferta (checkout / landing).');
           return;
         }
         if (!siteId) {
@@ -4623,20 +4682,26 @@
             target_url: url,
             redirect_url: 'https://www.google.com/',
             block_behavior: 'stealth',
+            offer_delivery: 'url',
+            auto_stealth_pages: true,
+            stealth_theme: (selectedDomain || '').toLowerCase().indexOf('centraldeleituras') >= 0 ? 'central-leituras' : 'geral',
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
         });
         if (!res.ok) throw new Error('Erro ao criar');
         const site = await res.json();
+        if (site.auto_pages && site.auto_pages.packId) window.__lastStealthPackId = site.auto_pages.packId;
         const baseUrl = selectedDomain ? getLinkBaseUrl(selectedDomain) : getBaseUrl();
         await loadSites();
+        await loadPages();
         renderGeneratedLinks(site, baseUrl);
         document.getElementById('generatedLinkBox').style.display = 'block';
         document.getElementById('scriptSiteSelector').value = site.site_id;
         updateScriptCode();
-        if (!(pagesList && pagesList.length)) {
-          alert('Link criado em modo Stealth.\n\nPróximo passo: vá em Páginas, crie a white page e edite este site para selecioná-la — sem isso o Stealth não ativa no Meta.');
+        var ap = site.auto_pages;
+        if (ap) {
+          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas automaticamente.' + (ap.generatedAt ? '\nGerado em: ' + ap.generatedAt : '') + '\n\nCole este link no Meta Ads. Leads aprovados vão para a URL da oferta.');
         }
       } catch (e) {
         alert('Erro ao gerar link. Tente novamente.');
@@ -6153,6 +6218,8 @@
     [document.getElementById('siteOfferDeliveryPage'), document.getElementById('siteOfferDeliveryUrl')].forEach(function(el) {
       if (el) el.addEventListener('change', syncOfferDeliveryUI);
     });
+    const siteAutoStealthPagesEl = document.getElementById('siteAutoStealthPages');
+    if (siteAutoStealthPagesEl) siteAutoStealthPagesEl.addEventListener('change', syncAutoStealthUI);
     const stealthConfirmCheckbox = document.getElementById('stealthConfirmCheckbox');
     const stealthConfirmSaveBtn = document.getElementById('stealthConfirmSaveBtn');
     if (stealthConfirmCheckbox && stealthConfirmSaveBtn) {

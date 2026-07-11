@@ -277,8 +277,21 @@ function getStealthPagePack(themeKey = 'geral', opts = {}) {
   };
 }
 
+/** Apenas white + gray (oferta sempre via URL externa). */
+function getStealthWhiteGrayPack(themeKey = 'geral', opts = {}) {
+  const pack = getStealthPagePack(themeKey, opts);
+  return {
+    theme: pack.theme,
+    themeLabel: pack.themeLabel,
+    packId: pack.packId,
+    generatedAt: pack.generatedAt,
+    titles: { white: pack.titles.white, gray: pack.titles.gray },
+    pages: pack.pages.filter((p) => p.role === 'white' || p.role === 'gray')
+  };
+}
+
 function listStealthThemes() {
   return Object.entries(THEMES).map(([id, t]) => ({ id, label: t.label }));
 }
 
-module.exports = { getStealthPagePack, listStealthThemes, THEMES };
+module.exports = { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, THEMES };

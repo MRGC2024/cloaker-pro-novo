@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, listStealthThemes } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1305,6 +1305,34 @@ function generateRefToken() {
   return crypto.randomBytes(10).toString('hex');
 }
 
+function inferStealthTheme(selectedDomain, domain) {
+  const d = `${selectedDomain || ''} ${domain || ''}`.toLowerCase();
+  if (d.includes('centraldeleituras')) return 'central-leituras';
+  return 'geral';
+}
+
+async function provisionStealthWhiteGray(userId, { siteName, theme, brandName }) {
+  const pack = getStealthWhiteGrayPack(theme || 'geral', { brandName: brandName || '' });
+  const campaign = String(siteName || '').trim().slice(0, 48);
+  const created = {};
+  for (const p of pack.pages) {
+    const pageName = campaign ? p.name.replace('[Stealth] ', `[Stealth] ${campaign} · `) : p.name;
+    await db.run('INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?)', [userId, pageName, p.html_content]);
+    const row = await db.get('SELECT id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+    created[p.role] = row;
+  }
+  return {
+    packId: pack.packId,
+    generatedAt: pack.generatedAt,
+    theme: pack.theme,
+    themeLabel: pack.themeLabel,
+    titles: pack.titles,
+    landing_page_id: created.white?.id || null,
+    gray_page_id: created.gray?.id || null,
+    pages: created
+  };
+}
+
 // API: gerar prefixo aleatório para preview no painel
 app.get('/api/sites/random-path-prefix', (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -1325,10 +1353,23 @@ app.post('/api/sites', async (req, res) => {
   const target = (target_url || '').trim() || null;
   const userId = req.session.userId;
   const behavior = normalizeBlockBehavior(block_behavior || 'stealth');
-  const lpId = resolveLandingPageId(behavior, landing_page_id);
-  const grayId = resolveOptionalPageId(req.body.gray_page_id);
-  const offerPageId = resolveOptionalPageId(req.body.offer_page_id);
-  const offerDelivery = normalizeOfferDelivery(req.body.offer_delivery);
+  let lpId = resolveLandingPageId(behavior, landing_page_id);
+  let grayId = resolveOptionalPageId(req.body.gray_page_id);
+  let offerPageId = resolveOptionalPageId(req.body.offer_page_id);
+  const offerDelivery = normalizeOfferDelivery(req.body.offer_delivery !== undefined ? req.body.offer_delivery : 'url');
+  if (offerDelivery !== 'page') offerPageId = null;
+  const autoStealthPages = req.body.auto_stealth_pages !== false;
+  let autoPagesMeta = null;
+  if (behavior === 'stealth' && autoStealthPages && !lpId) {
+    const themeKey = (req.body.stealth_theme || '').trim() || inferStealthTheme((selected_domain || '').trim() || null, (domain || '').trim() || null);
+    autoPagesMeta = await provisionStealthWhiteGray(userId, {
+      siteName: name,
+      theme: themeKey,
+      brandName: (req.body.stealth_brand_name || '').trim()
+    });
+    lpId = autoPagesMeta.landing_page_id;
+    grayId = autoPagesMeta.gray_page_id;
+  }
   const selDomain = (selected_domain || '').trim() || null;
   const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
   const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
@@ -1344,7 +1385,7 @@ app.post('/api/sites', async (req, res) => {
     await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
-    res.json(site);
+    res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
