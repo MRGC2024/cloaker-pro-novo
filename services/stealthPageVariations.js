@@ -2,9 +2,21 @@
  * Pools de conteúdo — cada geração sorteia combinações únicas (white / gray / oferta).
  */
 
-const READ_TIMES = ['4 min de leitura', '5 min de leitura', '6 min de leitura', '7 min de leitura', '8 min de leitura'];
+const EXTENDED_BANKS = require('./stealthThemeBanks');
 
-const OFFER_BADGES = ['Material completo', 'Acesso digital', 'Biblioteca exclusiva', 'Conteúdo premium', 'Edição especial', 'Acesso imediato'];
+const READ_TIMES = ['4 min de leitura', '5 min de leitura', '6 min de leitura', '7 min de leitura', '8 min de leitura', '3 min de leitura', '9 min de leitura'];
+
+const LAYOUT_VARIANTS = ['classic', 'magazine', 'minimal', 'compact'];
+
+const DISCLAIMERS = [
+  'Conteúdo informativo e editorial. Não substitui orientação profissional especializada.',
+  'Texto de caráter educativo. Consulte um profissional qualificado para orientação personalizada.',
+  'Material informativo para leitura geral. Opiniões editoriais, não recomendação individual.',
+  'Artigo editorial. Para decisões importantes, busque fontes especializadas.',
+  'Conteúdo publicado com fins informativos. Leia com espírito crítico e contexto.'
+];
+
+const OFFER_BADGES = ['Material completo', 'Acesso digital', 'Biblioteca exclusiva', 'Conteúdo premium', 'Edição especial', 'Acesso imediato', 'Guia digital', 'Acervo online'];
 
 const TRUST_BARS = [
   [{ num: '100%', label: 'Conteúdo digital' }, { num: '24/7', label: 'Acesso imediato' }, { num: '+', label: 'Atualizações' }],
@@ -369,7 +381,8 @@ const CONTENT_BANKS = {
         { q: 'Tem suporte?', a: 'Material autoguiado; dúvidas operacionais via canal de contato do portal.' }
       ]
     }
-  }
+  },
+  ...EXTENDED_BANKS
 };
 
 function composeEditorialPage(themeKey, role) {
@@ -380,8 +393,10 @@ function composeEditorialPage(themeKey, role) {
     lead: pickOne(bank.leads),
     category: pickOne(bank.categories),
     readTime: pickOne(READ_TIMES),
-    sections: pickMany(bank.sections, 3),
-    highlights: pickMany(bank.highlights, 3)
+    sections: pickMany(bank.sections, 3 + Math.floor(Math.random() * 2)),
+    highlights: pickMany(bank.highlights, 3 + Math.floor(Math.random() * 2)),
+    layoutVariant: pickOne(LAYOUT_VARIANTS),
+    disclaimer: pickOne(DISCLAIMERS)
   };
 }
 
@@ -403,8 +418,25 @@ function composePageData(themeKey, role) {
   return composeEditorialPage(themeKey, role);
 }
 
+function listThemeKeys() {
+  return Object.keys(CONTENT_BANKS);
+}
+
+function pickRandomTheme() {
+  const keys = listThemeKeys();
+  return keys[Math.floor(Math.random() * keys.length)];
+}
+
+function pickBrandForTheme(themeKey, brandPool, fallback) {
+  if (brandPool && brandPool.length) return pickOne(brandPool);
+  return fallback || 'Portal Editorial';
+}
+
 module.exports = {
   composePageData,
   uniquePackId,
+  pickRandomTheme,
+  pickBrandForTheme,
+  listThemeKeys,
   CONTENT_BANKS
 };

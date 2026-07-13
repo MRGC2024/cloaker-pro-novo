@@ -2122,7 +2122,7 @@
         <li><strong>Gray page</strong> — conteúdo alternativo para visitantes bloqueados</li>
         <li><strong>Oferta</strong> — página interna exibida quando o visitante é liberado (Zero-Redirect)</li>
       </ul>
-      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar as três com visual profissional e o mesmo tema. Cada pacote aparece <strong>agrupado</strong> com data/hora e títulos sorteados (textos diferentes a cada geração). A <strong>URL externa da oferta</strong> (checkout, Hotmart etc.) você configura em <strong>Meus Sites</strong> ao criar o link — não aqui.</p>
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar white, gray e oferta. Cada geração sorteia <strong>tema, layout e textos</strong> diferentes — ideal para rotacionar campanhas. A <strong>URL externa da oferta</strong> você configura em <strong>Meus Sites</strong>.</p>
       <div id="pagesList" class="info-grid" style="grid-template-columns: 1fr;">
         <div class="loading" style="grid-column: 1/-1;"><div class="spinner"></div></div>
       </div>
@@ -2138,7 +2138,7 @@
         <button class="modal-close" onclick="closeStealthPackModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-secondary); margin-bottom: 16px;">Cria <strong>white</strong>, <strong>gray</strong> e <strong>oferta</strong> com layout profissional. Cada geração sorteia textos únicos — pode gerar de novo sem repetir o mesmo conteúdo. Depois edite em Páginas e vincule em Meus Sites. O link externo da oferta (checkout) é definido lá, não neste gerador.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Cria <strong>white</strong>, <strong>gray</strong> e <strong>oferta</strong>. Use <strong>Rotacionar tema automaticamente</strong> para variar nicho, cores e layout a cada geração — ajuda a não repetir o mesmo padrão visual.</p>
         <div class="form-group">
           <label class="form-label">Tema</label>
           <select class="form-select" id="stealthPackTheme"></select>
@@ -2379,7 +2379,7 @@
             <ul class="stealth-checklist">
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
-              <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema alinhado ao nicho do anúncio (evita reprovação)</li>
+              <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
               <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Só libera com <strong>fbclid</strong> ou <strong>ref=TOKEN</strong> na URL — link nu ou Inspecionar vão para gray page</li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
@@ -2398,7 +2398,7 @@
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tema das páginas</label>
               <select class="form-select" id="siteStealthTheme"></select>
-              <small style="color: var(--text-secondary); font-size: 12px;">Sorteia textos únicos a cada campanha. Domínio <strong>centraldeleituras</strong> usa o tema editorial automaticamente.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">Sorteia tema, layout e textos únicos a cada campanha — reduz padrão repetido. Domínio <strong>centraldeleituras</strong> prioriza tema editorial.</small>
             </div>
           </div>
           <div id="sitePageSelectBox" style="display: none; margin-top: 14px; padding: 14px 16px; background: var(--bg-primary); border-radius: 12px; border: 1px solid var(--border);">
@@ -2971,7 +2971,7 @@
         sel.innerHTML = (Array.isArray(themes) ? themes : []).map(function(t) {
           return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>';
         }).join('');
-        if (!sel.value) sel.value = 'central-leituras';
+        if (!sel.value) sel.value = 'auto';
       } catch (e) {}
     }
 
@@ -3233,6 +3233,7 @@
           window.__lastStealthPackId = createdPayload.auto_pages.packId || null;
           var ap = createdPayload.auto_pages;
           var msg = 'Campanha criada com Stealth ativo.\n\nWhite + gray geradas e vinculadas automaticamente.';
+          if (ap.themeLabel) msg += '\nTema: ' + ap.themeLabel;
           if (ap.generatedAt) msg += '\nGerado em: ' + ap.generatedAt;
           if (ap.titles) {
             if (ap.titles.white) msg += '\n\nWhite: ' + ap.titles.white;
@@ -3265,7 +3266,7 @@
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
         auto_stealth_pages: autoStealthPages,
-        stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'geral',
+        stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
         default_link_params: (document.getElementById('siteMetaLinkParams').value || '').trim(),
         block_desktop: document.getElementById('siteBlockDesktop').checked,
@@ -4684,7 +4685,7 @@
             block_behavior: 'stealth',
             offer_delivery: 'url',
             auto_stealth_pages: true,
-            stealth_theme: (selectedDomain || '').toLowerCase().indexOf('centraldeleituras') >= 0 ? 'central-leituras' : 'geral',
+            stealth_theme: 'auto',
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
@@ -4701,7 +4702,7 @@
         updateScriptCode();
         var ap = site.auto_pages;
         if (ap) {
-          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas automaticamente.' + (ap.generatedAt ? '\nGerado em: ' + ap.generatedAt : '') + '\n\nCole este link no Meta Ads. Leads aprovados vão para a URL da oferta.');
+          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas automaticamente.' + (site.auto_pages && site.auto_pages.themeLabel ? '\nTema: ' + site.auto_pages.themeLabel : '') + (site.auto_pages && site.auto_pages.generatedAt ? '\nGerado em: ' + site.auto_pages.generatedAt : '') + '\n\nCole este link no Meta Ads. Leads aprovados vão para a URL da oferta.');
         }
       } catch (e) {
         alert('Erro ao gerar link. Tente novamente.');
@@ -5657,11 +5658,10 @@
         var themes = await loadStealthThemes();
         sel.innerHTML = themes.length
           ? themes.map(function(t) {
-              var rec = t.id === 'central-leituras' ? ' ★' : '';
-              return '<option value="' + t.id + '">' + (t.label || t.id) + rec + '</option>';
+              return '<option value="' + t.id + '">' + (t.label || t.id) + '</option>';
             }).join('')
-          : '<option value="central-leituras">Central de Leituras (editorial)</option>';
-        if (themes.some(function(t) { return t.id === 'central-leituras'; })) sel.value = 'central-leituras';
+          : '<option value="auto">Rotacionar tema automaticamente</option>';
+        if (themes.some(function(t) { return t.id === 'auto'; })) sel.value = 'auto';
       }
       ['stealthPackBrand', 'stealthPackProduct'].forEach(function(id) {
         var el = document.getElementById(id);

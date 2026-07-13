@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1305,14 +1305,25 @@ function generateRefToken() {
   return crypto.randomBytes(10).toString('hex');
 }
 
-function inferStealthTheme(selectedDomain, domain) {
+function inferStealthThemeFromDomain(selectedDomain, domain) {
   const d = `${selectedDomain || ''} ${domain || ''}`.toLowerCase();
   if (d.includes('centraldeleituras')) return 'central-leituras';
-  return 'geral';
+  return null;
 }
 
-async function provisionStealthWhiteGray(userId, { siteName, theme, brandName }) {
-  const pack = getStealthWhiteGrayPack(theme || 'geral', { brandName: brandName || '' });
+function resolveStealthTheme(reqTheme, selectedDomain, domain) {
+  const explicit = (reqTheme || '').trim();
+  if (explicit && explicit !== 'auto' && explicit !== 'random') {
+    return resolveThemeKey(explicit);
+  }
+  const fromDomain = inferStealthThemeFromDomain(selectedDomain, domain);
+  if (fromDomain) return fromDomain;
+  return resolveThemeKey('auto');
+}
+
+async function provisionStealthWhiteGray(userId, { siteName, theme, brandName, selectedDomain, domain }) {
+  const themeKey = resolveStealthTheme(theme, selectedDomain, domain);
+  const pack = getStealthWhiteGrayPack(themeKey, { brandName: brandName || '' });
   const campaign = String(siteName || '').trim().slice(0, 48);
   const created = {};
   for (const p of pack.pages) {
@@ -1326,6 +1337,7 @@ async function provisionStealthWhiteGray(userId, { siteName, theme, brandName })
     generatedAt: pack.generatedAt,
     theme: pack.theme,
     themeLabel: pack.themeLabel,
+    themeKey,
     titles: pack.titles,
     landing_page_id: created.white?.id || null,
     gray_page_id: created.gray?.id || null,
@@ -1361,11 +1373,12 @@ app.post('/api/sites', async (req, res) => {
   const autoStealthPages = req.body.auto_stealth_pages !== false;
   let autoPagesMeta = null;
   if (behavior === 'stealth' && autoStealthPages && !lpId) {
-    const themeKey = (req.body.stealth_theme || '').trim() || inferStealthTheme((selected_domain || '').trim() || null, (domain || '').trim() || null);
     autoPagesMeta = await provisionStealthWhiteGray(userId, {
       siteName: name,
-      theme: themeKey,
-      brandName: (req.body.stealth_brand_name || '').trim()
+      theme: req.body.stealth_theme,
+      brandName: (req.body.stealth_brand_name || '').trim(),
+      selectedDomain: (selected_domain || '').trim() || null,
+      domain: (domain || '').trim() || null
     });
     lpId = autoPagesMeta.landing_page_id;
     grayId = autoPagesMeta.gray_page_id;
@@ -1672,7 +1685,8 @@ app.post('/api/pages/stealth-pack', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
   const { theme, brandName, productName } = req.body || {};
-  const pack = getStealthPagePack(theme || 'geral', {
+  const themeKey = resolveStealthTheme(theme, '', '');
+  const pack = getStealthPagePack(themeKey, {
     brandName: brandName || '',
     productName: productName || ''
   });
