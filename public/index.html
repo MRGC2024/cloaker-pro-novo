@@ -2380,7 +2380,7 @@
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
               <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
-              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Só libera com <strong>fbclid</strong> ou <strong>ref=TOKEN</strong> na URL — link nu ou Inspecionar vão para gray page</li>
+              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Oferta só no <strong>app Instagram/Facebook</strong> + <strong>fbclid</strong>/<strong>ref</strong> — Safari/Chrome externos ficam na white</li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
@@ -4742,7 +4742,7 @@
         if (s.reviewer_bypass) detail += (detail ? '<br>' : '') + '<small>Revisor Meta (white)</small>';
         if (s.strong_attribution) detail += (detail ? '<br>' : '') + '<small style="color:var(--success)">Atribuição forte ✓</small>';
         else if (s.likely_from_ads) detail += (detail ? '<br>' : '') + '<small>Atribuição fraca</small>';
-        if (s.redirect_url && s.delivery_kind === 'redirect') detail += (detail ? '<br>' : '') + '<small style="word-break:break-all">' + escapeHtml(s.redirect_url.substring(0, 90)) + (s.redirect_url.length > 90 ? '…' : '') + '</small>';
+        if (s.redirect_url && (s.delivery_kind === 'redirect' || s.delivery_kind === 'soft_redirect')) detail += (detail ? '<br>' : '') + '<small style="word-break:break-all">' + escapeHtml(s.redirect_url.substring(0, 90)) + (s.redirect_url.length > 90 ? '…' : '') + '</small>';
         html += '<tr><td><strong>' + escapeHtml(s.label) + '</strong><div class="stealth-sim-desc">' + escapeHtml(s.description) + '</div></td><td>' + badge + '</td><td><small>' + (detail || '—') + '</small></td></tr>';
       });
       html += '</tbody></table>';

