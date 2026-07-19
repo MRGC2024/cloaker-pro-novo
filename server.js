@@ -1110,7 +1110,7 @@ function checkConfigRateLimit(ip) {
 }
 
 const TRACK_RL_WINDOW_MS = parseInt(process.env.TRACK_RATE_LIMIT_WINDOW_MS || '60000', 10);
-const TRACK_RL_MAX = parseInt(process.env.TRACK_RATE_LIMIT_MAX || '480', 10);
+const TRACK_RL_MAX = parseInt(process.env.TRACK_RATE_LIMIT_MAX || '5000', 10);
 const trackPostRateMap = new Map();
 function checkTrackPostRateLimit(ip) {
   const now = Date.now();
@@ -2416,10 +2416,10 @@ async function resolveStealthDelivery(site, ctx) {
   return { kind: 'soft_redirect', url: ctx.destWithQs, reason: 'allowed' };
 }
 
-/** Soft-redirect: HTML da white + JS. Mesmo status 200 / mesmo domínio do link. */
+/** Soft-redirect: mostra white por um instante e vai à oferta. Não depende de fetch/POST. */
 function buildSoftRedirectHtml(whiteInner, destUrl) {
   const safeUrl = JSON.stringify(String(destUrl || ''));
-  const script = `<script>(function(){try{var u=${safeUrl};if(!u)return;requestAnimationFrame(function(){setTimeout(function(){try{location.replace(u)}catch(e){location.href=u}},80)})}catch(e){}})();</script>`;
+  const script = `<script>(function(){try{var u=${safeUrl};if(!u)return;function go(){try{location.replace(u)}catch(e){location.href=u}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(go,50)});else setTimeout(go,50)}catch(e){}})();</script>`;
   return composeStealthHtml(wrapPageHtmlFragment(whiteInner || ''), script);
 }
 
@@ -3681,16 +3681,6 @@ function evaluateLinkVisitStealth(site, ctx) {
     blockReason = 'Tráfego não identificado como vindo do anúncio (sem fbclid ou ref)';
   }
 
-  // Stealth: prioriza app Instagram/Facebook. Também libera mobile+fbclid+referrer Meta
-  // (cobre WebViews que às vezes omitem FB_IAB). Desktop / sem prova de clique continuam bloqueados.
-  if (!blockReason && !metaInApp) {
-    const handheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
-    const strongMobileAd = handheld && hasAdClickProof(site, query) && refFromMeta;
-    if (!strongMobileAd) {
-      blockReason = 'Navegador externo — oferta liberada no app Meta ou mobile com referrer Facebook/Instagram';
-    }
-  }
-
   out.blocked = !!blockReason;
   out.blockReason = blockReason;
   if (out.blocked) {
@@ -3730,9 +3720,8 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa via soft-redirect. Liberação só no app Instagram/Facebook (in-app). Safari/Chrome externos (mesmo com fbclid) ficam na white — reduz revisor humano.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa via soft-redirect imediato no lead liberado (fbclid/ref + mobile). Crawler Meta continua vendo só a white page.' });
     }
-    warnings.push({ level: 'info', code: 'stealth_inapp_only', message: 'Oferta exige navegador in-app Meta + fbclid/ref. Quem abre no Chrome/Safari externo vê só a white page.' });
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
     }
@@ -3880,10 +3869,21 @@ async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
-  // Log = destino FINAL (soft_redirect / gray / white / offer) — não o HTML inicial.
-  // GET sempre serve white; lead permitido no app Meta vai à oferta via soft-redirect após o POST.
   if (ctx.visitorSql && ctx.visitorParams) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
+  }
+
+  const delivery = await resolveStealthDelivery(site, ctx);
+
+  // Crawler / bloqueado / white: HTML sem URL da oferta
+  if (delivery.kind === 'white' || delivery.kind === 'gray' || delivery.kind === 'offer') {
+    return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
+  }
+
+  // Lead liberado (fbclid/ref + mobile): soft-redirect IMEDIATO — não depende de POST /api/n/
+  // (o POST falhava em escala e o tráfego ficava preso na white).
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
   }
 
   return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
