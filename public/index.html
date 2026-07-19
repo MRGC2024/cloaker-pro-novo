@@ -4113,7 +4113,18 @@
 
     // Visitors
     function visitorDeliveryLabel(kind) {
-      const m = { white: 'White', gray: 'Gray', offer: 'Oferta', soft_redirect: 'Soft-redirect', redirect: 'Redirect', redirect_offer: 'Redirect oferta', redirect_blocked: 'Redirect bloqueio', custom_page: 'Página custom', embed: 'Embed', unknown: '—' };
+      const m = {
+        white: 'White (ficou no cloaker)',
+        gray: 'Gray (bloqueado)',
+        offer: 'Oferta interna',
+        soft_redirect: '→ Oferta externa (OK)',
+        redirect: '→ Oferta externa',
+        redirect_offer: 'Redirect oferta',
+        redirect_blocked: 'Redirect bloqueio',
+        custom_page: 'Página custom',
+        embed: 'Embed',
+        unknown: '—'
+      };
       return m[kind] || kind || '—';
     }
     function visitorDeliveryBadge(kind) {
@@ -4402,6 +4413,19 @@
           <div class="info-grid">
             <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Funil Stealth</h4>
               <div class="info-item"><span class="info-label">Página entregue</span><span class="info-value">${visitorDeliveryBadge(v.stealth_delivery)}</span></div>
+              <div class="info-item" style="grid-column:1/-1"><span class="info-label">Como ler</span><span class="info-value" style="font-size:12px;color:var(--text-secondary)">${
+                v.stealth_delivery === 'soft_redirect' || v.stealth_delivery === 'redirect'
+                  ? 'Lead liberado → vai para a URL externa da oferta (após white page).'
+                  : v.stealth_delivery === 'offer'
+                    ? 'Lead liberado → oferta interna (Zero-Redirect).'
+                    : v.stealth_delivery === 'gray'
+                      ? 'Bloqueado → gray page (não vai à oferta).'
+                      : v.stealth_delivery === 'white'
+                        ? (v.was_blocked
+                          ? 'Bloqueado → ficou na white page (não vai à oferta).'
+                          : 'Crawler/revisão ou sem app Meta → white page.')
+                        : '—'
+              }</span></div>
               <div class="info-item"><span class="info-label">Origem do tráfego</span><span class="info-value">${escapeHtml(visitorTrafficLabel(v.traffic_source))}</span></div>
               <div class="info-item"><span class="info-label">Clique no anúncio?</span><span class="info-value">${v.has_ad_click ? '✅ Sim (fbclid ou ref)' : '❌ Não'}</span></div>
               <div class="info-item"><span class="info-label">Parâmetro ref</span><span class="info-value">${v.ref_param ? escapeHtml(v.ref_param) : '—'}</span></div>

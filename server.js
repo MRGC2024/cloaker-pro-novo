@@ -2708,7 +2708,7 @@ function trafficSourceLabel(key) {
 }
 
 async function resolveLinkVisitContext(req, site, options = {}) {
-  const { skipRefCheck = false, enforceRefOnNavigate = false } = options;
+  const { skipRefCheck = false, enforceRefOnNavigate = false, skipVisitorLog = false } = options;
   const userAgent = req.headers['user-agent'] || '';
   const referer = (req.headers['referer'] || req.headers['referrer'] || '').toLowerCase();
   const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
@@ -2774,8 +2774,10 @@ async function resolveLinkVisitContext(req, site, options = {}) {
   const hasAdClick = hasAdClickProof(site, req.query) ? 1 : 0;
   const trafficSource = inferTrafficSource(req.query, referer, hasAdClick);
 
-  const visitorSql = `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, stealth_delivery, ref_param, has_ad_click, traffic_source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
-  const visitorParams = [
+  const visitorSql = skipVisitorLog
+    ? null
+    : `INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, city, region, isp, device_type, browser, os, was_blocked, block_reason, is_bot, utm_source, utm_medium, utm_campaign, utm_term, utm_content, facebook_params, request_path, is_suspected_reviewer, stealth_delivery, ref_param, has_ad_click, traffic_source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`;
+  const visitorParams = skipVisitorLog ? null : [
     site.site_id, ip, userAgent, referer, fullUrl, country || null, geo.city || null, geo.region || null, geo.isp || null,
     deviceType, ua.browser?.name || null, ua.os?.name || null, decision.blocked ? 1 : 0, decision.blockReason,
     isBotUserAgent(userAgent, req.headers) ? 1 : 0, utm_source, utm_medium, utm_campaign, utm_term, utm_content,
@@ -3826,7 +3828,7 @@ async function handleStealthNavigation(req, res) {
   if (!site || !isStealthMode(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
-  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
+  const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, skipVisitorLog: true });
   const delivery = await resolveStealthDelivery(site, ctx);
   return res.json(await stealthDeliveryToJson(site, ctx, delivery));
 }
@@ -3835,16 +3837,12 @@ async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
-  // GET sempre entrega white page — log refletindo o HTML real (não a intenção soft_redirect)
-  if (Array.isArray(ctx.visitorParams) && ctx.visitorParams.length >= 24) {
-    ctx.visitorParams[23] = 'white';
+  // Log = destino FINAL (soft_redirect / gray / white / offer) — não o HTML inicial.
+  // GET sempre serve white; lead permitido no app Meta vai à oferta via soft-redirect após o POST.
+  if (ctx.visitorSql && ctx.visitorParams) {
+    void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
-  void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
 
-  // Ponte unificada: TODOS recebem a mesma white page (HTTP 200) no GET.
-  // Crawler Meta não executa JS → fica na white.
-  // Lead/revisor com JS → POST /api/n/ decide gray / oferta / soft-redirect.
-  // Isso elimina o padrão crawler=200 vs lead=302 (link enganoso).
   return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
 }
 
