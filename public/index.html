@@ -1345,7 +1345,7 @@
             <button class="filter-btn" data-filter="page_white">White</button>
             <button class="filter-btn" data-filter="page_gray">Gray</button>
             <button class="filter-btn" data-filter="page_offer">Oferta</button>
-            <button class="filter-btn" data-filter="page_redirect">Redirect</button>
+            <button class="filter-btn" data-filter="page_redirect">Soft-redirect</button>
           </div>
           <button class="btn btn-secondary" onclick="openExportModal()"><i class="ri-download-line"></i> Exportar</button>
         </div>
@@ -4113,11 +4113,11 @@
 
     // Visitors
     function visitorDeliveryLabel(kind) {
-      const m = { white: 'White', gray: 'Gray', offer: 'Oferta', redirect: 'Redirect', redirect_offer: 'Redirect oferta', redirect_blocked: 'Redirect bloqueio', custom_page: 'Página custom', embed: 'Embed', unknown: '—' };
+      const m = { white: 'White', gray: 'Gray', offer: 'Oferta', soft_redirect: 'Soft-redirect', redirect: 'Redirect', redirect_offer: 'Redirect oferta', redirect_blocked: 'Redirect bloqueio', custom_page: 'Página custom', embed: 'Embed', unknown: '—' };
       return m[kind] || kind || '—';
     }
     function visitorDeliveryBadge(kind) {
-      const cls = stealthSimBadgeClass(kind === 'redirect_offer' || kind === 'redirect_blocked' ? 'redirect' : (kind || 'white'));
+      const cls = stealthSimBadgeClass(kind === 'redirect_offer' || kind === 'redirect_blocked' || kind === 'soft_redirect' ? 'redirect' : (kind || 'white'));
       return '<span class="stealth-sim-badge ' + cls + '">' + escapeHtml(visitorDeliveryLabel(kind)) + '</span>';
     }
     function visitorTrafficLabel(key) {
