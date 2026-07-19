@@ -2380,7 +2380,7 @@
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
               <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
-              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Oferta só no <strong>app Instagram/Facebook</strong> + <strong>fbclid</strong>/<strong>ref</strong> — Safari/Chrome externos ficam na white</li>
+              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Oferta: <strong>app Meta</strong> ou mobile com <strong>fbclid/ref</strong> + referrer Facebook/Instagram — no painel busque <strong>CONFIRMADA ✓</strong></li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
@@ -4117,7 +4117,8 @@
         white: 'White (ficou no cloaker)',
         gray: 'Gray (bloqueado)',
         offer: 'Oferta interna',
-        soft_redirect: '→ Oferta externa (OK)',
+        soft_redirect: '→ Oferta (liberado)',
+        soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
         redirect: '→ Oferta externa',
         redirect_offer: 'Redirect oferta',
         redirect_blocked: 'Redirect bloqueio',
@@ -4128,7 +4129,7 @@
       return m[kind] || kind || '—';
     }
     function visitorDeliveryBadge(kind) {
-      const cls = stealthSimBadgeClass(kind === 'redirect_offer' || kind === 'redirect_blocked' || kind === 'soft_redirect' ? 'redirect' : (kind || 'white'));
+      const cls = stealthSimBadgeClass(kind === 'redirect_offer' || kind === 'redirect_blocked' || kind === 'soft_redirect' || kind === 'soft_redirect_ok' ? 'redirect' : (kind || 'white'));
       return '<span class="stealth-sim-badge ' + cls + '">' + escapeHtml(visitorDeliveryLabel(kind)) + '</span>';
     }
     function visitorTrafficLabel(key) {
@@ -4414,8 +4415,10 @@
             <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Funil Stealth</h4>
               <div class="info-item"><span class="info-label">Página entregue</span><span class="info-value">${visitorDeliveryBadge(v.stealth_delivery)}</span></div>
               <div class="info-item" style="grid-column:1/-1"><span class="info-label">Como ler</span><span class="info-value" style="font-size:12px;color:var(--text-secondary)">${
-                v.stealth_delivery === 'soft_redirect' || v.stealth_delivery === 'redirect'
-                  ? 'Lead liberado → vai para a URL externa da oferta (após white page).'
+                v.stealth_delivery === 'soft_redirect_ok'
+                  ? 'CONFIRMADO: o celular saiu do cloaker rumo à URL externa da oferta.'
+                  : v.stealth_delivery === 'soft_redirect' || v.stealth_delivery === 'redirect'
+                  ? 'Liberado para oferta externa. Se não virar CONFIRMADA, o soft-redirect pode ter falhado no aparelho.'
                   : v.stealth_delivery === 'offer'
                     ? 'Lead liberado → oferta interna (Zero-Redirect).'
                     : v.stealth_delivery === 'gray'
@@ -4423,7 +4426,7 @@
                       : v.stealth_delivery === 'white'
                         ? (v.was_blocked
                           ? 'Bloqueado → ficou na white page (não vai à oferta).'
-                          : 'Crawler/revisão ou sem app Meta → white page.')
+                          : 'Crawler/revisão ou sem sinal de app Meta → white page.')
                         : '—'
               }</span></div>
               <div class="info-item"><span class="info-label">Origem do tráfego</span><span class="info-value">${escapeHtml(visitorTrafficLabel(v.traffic_source))}</span></div>
