@@ -29,6 +29,33 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'cloaker-pro-secret-change-
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = parseAllowedOrigins();
 
+/** Railway/uptime: responde mesmo durante boot do banco. */
+let appReady = false;
+let appReadyError = null;
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ ok: true, ready: appReady, ts: Date.now() });
+});
+app.get('/health', (req, res) => {
+  if (!appReady) {
+    return res.status(503).json({ ok: false, status: 'starting', error: appReadyError || null });
+  }
+  res.status(200).json({ ok: true, status: 'up', ts: Date.now() });
+});
+
+// Evita processo zumbi no Railway (uncaught = restart automático)
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err && err.stack ? err.stack : err);
+  setTimeout(() => process.exit(1), 500);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+  setTimeout(() => process.exit(1), 500);
+});
+process.on('SIGTERM', () => {
+  console.log('[shutdown] SIGTERM recebido');
+  process.exit(0);
+});
+
 function getClientIp(req) {
   const h = req.headers || {};
   const raw = (h['cf-connecting-ip'] || h['true-client-ip'] || h['x-forwarded-for'] || h['x-real-ip'] || req.socket?.remoteAddress || '').toString();
@@ -4056,43 +4083,72 @@ async function cleanupOldVisitors() {
   }
 }
 
-// Iniciar servidor
-db.initDb().then(async () => {
+// Iniciar servidor — escuta ANTES do DB (Railway não fica "failed to respond" se o banco demorar)
+function startHttpServer() {
+  return new Promise((resolve) => {
+    const server = app.listen(PORT, () => {
+      console.log(`[boot] HTTP listening on :${PORT} (ready=${appReady})`);
+      resolve(server);
+    });
+    server.on('error', (err) => {
+      console.error('[boot] listen error:', err);
+      process.exit(1);
+    });
+  });
+}
+
+async function bootDatabaseWithRetry(maxAttempts = 8) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`[boot] initDb tentativa ${attempt}/${maxAttempts}...`);
+      await db.initDb();
+      appReady = true;
+      appReadyError = null;
+      console.log('[boot] banco pronto');
+      return;
+    } catch (err) {
+      lastErr = err;
+      appReadyError = (err && err.message) ? err.message : String(err);
+      console.error(`[boot] initDb falhou (${attempt}/${maxAttempts}):`, appReadyError);
+      await new Promise((r) => setTimeout(r, Math.min(30000, 1500 * attempt)));
+    }
+  }
+  throw lastErr || new Error('initDb falhou');
+}
+
+async function startBackgroundJobs() {
   await runMonitoredJob('meta_ips_load', loadMetaReviewerIPs);
   await runMonitoredJob('learned_bots_load', loadLearnedBotPatterns);
   await runMonitoredJob('purge_false_meta_bots', purgeFalseMetaInAppBotPatterns);
   setInterval(() => runMonitoredJob('meta_ips_load', loadMetaReviewerIPs).catch(() => {}), 5 * 60 * 1000);
   setInterval(() => runMonitoredJob('learned_bots_load', loadLearnedBotPatterns).catch(() => {}), 10 * 60 * 1000);
   runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {});
-  setInterval(() => runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {}), 2 * 60 * 60 * 1000); // a cada 2h (detecta e corrige falsos positivos mais rápido)
+  setInterval(() => runMonitoredJob('auto_improve_job', runAutoImprovementJob).catch(() => {}), 2 * 60 * 60 * 1000);
   runMonitoredJobNoOverlap('fallback_health_check', runFallbackHealthCheck);
-  setInterval(() => runMonitoredJobNoOverlap('fallback_health_check', runFallbackHealthCheck), FALLBACK_CHECK_MS); // evita sobreposição de ciclos
+  setInterval(() => runMonitoredJobNoOverlap('fallback_health_check', runFallbackHealthCheck), FALLBACK_CHECK_MS);
   runMonitoredJobNoOverlap('daily_links_summary', () => runDailyLinksSummary());
-  setInterval(() => runMonitoredJobNoOverlap('daily_links_summary', () => runDailyLinksSummary()), DAILY_LINK_REPORT_CHECK_MS); // evita múltiplos envios concorrentes
+  setInterval(() => runMonitoredJobNoOverlap('daily_links_summary', () => runDailyLinksSummary()), DAILY_LINK_REPORT_CHECK_MS);
   await runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors);
   setTimeout(runMetaDefenseUpdate, 60 * 1000);
-  setInterval(() => runMonitoredJob('meta_defense_update', runMetaDefenseUpdate).catch(() => {}), META_DEFENSE_INTERVAL_MS); // semanal: mantém padrões Meta atualizados
+  setInterval(() => runMonitoredJob('meta_defense_update', runMetaDefenseUpdate).catch(() => {}), META_DEFENSE_INTERVAL_MS);
   if (db.usePg && VISITOR_RETENTION_DAYS > 0) setInterval(() => runMonitoredJob('cleanup_old_visitors', cleanupOldVisitors).catch(() => {}), 24 * 60 * 60 * 1000);
-  app.listen(PORT, () => {
+}
+
+(async () => {
+  await startHttpServer();
+  try {
+    await bootDatabaseWithRetry(8);
+    await startBackgroundJobs();
     if (isProduction && SESSION_SECRET === 'cloaker-pro-secret-change-in-production') {
       console.warn('[segurança] Defina SESSION_SECRET forte nas variáveis de ambiente (produção).');
     }
-    console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║           🔒 CLOAKER PRO - Painel de Controle             ║
-╠═══════════════════════════════════════════════════════════╣
-║                                                           ║
-║  🚀 Servidor rodando em: http://localhost:${PORT}            ║
-║  📊 Painel de controle: http://localhost:${PORT}             ║
-║                                                           ║
-║  📝 Como usar:                                            ║
-║     1. Acesse o painel → Link para Ads                    ║
-║     2. Cole a URL da sua landing page → Gerar link        ║
-║     3. Use o link gerado como URL de destino nos Ads      ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-    `);
-  });
-}).catch(err => {
-  console.error('Erro ao iniciar:', err);
-});
+    console.log(`[boot] Cloaker Pro UP em :${PORT}`);
+  } catch (err) {
+    console.error('[boot] FATAL — banco indisponível após retries:', err);
+    // Mantém /healthz vivo; Railway reinicia se healthcheck de /health falhar
+    setInterval(() => {
+      bootDatabaseWithRetry(3).then(() => startBackgroundJobs()).catch(() => {});
+    }, 60 * 1000);
+  }
+})();
