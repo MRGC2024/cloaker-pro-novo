@@ -4117,10 +4117,10 @@
         white: 'White (ficou no cloaker)',
         gray: 'Gray (bloqueado)',
         offer: 'Oferta interna',
-        soft_redirect: '→ Oferta (liberado)',
+        soft_redirect: '→ Oferta',
         soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
-        redirect: '→ Oferta externa',
-        redirect_offer: 'Redirect oferta',
+        redirect: '→ Oferta (direto)',
+        redirect_offer: '→ Oferta',
         redirect_blocked: 'Redirect bloqueio',
         custom_page: 'Página custom',
         embed: 'Embed',
@@ -4415,10 +4415,8 @@
             <div><h4 style="margin-bottom:15px;color:var(--accent-solid)">Funil Stealth</h4>
               <div class="info-item"><span class="info-label">Página entregue</span><span class="info-value">${visitorDeliveryBadge(v.stealth_delivery)}</span></div>
               <div class="info-item" style="grid-column:1/-1"><span class="info-label">Como ler</span><span class="info-value" style="font-size:12px;color:var(--text-secondary)">${
-                v.stealth_delivery === 'soft_redirect_ok'
-                  ? 'CONFIRMADO: o celular saiu do cloaker rumo à URL externa da oferta.'
-                  : v.stealth_delivery === 'soft_redirect' || v.stealth_delivery === 'redirect'
-                  ? 'Liberado para oferta externa. Se não virar CONFIRMADA, o soft-redirect pode ter falhado no aparelho.'
+                v.stealth_delivery === 'soft_redirect_ok' || v.stealth_delivery === 'redirect' || v.stealth_delivery === 'soft_redirect' || v.stealth_delivery === 'redirect_offer'
+                  ? 'Lead liberado → foi direto para a URL externa da oferta (sem ficar na white).'
                   : v.stealth_delivery === 'offer'
                     ? 'Lead liberado → oferta interna (Zero-Redirect).'
                     : v.stealth_delivery === 'gray'
@@ -4426,7 +4424,7 @@
                       : v.stealth_delivery === 'white'
                         ? (v.was_blocked
                           ? 'Bloqueado → ficou na white page (não vai à oferta).'
-                          : 'Crawler/revisão ou sem sinal de app Meta → white page.')
+                          : 'Crawler/revisão → white page.')
                         : '—'
               }</span></div>
               <div class="info-item"><span class="info-label">Origem do tráfego</span><span class="info-value">${escapeHtml(visitorTrafficLabel(v.traffic_source))}</span></div>
