@@ -117,8 +117,11 @@ const THEMES = {
 
 function resolveThemeKey(themeKey) {
   const k = (themeKey || '').trim();
-  if (!k || k === 'auto' || k === 'random') return pickRandomTheme();
-  return THEMES[k] ? k : pickRandomTheme();
+  if (!k || k === 'auto' || k === 'random') {
+    const keys = Object.keys(THEMES);
+    return keys[Math.floor(Math.random() * keys.length)] || 'geral';
+  }
+  return THEMES[k] ? k : 'geral';
 }
 
 function themeBrand(themeKey, opts = {}) {

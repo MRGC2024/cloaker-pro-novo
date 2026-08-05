@@ -7,12 +7,14 @@ function createFallbackService(deps) {
     getGlobalFallbacks
   } = deps;
 
-  const URL_CHECK_TIMEOUT_MS = 20000;
-  const CHECK_ATTEMPTS_PER_CYCLE = 3;
-  const DELAY_BETWEEN_ATTEMPTS_MS = 5000;
+  const URL_CHECK_TIMEOUT_MS = 8000;
+  const CHECK_ATTEMPTS_PER_CYCLE = 2;
+  const DELAY_BETWEEN_ATTEMPTS_MS = 1500;
   const FALLBACK_CONFIRM_FAILURES = 5;
   const FINAL_CONFIRM_ATTEMPTS = 2;
   const FALLBACK_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+  const SITES_PER_CYCLE = 5;
+  let fallbackSiteCursor = 0;
 
   const upsertSetting = async (key, value) => {
     if (usePg) await db.run("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [key, value]);
@@ -123,7 +125,16 @@ function createFallbackService(deps) {
         FROM sites
         WHERE is_active = 1 AND (target_url IS NOT NULL AND target_url != '')
       `);
-      for (const site of sites) {
+      if (!sites || sites.length === 0) return;
+      // Lote pequeno por ciclo — evita travar o app ao checar dezenas de URLs em sequência
+      const start = fallbackSiteCursor % sites.length;
+      const batch = [];
+      for (let i = 0; i < Math.min(SITES_PER_CYCLE, sites.length); i++) {
+        batch.push(sites[(start + i) % sites.length]);
+      }
+      fallbackSiteCursor = (start + batch.length) % sites.length;
+
+      for (const site of batch) {
         const useFallback = site.use_fallback !== 0 && site.use_fallback !== false;
         if (!useFallback) { await setFallbackFailCount(site.site_id, 0); continue; }
 

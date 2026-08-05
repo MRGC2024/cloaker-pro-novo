@@ -42,14 +42,13 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, status: 'up', ts: Date.now() });
 });
 
-// Evita processo zumbi no Railway (uncaught = restart automático)
+// Evita processo zumbi no Railway — mas NÃO mata o app por rejeição isolada (ex.: criar link)
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] uncaughtException:', err && err.stack ? err.stack : err);
   setTimeout(() => process.exit(1), 500);
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[FATAL] unhandledRejection:', reason);
-  setTimeout(() => process.exit(1), 500);
+  console.error('[WARN] unhandledRejection (processo mantido):', reason && reason.stack ? reason.stack : reason);
 });
 process.on('SIGTERM', () => {
   console.log('[shutdown] SIGTERM recebido');
@@ -1348,6 +1347,17 @@ function resolveStealthTheme(reqTheme, selectedDomain, domain) {
   return resolveThemeKey('auto');
 }
 
+async function insertLandingPageRow(userId, pageName, htmlContent) {
+  if (db.usePg) {
+    return db.get(
+      'INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?) RETURNING id, name, created_at',
+      [userId, pageName, htmlContent]
+    );
+  }
+  await db.run('INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?)', [userId, pageName, htmlContent]);
+  return db.get('SELECT id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+}
+
 async function provisionStealthWhiteGray(userId, { siteName, theme, brandName, selectedDomain, domain }) {
   const themeKey = resolveStealthTheme(theme, selectedDomain, domain);
   const pack = getStealthWhiteGrayPack(themeKey, { brandName: brandName || '' });
@@ -1355,8 +1365,7 @@ async function provisionStealthWhiteGray(userId, { siteName, theme, brandName, s
   const created = {};
   for (const p of pack.pages) {
     const pageName = campaign ? p.name.replace('[Stealth] ', `[Stealth] ${campaign} · `) : p.name;
-    await db.run('INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?)', [userId, pageName, p.html_content]);
-    const row = await db.get('SELECT id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+    const row = await insertLandingPageRow(userId, pageName, p.html_content);
     created[p.role] = row;
   }
   return {
@@ -1382,52 +1391,58 @@ app.get('/api/sites/random-path-prefix', (req, res) => {
 // API: Criar site (padrão: apenas Brasil; gera link para usar nos Ads) – pertence ao usuário logado
 app.post('/api/sites', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const { name, domain, target_url, redirect_url, allowed_countries, blocked_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body;
-  const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-  const linkCode = await generateLinkCode();
-  const refToken = generateRefToken();
-  const countriesRaw = allowed_countries !== undefined ? allowed_countries : 'BR';
-  const blockedRaw = blocked_countries !== undefined ? blocked_countries : '';
-  const countriesNorm = normalizeAllowedBlockedCountries(countriesRaw, blockedRaw);
-  const target = (target_url || '').trim() || null;
-  const userId = req.session.userId;
-  const behavior = normalizeBlockBehavior(block_behavior || 'stealth');
-  let lpId = resolveLandingPageId(behavior, landing_page_id);
-  let grayId = resolveOptionalPageId(req.body.gray_page_id);
-  let offerPageId = resolveOptionalPageId(req.body.offer_page_id);
-  const offerDelivery = normalizeOfferDelivery(req.body.offer_delivery !== undefined ? req.body.offer_delivery : 'url');
-  if (offerDelivery !== 'page') offerPageId = null;
-  const autoStealthPages = req.body.auto_stealth_pages !== false;
-  let autoPagesMeta = null;
-  if (behavior === 'stealth' && autoStealthPages && !lpId) {
-    autoPagesMeta = await provisionStealthWhiteGray(userId, {
-      siteName: name,
-      theme: req.body.stealth_theme,
-      brandName: (req.body.stealth_brand_name || '').trim(),
-      selectedDomain: (selected_domain || '').trim() || null,
-      domain: (domain || '').trim() || null
-    });
-    lpId = autoPagesMeta.landing_page_id;
-    grayId = autoPagesMeta.gray_page_id;
-  }
-  const selDomain = (selected_domain || '').trim() || null;
-  const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
-  const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
-  let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
-  if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
-    pathPrefix = generateRandomPathPrefix(8);
-  } else {
-    pathPrefix = pathPrefix.toLowerCase();
-    if (RESERVED_PREFIXES.has(pathPrefix)) pathPrefix = generateRandomPathPrefix(8);
-  }
   try {
+    const { name, domain, target_url, redirect_url, allowed_countries, blocked_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body || {};
+    const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    const linkCode = await generateLinkCode();
+    const refToken = generateRefToken();
+    const countriesRaw = allowed_countries !== undefined ? allowed_countries : 'BR';
+    const blockedRaw = blocked_countries !== undefined ? blocked_countries : '';
+    const countriesNorm = normalizeAllowedBlockedCountries(countriesRaw, blockedRaw);
+    const target = (target_url || '').trim() || null;
+    const userId = req.session.userId;
+    const behavior = normalizeBlockBehavior(block_behavior || 'stealth');
+    let lpId = resolveLandingPageId(behavior, landing_page_id);
+    let grayId = resolveOptionalPageId(req.body.gray_page_id);
+    let offerPageId = resolveOptionalPageId(req.body.offer_page_id);
+    const offerDelivery = normalizeOfferDelivery(req.body.offer_delivery !== undefined ? req.body.offer_delivery : 'url');
+    if (offerDelivery !== 'page') offerPageId = null;
+    const autoStealthPages = req.body.auto_stealth_pages !== false;
+    let autoPagesMeta = null;
+    if (behavior === 'stealth' && autoStealthPages && !lpId) {
+      try {
+        autoPagesMeta = await provisionStealthWhiteGray(userId, {
+          siteName: name,
+          theme: req.body.stealth_theme,
+          brandName: (req.body.stealth_brand_name || '').trim(),
+          selectedDomain: (selected_domain || '').trim() || null,
+          domain: (domain || '').trim() || null
+        });
+        lpId = autoPagesMeta.landing_page_id;
+        grayId = autoPagesMeta.gray_page_id;
+      } catch (provErr) {
+        console.error('[stealth] falha ao gerar white/gray (site será criado mesmo assim):', provErr && provErr.message ? provErr.message : provErr);
+        autoPagesMeta = { error: 'Falha ao gerar páginas Stealth automaticamente' };
+      }
+    }
+    const selDomain = (selected_domain || '').trim() || null;
+    const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
+    const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
+    let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
+    if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
+      pathPrefix = generateRandomPathPrefix(8);
+    } else {
+      pathPrefix = pathPrefix.toLowerCase();
+      if (RESERVED_PREFIXES.has(pathPrefix)) pathPrefix = generateRandomPathPrefix(8);
+    }
     const defaultParams = (req.body.default_link_params || '').trim() || null;
     await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [siteId, linkCode, userId, name, domain, target, redirect_url || 'https://www.google.com/', behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[api/sites POST]', error && error.stack ? error.stack : error);
+    res.status(500).json({ error: error.message || 'Erro ao criar site' });
   }
 });
 
@@ -1677,14 +1692,52 @@ app.post('/api/pages', async (req, res) => {
   const row = await db.get('SELECT * FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [req.session.userId]);
   res.status(201).json(row);
 });
+
+// Rotas fixas ANTES de /:id (senão "stealth-themes" vira id e quebra o painel)
+app.get('/api/pages/stealth-themes', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  res.json(listStealthThemes());
+});
+
+app.post('/api/pages/stealth-pack', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  try {
+    const userId = req.session.userId;
+    const { theme, brandName, productName } = req.body || {};
+    const themeKey = resolveStealthTheme(theme, '', '');
+    const pack = getStealthPagePack(themeKey, {
+      brandName: brandName || '',
+      productName: productName || ''
+    });
+    const created = {};
+    for (const p of pack.pages) {
+      created[p.role] = await insertLandingPageRow(userId, p.name, p.html_content);
+    }
+    res.status(201).json({
+      theme: pack.theme,
+      themeLabel: pack.themeLabel,
+      packId: pack.packId,
+      generatedAt: pack.generatedAt,
+      titles: pack.titles,
+      pages: created,
+      message: `Pacote Stealth criado em ${pack.generatedAt}. Cada página sorteou textos únicos — vincule white, gray e oferta em Meus Sites → Stealth.`
+    });
+  } catch (e) {
+    console.error('[stealth-pack]', e && e.message ? e.message : e);
+    res.status(500).json({ error: e.message || 'Erro ao gerar pacote Stealth' });
+  }
+});
+
 app.get('/api/pages/:id', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  if (!/^\d+$/.test(String(req.params.id || ''))) return res.status(404).json({ error: 'Página não encontrada' });
   const row = await db.get('SELECT * FROM landing_pages WHERE id = ? AND user_id = ?', [req.params.id, req.session.userId]);
   if (!row) return res.status(404).json({ error: 'Página não encontrada' });
   res.json(row);
 });
 app.put('/api/pages/:id', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  if (!/^\d+$/.test(String(req.params.id || ''))) return res.status(404).json({ error: 'Página não encontrada' });
   const { name, html_content } = req.body || {};
   const existing = await db.get('SELECT id FROM landing_pages WHERE id = ? AND user_id = ?', [req.params.id, req.session.userId]);
   if (!existing) return res.status(404).json({ error: 'Página não encontrada' });
@@ -1694,6 +1747,7 @@ app.put('/api/pages/:id', async (req, res) => {
 });
 app.delete('/api/pages/:id', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  if (!/^\d+$/.test(String(req.params.id || ''))) return res.status(404).json({ error: 'Página não encontrada' });
   const existing = await db.get('SELECT id FROM landing_pages WHERE id = ? AND user_id = ?', [req.params.id, req.session.userId]);
   if (!existing) return res.status(404).json({ error: 'Página não encontrada' });
   await db.run('DELETE FROM landing_pages WHERE id = ?', [req.params.id]);
@@ -1701,37 +1755,6 @@ app.delete('/api/pages/:id', async (req, res) => {
   await db.run('UPDATE sites SET gray_page_id = NULL WHERE gray_page_id = ?', [req.params.id]);
   await db.run('UPDATE sites SET offer_page_id = NULL WHERE offer_page_id = ?', [req.params.id]);
   res.json({ success: true });
-});
-
-app.get('/api/pages/stealth-themes', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  res.json(listStealthThemes());
-});
-
-app.post('/api/pages/stealth-pack', async (req, res) => {
-  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const userId = req.session.userId;
-  const { theme, brandName, productName } = req.body || {};
-  const themeKey = resolveStealthTheme(theme, '', '');
-  const pack = getStealthPagePack(themeKey, {
-    brandName: brandName || '',
-    productName: productName || ''
-  });
-  const created = {};
-  for (const p of pack.pages) {
-    await db.run('INSERT INTO landing_pages (user_id, name, html_content) VALUES (?, ?, ?)', [userId, p.name, p.html_content]);
-    const row = await db.get('SELECT id, name, created_at FROM landing_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
-    created[p.role] = row;
-  }
-  res.status(201).json({
-    theme: pack.theme,
-    themeLabel: pack.themeLabel,
-    packId: pack.packId,
-    generatedAt: pack.generatedAt,
-    titles: pack.titles,
-    pages: created,
-    message: `Pacote Stealth criado em ${pack.generatedAt}. Cada página sorteou textos únicos — vincule white, gray e oferta em Meus Sites → Stealth.`
-  });
 });
 
 // API: Deletar site (apenas se pertencer ao usuário)
@@ -3113,7 +3136,7 @@ function redirectWithDelay(res, url, status = 302) {
 }
 
 // ---------- Fallback de site (verificação a cada minuto + Telegram) ----------
-const FALLBACK_CHECK_MS = 60 * 1000;
+const FALLBACK_CHECK_MS = 3 * 60 * 1000;
 const TELEGRAM_PREFIX = '🔔 <b>Painel Cloaker</b>\n\n';
 const DAILY_LINK_REPORT_CHECK_MS = 15 * 60 * 1000; // verifica de 15 em 15 min se já pode enviar o resumo do dia
 const DAILY_LINK_REPORT_DEFAULT_HOUR_BR = Math.max(0, Math.min(23, parseInt(process.env.DAILY_LINK_REPORT_HOUR_BR, 10) || 9)); // padrão: 09:00 BRT

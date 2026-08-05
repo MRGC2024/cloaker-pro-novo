@@ -4698,6 +4698,8 @@
     }
 
     async function performGenerateLinkFromUrl(url, name, selectedDomain) {
+      const genBtn = document.querySelector('button[onclick="generateLinkFromUrl()"]');
+      if (genBtn) { genBtn.disabled = true; genBtn.dataset._old = genBtn.innerHTML; genBtn.innerHTML = '<i class="ri-loader-4-line"></i> Gerando...'; }
       try {
         const res = await fetch('/api/sites', {
           method: 'POST',
@@ -4715,22 +4717,32 @@
             selected_domain: selectedDomain || null
           })
         });
-        if (!res.ok) throw new Error('Erro ao criar');
+        if (!res.ok) {
+          let msg = 'Erro ao criar';
+          try { const errBody = await res.json(); if (errBody && errBody.error) msg = errBody.error; } catch (e2) {}
+          throw new Error(msg);
+        }
         const site = await res.json();
         if (site.auto_pages && site.auto_pages.packId) window.__lastStealthPackId = site.auto_pages.packId;
         const baseUrl = selectedDomain ? getLinkBaseUrl(selectedDomain) : getBaseUrl();
-        await loadSites();
-        await loadPages();
         renderGeneratedLinks(site, baseUrl);
         document.getElementById('generatedLinkBox').style.display = 'block';
-        document.getElementById('scriptSiteSelector').value = site.site_id;
-        updateScriptCode();
+        if (document.getElementById('scriptSiteSelector')) {
+          document.getElementById('scriptSiteSelector').value = site.site_id;
+          updateScriptCode();
+        }
+        // Atualiza listas em paralelo depois — não bloqueia a entrega do link
+        Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
-        if (ap) {
-          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas automaticamente.' + (site.auto_pages && site.auto_pages.themeLabel ? '\nTema: ' + site.auto_pages.themeLabel : '') + (site.auto_pages && site.auto_pages.generatedAt ? '\nGerado em: ' + site.auto_pages.generatedAt : '') + '\n\nCole este link no Meta Ads. Leads aprovados vão para a URL da oferta.');
+        if (ap && !ap.error) {
+          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas automaticamente.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : '') + (ap.generatedAt ? '\nGerado em: ' + ap.generatedAt : '') + '\n\nCole este link no Meta Ads. Leads aprovados vão para a URL da oferta.');
+        } else if (ap && ap.error) {
+          alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
       } catch (e) {
-        alert('Erro ao gerar link. Tente novamente.');
+        alert('Erro ao gerar link: ' + (e && e.message ? e.message : 'Tente novamente.'));
+      } finally {
+        if (genBtn) { genBtn.disabled = false; if (genBtn.dataset._old) genBtn.innerHTML = genBtn.dataset._old; }
       }
     }
     
