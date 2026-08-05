@@ -3320,16 +3320,18 @@
     }
 
     async function deleteSite(siteId) {
-      if (!confirm('Tem certeza? Todos os dados de visitantes deste site serão perdidos!')) return;
+      if (!confirm('Tem certeza? O link, visitantes e as páginas white/gray vinculadas só a este link serão removidos.')) return;
       try {
-        await fetch(`/api/sites/${siteId}`, { method: 'DELETE', credentials: 'include' });
-        loadSites();
-      } catch (e) { alert('Erro ao deletar site'); }
+        const res = await fetch(`/api/sites/${siteId}`, { method: 'DELETE', credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao deletar');
+        await Promise.all([loadSites(), loadPages()]);
+      } catch (e) { alert(e.message || 'Erro ao deletar site'); }
     }
 
     async function bulkDeleteAllSites() {
       const msg = document.getElementById('sitesBulkMsg');
-      if (!confirm('Isso vai APAGAR TODOS os seus sites e TODOS os visitantes ligados a eles. Esta ação não pode ser desfeita. Continuar?')) return;
+      if (!confirm('Isso vai APAGAR TODOS os seus sites, visitantes e páginas white/gray vinculadas a eles. Esta ação não pode ser desfeita. Continuar?')) return;
       if (!confirm('Confirma de novo: deletar todos os sites da sua conta?')) return;
       try {
         const res = await fetch('/api/sites/bulk/delete-all', {
@@ -3342,10 +3344,11 @@
         if (!res.ok) throw new Error(data.error || 'Erro ao remover sites');
         selectedSiteIds.clear();
         if (msg) {
-          msg.textContent = data.deleted ? (data.deleted + ' site(s) removido(s).') : 'Nenhum site para remover.';
+          const pagesBit = data.deleted_pages ? (' · ' + data.deleted_pages + ' página(s) removida(s)') : '';
+          msg.textContent = data.deleted ? (data.deleted + ' site(s) removido(s)' + pagesBit + '.') : 'Nenhum site para remover.';
           msg.style.color = 'var(--success)';
         }
-        await loadSites();
+        await Promise.all([loadSites(), loadPages()]);
       } catch (e) {
         if (msg) { msg.textContent = e.message || 'Erro ao remover sites'; msg.style.color = 'var(--danger)'; }
         else alert(e.message || 'Erro ao remover sites');

@@ -456,9 +456,11 @@ app.delete('/api/users/:id', async (req, res) => {
   const rows = await db.all('SELECT site_id FROM sites WHERE user_id = ?', [id]);
   const siteIds = (rows || []).map(r => r.site_id);
   for (const sid of siteIds) {
+    await db.run('DELETE FROM site_fallbacks WHERE site_id = ?', [sid]);
     await db.run('DELETE FROM visitors WHERE site_id = ?', [sid]);
     await db.run('DELETE FROM sites WHERE site_id = ?', [sid]);
   }
+  await db.run('DELETE FROM landing_pages WHERE user_id = ?', [id]);
   await db.run('DELETE FROM users WHERE id = ?', [id]);
   res.json({ success: true });
 });
@@ -1760,18 +1762,65 @@ app.delete('/api/pages/:id', async (req, res) => {
 // API: Deletar site (apenas se pertencer ao usuário)
 app.delete('/api/sites/:siteId', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const site = await db.get('SELECT user_id FROM sites WHERE site_id = ?', [req.params.siteId]);
-  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
-  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado' });
   try {
-    await db.run('DELETE FROM site_fallbacks WHERE site_id = ?', [req.params.siteId]);
-    await db.run('DELETE FROM visitors WHERE site_id = ?', [req.params.siteId]);
-    await db.run('DELETE FROM sites WHERE site_id = ?', [req.params.siteId]);
-    res.json({ success: true });
+    const result = await deleteSiteCascade(req.params.siteId, req.session.userId);
+    if (!result.ok) return res.status(result.status || 500).json({ error: result.error || 'Erro ao deletar' });
+    res.json({ success: true, deleted_pages: result.deleted_pages || 0 });
   } catch (error) {
+    console.error('[api/sites DELETE]', error && error.message ? error.message : error);
     res.status(500).json({ error: error.message });
   }
 });
+
+/** IDs de white/gray/oferta vinculados a um site. */
+function collectSitePageIds(site) {
+  const ids = [];
+  if (!site) return ids;
+  for (const key of ['landing_page_id', 'gray_page_id', 'offer_page_id']) {
+    const n = parseInt(site[key], 10);
+    if (Number.isFinite(n) && n > 0) ids.push(n);
+  }
+  return [...new Set(ids)];
+}
+
+/**
+ * Apaga páginas do usuário que não estão mais ligadas a nenhum site.
+ * Usado após deletar link(s) — limpa white/gray geradas na criação.
+ */
+async function deleteOrphanLandingPages(pageIds, userId) {
+  let deleted = 0;
+  const unique = [...new Set((pageIds || []).map((id) => parseInt(id, 10)).filter((n) => Number.isFinite(n) && n > 0))];
+  for (const pageId of unique) {
+    const page = await db.get('SELECT id FROM landing_pages WHERE id = ? AND user_id = ?', [pageId, userId]);
+    if (!page) continue;
+    const stillUsed = await db.get(
+      'SELECT site_id FROM sites WHERE landing_page_id = ? OR gray_page_id = ? OR offer_page_id = ? LIMIT 1',
+      [pageId, pageId, pageId]
+    );
+    if (stillUsed) continue;
+    await db.run('DELETE FROM landing_pages WHERE id = ? AND user_id = ?', [pageId, userId]);
+    deleted += 1;
+  }
+  return deleted;
+}
+
+/** Remove site + visitantes + páginas órfãs que eram só daquele link. */
+async function deleteSiteCascade(siteId, userId) {
+  const site = await db.get(
+    'SELECT site_id, user_id, landing_page_id, gray_page_id, offer_page_id FROM sites WHERE site_id = ?',
+    [siteId]
+  );
+  if (!site) return { ok: false, status: 404, error: 'Site não encontrado' };
+  if (site.user_id != null && Number(site.user_id) !== Number(userId)) {
+    return { ok: false, status: 403, error: 'Acesso negado' };
+  }
+  const pageIds = collectSitePageIds(site);
+  await db.run('DELETE FROM site_fallbacks WHERE site_id = ?', [siteId]);
+  await db.run('DELETE FROM visitors WHERE site_id = ?', [siteId]);
+  await db.run('DELETE FROM sites WHERE site_id = ?', [siteId]);
+  const deletedPages = await deleteOrphanLandingPages(pageIds, userId);
+  return { ok: true, deleted_pages: deletedPages };
+}
 
 // API: Fallback e Telegram (admin) – configuração central
 app.get('/api/admin/fallback-settings', async (req, res) => {
@@ -3175,7 +3224,7 @@ async function getDailyLinkReportHourBr() {
   return telegramService.getDailyLinkReportHourBr(DAILY_LINK_REPORT_DEFAULT_HOUR_BR);
 }
 
-app.use(createSiteBulkRoutes({ db, usePg: db.usePg }));
+app.use(createSiteBulkRoutes({ db, usePg: db.usePg, deleteSiteCascade, deleteOrphanLandingPages, collectSitePageIds }));
 app.use(createMetricsRoutes({ metricsService }));
 app.use(createAdminRoutes({
   db,

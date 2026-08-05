@@ -1,7 +1,7 @@
 const express = require('express');
 
 function createSiteBulkRoutes(deps) {
-  const { db, usePg } = deps;
+  const { db, usePg, deleteSiteCascade, deleteOrphanLandingPages, collectSitePageIds } = deps;
   const isPg = !!usePg;
   const router = express.Router();
 
@@ -32,7 +32,7 @@ function createSiteBulkRoutes(deps) {
     res.json({ success: true, updated: ids.length });
   });
 
-  /** Remove todos os sites do usuário logado (mesma ordem do DELETE individual — evita 500/502 por SQL ou SQLite silencioso). */
+  /** Remove todos os sites do usuário logado (+ páginas white/gray órfãs vinculadas). */
   router.post('/api/sites/bulk/delete-all', async (req, res) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
     const body = req.body || {};
@@ -48,15 +48,36 @@ function createSiteBulkRoutes(deps) {
       return res.status(400).json({ error: 'Sessão inválida. Faça login novamente.' });
     }
     try {
-      const rows = await db.all('SELECT site_id FROM sites WHERE user_id = ?', [userId]);
+      const rows = await db.all(
+        'SELECT site_id, landing_page_id, gray_page_id, offer_page_id FROM sites WHERE user_id = ?',
+        [userId]
+      );
       const siteIds = (rows || []).map((r) => r.site_id).filter(Boolean);
-      if (siteIds.length === 0) return res.json({ success: true, deleted: 0 });
-      for (const sid of siteIds) {
-        await runOrFail('DELETE FROM site_fallbacks WHERE site_id = ?', [sid]);
-        await runOrFail('DELETE FROM visitors WHERE site_id = ?', [sid]);
-        await runOrFail('DELETE FROM sites WHERE site_id = ?', [sid]);
+      if (siteIds.length === 0) return res.json({ success: true, deleted: 0, deleted_pages: 0 });
+
+      const allPageIds = [];
+      if (typeof collectSitePageIds === 'function') {
+        for (const row of rows) allPageIds.push(...collectSitePageIds(row));
       }
-      res.json({ success: true, deleted: siteIds.length });
+
+      let deletedPages = 0;
+      if (typeof deleteSiteCascade === 'function') {
+        for (const sid of siteIds) {
+          const result = await deleteSiteCascade(sid, userId);
+          if (result && result.ok) deletedPages += result.deleted_pages || 0;
+        }
+      } else {
+        for (const sid of siteIds) {
+          await runOrFail('DELETE FROM site_fallbacks WHERE site_id = ?', [sid]);
+          await runOrFail('DELETE FROM visitors WHERE site_id = ?', [sid]);
+          await runOrFail('DELETE FROM sites WHERE site_id = ?', [sid]);
+        }
+        if (typeof deleteOrphanLandingPages === 'function') {
+          deletedPages = await deleteOrphanLandingPages(allPageIds, userId);
+        }
+      }
+
+      res.json({ success: true, deleted: siteIds.length, deleted_pages: deletedPages });
     } catch (e) {
       console.error('[bulk/delete-all]', e);
       res.status(500).json({ error: e.message || 'Erro ao remover sites' });
