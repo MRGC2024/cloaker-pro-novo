@@ -200,6 +200,9 @@ function proStyles(t, variant = 'classic') {
     .benefits li { position: relative; padding: 10px 0 10px 28px; color: var(--text-secondary); font-size: 0.95rem; border-bottom: 1px solid var(--border); }
     .benefits li:last-child { border-bottom: none; }
     .benefits li::before { content: ''; position: absolute; left: 0; top: 16px; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+    .stealth-continue-wrap { text-align: center; margin: 28px 0 8px; }
+    .stealth-continue { display: inline-block; padding: 14px 32px; background: var(--accent); color: #fff !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 1.05rem; }
+    .stealth-continue:hover { background: var(--accent-light, var(--accent)); }
     .faq-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
     .faq-q { padding: 16px 20px; font-weight: 700; font-size: 0.95rem; background: var(--bg-subtle); }
     .faq-a { padding: 14px 20px 18px; font-size: 0.9rem; color: var(--text-secondary); }
@@ -269,6 +272,7 @@ function buildEditorialPage(t, pageData, opts, pageType, themeKey) {
     ${sections}
     <div class="disclaimer">${disclaimer}</div>
     <div class="highlights">${pills}</div>
+    ${pageType === 'white' ? `<div class="stealth-continue-wrap"><a href="#" class="stealth-continue" data-stealth-go="1" role="button">Continuar leitura</a></div>` : ''}
   </article></div></section>
   ${footerHtml(brand, year)}`;
   return wrapHtml(pageData.title, body, proStyles(t, variant), {
