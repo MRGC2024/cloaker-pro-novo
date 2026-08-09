@@ -1322,11 +1322,68 @@ app.get('/api/sites', async (req, res) => {
 
 const LINK_SLUG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 
-async function generateLinkCode() {
-  let code = '';
-  for (let i = 0; i < 8; i++) code += LINK_SLUG_CHARS[Math.floor(Math.random() * LINK_SLUG_CHARS.length)];
-  if (await db.get('SELECT 1 FROM sites WHERE link_code = ?', [code])) return generateLinkCode();
-  return code;
+/** Prefixos que parecem seção de portal/blog (não código de cloaker). */
+const NATURAL_PATH_PREFIXES = [
+  'artigo', 'leitura', 'materia', 'guia', 'dicas', 'blog', 'conteudo',
+  'revista', 'noticia', 'habitos', 'saude', 'rotina', 'aprender',
+  'editorial', 'coluna', 'especial', 'serie', 'curiosidades', 'bem-estar'
+];
+
+const NATURAL_SLUG_WORDS = [
+  'habitos', 'bem-estar', 'sono', 'energia', 'foco', 'rotina', 'saude',
+  'alimentacao', 'movimento', 'equilibrio', 'leitura', 'dicas', 'guia',
+  'pratico', 'diario', 'simples', 'natural', 'essencial', 'completo',
+  'manha', 'noite', 'semana', 'casa', 'trabalho', 'mente', 'corpo'
+];
+
+function slugifyForLink(text) {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 40);
+}
+
+function randomLinkSuffix(len = 4) {
+  let s = '';
+  for (let i = 0; i < len; i++) s += LINK_SLUG_CHARS[Math.floor(Math.random() * LINK_SLUG_CHARS.length)];
+  return s;
+}
+
+/** Prefixo natural: /artigo/ /leitura/ /guia/ — parece site editorial. */
+function generateNaturalPathPrefix() {
+  return NATURAL_PATH_PREFIXES[Math.floor(Math.random() * NATURAL_PATH_PREFIXES.length)];
+}
+
+/**
+ * Código do link estilo slug de artigo: habitos-sono-k7m2
+ * (em vez de 8 chars aleatórios tipo cloaker).
+ */
+async function generateLinkCode(opts = {}) {
+  const hint = slugifyForLink(opts.hint || '');
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let code;
+    if (hint && attempt < 12) {
+      code = `${hint}-${randomLinkSuffix(4)}`;
+    } else {
+      const w1 = NATURAL_SLUG_WORDS[Math.floor(Math.random() * NATURAL_SLUG_WORDS.length)];
+      let w2 = NATURAL_SLUG_WORDS[Math.floor(Math.random() * NATURAL_SLUG_WORDS.length)];
+      if (w2 === w1) w2 = NATURAL_SLUG_WORDS[(NATURAL_SLUG_WORDS.indexOf(w1) + 1) % NATURAL_SLUG_WORDS.length];
+      code = `${w1}-${w2}-${randomLinkSuffix(4)}`;
+    }
+    code = slugifyForLink(code);
+    if (code.length < 8 || code.length > 64) continue;
+    if (await db.get('SELECT 1 FROM sites WHERE link_code = ?', [code])) continue;
+    return code;
+  }
+  // fallback extremo
+  let fallback = '';
+  for (let i = 0; i < 12; i++) fallback += LINK_SLUG_CHARS[Math.floor(Math.random() * LINK_SLUG_CHARS.length)];
+  if (await db.get('SELECT 1 FROM sites WHERE link_code = ?', [fallback])) return generateLinkCode({});
+  return fallback;
 }
 
 function generateRefToken() {
@@ -1386,6 +1443,8 @@ async function provisionStealthWhiteGray(userId, { siteName, theme, brandName, s
 // API: gerar prefixo aleatório para preview no painel
 app.get('/api/sites/random-path-prefix', (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const natural = req.query.natural !== '0' && req.query.style !== 'random';
+  if (natural) return res.json({ path_prefix: generateNaturalPathPrefix() });
   const length = parseInt(req.query.length, 10) || 8;
   res.json({ path_prefix: generateRandomPathPrefix(length) });
 });
@@ -1396,7 +1455,6 @@ app.post('/api/sites', async (req, res) => {
   try {
     const { name, domain, target_url, redirect_url, allowed_countries, blocked_countries, block_behavior, landing_page_id, selected_domain, use_fallback, path_prefix: bodyPathPrefix } = req.body || {};
     const siteId = 'site_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    const linkCode = await generateLinkCode();
     const refToken = generateRefToken();
     const countriesRaw = allowed_countries !== undefined ? allowed_countries : 'BR';
     const blockedRaw = blocked_countries !== undefined ? blocked_countries : '';
@@ -1427,15 +1485,22 @@ app.post('/api/sites', async (req, res) => {
         autoPagesMeta = { error: 'Falha ao gerar páginas Stealth automaticamente' };
       }
     }
+    // Slug natural a partir do título da white (parece URL de artigo)
+    const slugHint = (autoPagesMeta && autoPagesMeta.titles && autoPagesMeta.titles.white)
+      || name
+      || '';
+    const linkCode = await generateLinkCode({ hint: slugHint });
     const selDomain = (selected_domain || '').trim() || null;
     const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
     const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
     let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
     if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
-      pathPrefix = generateRandomPathPrefix(8);
+      pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix() : generateRandomPathPrefix(8);
     } else {
       pathPrefix = pathPrefix.toLowerCase();
-      if (RESERVED_PREFIXES.has(pathPrefix)) pathPrefix = generateRandomPathPrefix(8);
+      if (RESERVED_PREFIXES.has(pathPrefix)) {
+        pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix() : generateRandomPathPrefix(8);
+      }
     }
     const defaultParams = (req.body.default_link_params || '').trim() || null;
     // Nunca defaultar para Google — Meta trata como destino enganoso vs oferta
@@ -3442,11 +3507,15 @@ function getEffectiveTargetUrl(site) {
   return override || primary || null;
 }
 
-// Pool de prefixos de link – cada site usa um, dificulta identificação em massa pelo Meta
-const DEFAULT_PATH_POOL = ['go', 'r', 'l', 'v', 'visit', 'link', 'out', 'gate', 'lp', 'rd', 'view', 'entry', 'access', 'p', 'c', 'n', 'x7k2m', 'a9p4q', 'm5n8r', 'land', 'redir', 'go2', 'r2', 'v2', 'l2', 'entrar', 'acesso', 'pag'];
+// Pool de prefixos de link – palavras editoriais (evita /go/ /r/ /x7k2m/ de cloaker)
+const DEFAULT_PATH_POOL = [
+  'artigo', 'leitura', 'materia', 'guia', 'dicas', 'blog', 'conteudo', 'revista',
+  'noticia', 'habitos', 'saude', 'rotina', 'aprender', 'editorial', 'coluna',
+  'especial', 'serie', 'curiosidades', 'bem-estar', 'portal', 'go', 'r', 'l', 'v'
+];
 const RESERVED_PREFIXES = new Set(['api', 'login', 'logout', 't', 'static', 'assets', 'favicon.ico', '']);
 
-/** Prefixo aleatório por link (ex: k7m2n9p4) — evita padrões fixos tipo /go/ detectáveis pelo Meta. */
+/** Prefixo aleatório legado (hash) — preferir generateNaturalPathPrefix no Stealth. */
 function generateRandomPathPrefix(length = 8) {
   const len = Math.max(4, Math.min(32, parseInt(length, 10) || 8));
   for (let attempt = 0; attempt < 30; attempt++) {

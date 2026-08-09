@@ -2525,7 +2525,7 @@
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Leads reais vão para a <strong>URL da oferta</strong> após a white (sem 302 no link do anúncio)</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> O <strong>criativo do Ads</strong> deve combinar com o tema da white (mesmo assunto)</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> deste site — não misture com links antigos (302)</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Link no formato de <strong>artigo</strong> (ex: /leitura/habitos-sono-x3k2), não código aleatório</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
         </ul>
         <label class="radio-label" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;font-size:13px;color:var(--text-secondary);">
@@ -4738,7 +4738,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado (modo aprovação Meta).\n\nO anúncio abre a WHITE page.\nA oferta só abre quando o lead clica em "Continuar leitura".\nIsso reduz rejeição por link enganoso.' + (ap.themeLabel ? '\nTema white: ' + ap.themeLabel : '') + '\n\nCRIATIVO = mesmo tema da white page.');
+          alert('Link Stealth criado (modo aprovação Meta).\n\nURL no formato de artigo, ex:\n…/leitura/habitos-sono-x3k2\n\nO anúncio abre a WHITE.\nOferta só após clique em Continuar leitura.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : '') + '\n\nCRIATIVO = mesmo tema da white.');
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
