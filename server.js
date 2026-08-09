@@ -2477,20 +2477,21 @@ function normalizeOfferDelivery(value) {
 
 function siteHasOfferDestination(site) {
   if (!site) return false;
-  if (isStealthMode(site)) {
-    if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) return true;
-    return !!getEffectiveTargetUrl(site);
-  }
+  if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) return true;
   return !!getEffectiveTargetUrl(site);
 }
 
 /** Stealth só para sites novos (criados após o lançamento). Campanhas antigas permanecem redirect. */
 const STEALTH_LAUNCH_DATE = '2026-06-23';
 
-/** Stealth só com white page configurada + site criado após o lançamento (campanhas antigas = redirect). */
+/** Site marcado como Stealth (comportamento) — mesmo sem white ainda não pode cair em 302. */
+function wantsStealthBehavior(site) {
+  return normalizeBlockBehavior(site && site.block_behavior) === 'stealth';
+}
+
+/** Stealth completo: white page + site novo. Usado em diagnóstico/UI. */
 function isStealthMode(site) {
-  if (!site) return false;
-  if (normalizeBlockBehavior(site.block_behavior) !== 'stealth') return false;
+  if (!wantsStealthBehavior(site)) return false;
   const created = (site.created_at || '').toString().slice(0, 10);
   if (created && created < STEALTH_LAUNCH_DATE) return false;
   if (!site.landing_page_id) return false;
@@ -4022,7 +4023,7 @@ async function handleStealthOfferOk(req, res) {
   if (!ua || ua.length < 10) return res.status(204).end();
   if (isMetaCrawlerUA(ua)) return res.status(204).end();
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  if (!site || !isStealthMode(site)) return res.status(204).end();
+  if (!site || !wantsStealthBehavior(site)) return res.status(204).end();
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(204).end();
   await markStealthOfferConfirmed(site, req);
   return res.status(204).end();
@@ -4047,7 +4048,7 @@ async function handleStealthNavigation(req, res) {
   }
 
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  if (!site || !isStealthMode(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
+  if (!site || !wantsStealthBehavior(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, skipVisitorLog: true });
@@ -4080,7 +4081,9 @@ async function handleLinkRedirect(req, res) {
     return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
   }
 
-  if (isStealthMode(site)) {
+  // CRÍTICO: qualquer site Stealth NUNCA cai no fluxo legado (302 na oferta = link enganoso Meta).
+  // Mesmo sem white page vinculada, serve a ponte (HTML padrão) em vez de redirect.
+  if (wantsStealthBehavior(site)) {
     return handleStealthLinkGet(req, res, site);
   }
 
