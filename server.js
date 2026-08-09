@@ -4073,19 +4073,22 @@ async function handleLinkRedirect(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
-  if (!site || !siteHasOfferDestination(site)) {
-    return redirectWithDelay(res, 'https://www.google.com/');
+  if (!site) {
+    return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
   }
-  const destUrl = getEffectiveTargetUrl(site);
   if (!(await validateSiteLinkPrefix(req, site))) {
     return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
   }
 
   // CRÍTICO: qualquer site Stealth NUNCA cai no fluxo legado (302 na oferta = link enganoso Meta).
-  // Mesmo sem white page vinculada, serve a ponte (HTML padrão) em vez de redirect.
   if (wantsStealthBehavior(site)) {
     return handleStealthLinkGet(req, res, site);
   }
+
+  if (!siteHasOfferDestination(site)) {
+    return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+  }
+  const destUrl = getEffectiveTargetUrl(site);
 
   // ——— Sites antigos (redirect / embed / page): fluxo original, sem ponte Stealth ———
   const userAgentEarly = req.headers['user-agent'] || '';
