@@ -1685,7 +1685,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth: GET = white (200, sem 302). Lead liberado vai à oferta sozinho via JS. Criativo deve combinar com a white.'
+        : 'Stealth clássico: crawler vê white; lead liberado abre a oferta na hora (302).'
     });
   }
   if (redirectChain.length > 2) {
@@ -3894,7 +3894,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Link do anúncio abre a white (200); lead liberado vai à oferta automaticamente via JS. Alinhe o criativo ao tema da white.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado (fbclid/ref + mobile) vai 302 direto à oferta. Crawler Meta vê a white page.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4047,8 +4047,18 @@ async function handleStealthLinkGet(req, res, site) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
 
-  // Sempre white 200. Lead liberado: JS manda pra oferta sozinho (sem clique extra).
-  return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
+  const delivery = await resolveStealthDelivery(site, ctx);
+
+  // Lead liberado (fbclid/ref + mobile): 302 DIRETO na oferta — função do cloaker
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
+  }
+  if (delivery.kind === 'offer') {
+    return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
+  }
+
+  // Crawler / revisor / bloqueado: white ou gray (sem oferta)
+  return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
 }
 
 // Handler compartilhado para links (/:prefix/:code)
