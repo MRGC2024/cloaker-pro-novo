@@ -213,13 +213,24 @@ function proStyles(t, variant = 'classic') {
   `;
 }
 
-function wrapHtml(title, body, styles) {
+function wrapHtml(title, body, styles, meta = {}) {
+  const desc = esc((meta.description || '').slice(0, 160));
+  const ogTitle = esc(meta.ogTitle || title);
+  const ogDesc = desc || ogTitle;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="index, follow">
+  <meta name="description" content="${ogDesc}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${ogTitle}">
+  <meta property="og:description" content="${ogDesc}">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${ogTitle}">
+  <meta name="twitter:description" content="${ogDesc}">
   <title>${esc(title)}</title>
   <style>${styles}</style>
 </head>
@@ -260,7 +271,10 @@ function buildEditorialPage(t, pageData, opts, pageType, themeKey) {
     <div class="highlights">${pills}</div>
   </article></div></section>
   ${footerHtml(brand, year)}`;
-  return wrapHtml(pageData.title, body, proStyles(t, variant));
+  return wrapHtml(pageData.title, body, proStyles(t, variant), {
+    description: pageData.lead || pageData.title,
+    ogTitle: pageData.title
+  });
 }
 
 function buildWhitePage(themeKey, opts = {}, pageData) {
