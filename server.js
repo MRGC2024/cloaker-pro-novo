@@ -1685,7 +1685,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth anti link-enganoso: GET = white (200). Oferta só após clique do lead na CTA. Crawler Meta não clica e não vê a oferta. Criativo deve combinar com a white.'
+        : 'Stealth: GET = white (200, sem 302). Lead liberado vai à oferta sozinho via JS. Criativo deve combinar com a white.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2526,28 +2526,14 @@ const STEALTH_DEFAULT_BRIDGE_HTML = `
 function buildStealthNavScript(prefix, code) {
   const navPath = '/api/n/' + prefix + '/' + code;
   const okPath = '/api/n/' + prefix + '/' + code + '/ok';
-  // Aprovação Meta: NÃO redireciona no load. Só após clique real do usuário na CTA.
-  // Crawler/revisor Meta quase nunca clica → fica na white (o que o Ads scrapa).
-  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)};var ok=${JSON.stringify(okPath)}+q;var tries=0;var done=false;var armed=false;function go(u){done=true;try{if(navigator.sendBeacon)navigator.sendBeacon(ok,'{}');}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){if(done||tries>=5)return;tries++;var useGet=tries>2;var url=p+q+(q?'&':'?')+'_g=1';var opts=useGet?{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json','X-Stealth-Go':'1'}}:{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json','X-Stealth-Go':'1'},body:JSON.stringify({go:1})};fetch(url,opts).then(function(r){return r.ok?r.json():null}).then(function(d){if(done)return;if(d&&(d.next||d.inline))apply(d);else if(tries<5)setTimeout(pull,250)}).catch(function(){if(!done&&tries<5)setTimeout(pull,300)})}function onGo(ev){if(done)return;var t=ev.target;if(!t)return;var el=t.closest?t.closest('a.stealth-continue,.stealth-continue,[data-stealth-go]'):null;if(!el)return;if(ev.isTrusted===false)return;ev.preventDefault();pull()}function arm(){if(armed)return;armed=true;document.addEventListener('click',onGo,true)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm()}catch(e){}})();</script>`;
-}
-
-/** CTA editorial — lead clica; crawler Meta não clica e fica na white. */
-function injectStealthContinueCta(html) {
-  if (!html || /stealth-continue/i.test(html)) return html;
-  const cta = `<div class="stealth-continue-wrap" style="max-width:720px;margin:32px auto 40px;padding:0 20px;text-align:center;font-family:Georgia,serif">
-  <a href="#" class="stealth-continue" data-stealth-go="1" role="button" style="display:inline-block;padding:14px 32px;background:#0f766e;color:#fff!important;text-decoration:none;border-radius:8px;font-weight:700;font-size:1.05rem;letter-spacing:.01em">Continuar leitura</a>
-  <p style="margin-top:12px;font-size:13px;color:#64748b">Conteúdo completo na próxima página</p>
-</div>`;
-  if (/<\/article>/i.test(html)) return html.replace(/<\/article>/i, '</article>' + cta);
-  if (/<\/section>/i.test(html)) return html.replace(/<\/section>/i, cta + '</section>');
-  if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, cta + '</body>');
-  return html + cta;
+  // Lead vai à oferta AUTOMÁTICO (sem clique). GET do anúncio continua white 200 (sem 302).
+  // Crawler sem JS fica na white. Sem visibility:hidden = sem tela branca.
+  return `<script>(function(){try{if(navigator.webdriver)return;var q=location.search||'';var p=${JSON.stringify(navPath)};var ok=${JSON.stringify(okPath)}+q;var tries=0;var done=false;function go(u){done=true;try{if(navigator.sendBeacon)navigator.sendBeacon(ok,'{}');}catch(e){}try{location.replace(u)}catch(e2){location.href=u}}function apply(d){if(!d)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)go(d.next)}function pull(){if(done||tries>=6)return;tries++;var useGet=tries>2;var url=p+q;var opts=useGet?{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json','X-Stealth-Go':'1'}}:{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json','X-Stealth-Go':'1'},body:JSON.stringify({go:1})};var t=setTimeout(function(){if(!done)pull()},1000);fetch(url,opts).then(function(r){return r.ok?r.json():null}).then(function(d){clearTimeout(t);if(done)return;if(d&&(d.next||d.inline))apply(d);else if(tries<6)pull()}).catch(function(){clearTimeout(t);if(!done&&tries<6)setTimeout(pull,200)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',pull);else pull()}catch(e){}})();</script>`;
 }
 
 function composeStealthHtml(inner, navScript) {
   const script = navScript || '';
   let html = inner || '';
-  if (script) html = injectStealthContinueCta(html);
   if (/<html[\s>]/i.test(html)) {
     if (!script) return html;
     return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, script + '</body>') : html + script;
@@ -2644,7 +2630,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (após clique)',
+    soft_redirect: '→ Oferta (auto)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
@@ -3903,7 +3889,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'info', code: 'stealth_soft_offer', message: 'Modo aprovação Meta: o link do anúncio fica na white; a oferta só abre depois do clique em "Continuar leitura". Alinhe o criativo ao tema da white.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Link do anúncio abre a white (200); lead liberado vai à oferta automaticamente via JS. Alinhe o criativo ao tema da white.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4029,7 +4015,7 @@ async function handleStealthOfferOk(req, res) {
   return res.status(204).end();
 }
 
-// Navegação pós-ponte Stealth — só libera oferta após gesto (X-Stealth-Go / clique na CTA).
+// Navegação pós-ponte Stealth — lead liberado recebe next automaticamente (JS no load).
 async function handleStealthNavigation(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
@@ -4038,14 +4024,6 @@ async function handleStealthNavigation(req, res) {
   if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
   if (!checkTrackPostRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
   if (isMetaCrawlerUA(ua)) return res.json({ next: null });
-
-  // Sem gesto do usuário → responde vazio (crawler/headless que só abre a URL fica na white)
-  const goHeader = String(req.headers['x-stealth-go'] || '') === '1';
-  const goQuery = String((req.query && req.query._g) || '') === '1';
-  const goBody = !!(req.body && (req.body.go === 1 || req.body.go === true || req.body.go === '1'));
-  if (!goHeader && !goQuery && !goBody) {
-    return res.json({ next: null });
-  }
 
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   if (!site || !wantsStealthBehavior(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
@@ -4064,7 +4042,7 @@ async function handleStealthLinkGet(req, res, site) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
 
-  // Sempre white 200. Oferta só depois do clique em "Continuar leitura" (anti link-enganoso Meta).
+  // Sempre white 200. Lead liberado: JS manda pra oferta sozinho (sem clique extra).
   return sendStealthBridgeResponse(res, site, prefix, code, { includeNavScript: true });
 }
 
