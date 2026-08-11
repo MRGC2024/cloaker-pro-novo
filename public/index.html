@@ -1530,20 +1530,8 @@
             </select>
           </div>
           <div style="margin: 16px 0; padding: 14px 16px; background: rgba(15,23,42,0.04); border-radius: 12px; border: 1px solid var(--border);">
-            <div class="form-label" style="margin-bottom: 10px;"><i class="ri-user-star-line"></i> Convite exclusivo (opcional ao gerar)</div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Pode preencher agora ou depois no menu <strong>Convite Exclusivo</strong>. Lead vê o convite; bot/crawler vê white/gray.</p>
-            <div class="form-group">
-              <label class="form-label">Nome do influenciador</label>
-              <input type="text" class="form-input" id="quickInfluencerName" placeholder="Ex: RINCON61" maxlength="80">
-            </div>
-            <div class="form-group">
-              <label class="form-label">URL da foto (perfil)</label>
-              <input type="url" class="form-input" id="quickInfluencerPhoto" placeholder="https://.../foto.jpg">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Timer até a oferta (segundos)</label>
-              <input type="number" class="form-input" id="quickBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;">
-            </div>
+            <div class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> Convite exclusivo</div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 10px;">Crie a página em <strong>Convite Exclusivo</strong> e ligue no link depois (ou ao editar o site). Por padrão o link nasce <strong>sem</strong> convite.</p>
           </div>
           <button class="btn btn-primary" onclick="generateLinkFromUrl()"><i class="ri-link"></i> Gerar link para Ads</button>
           <div id="generatedLinkBox" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--success);">
@@ -2146,63 +2134,96 @@
       <p id="pagesEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhuma página criada. Clique em &quot;Nova página&quot; para adicionar HTML customizado.</p>
     </section>
 
-    <!-- Convite exclusivo (white do lead) -->
+    <!-- Convite exclusivo (páginas + vínculo ao link) -->
     <section id="invite" class="section">
       <div class="header">
         <h2>Convite Exclusivo</h2>
+        <button class="btn btn-primary" onclick="openInvitePageModal()"><i class="ri-add-line"></i> Nova página de convite</button>
       </div>
       <div class="panel-tip-banner" style="margin-bottom: 18px;">
         <i class="ri-information-line"></i>
         <div>
-          <strong>Só o lead real vê esta página</strong>
-          <p>Lead liberado → convite (foto/nome/timer) → sua oferta. Bot, crawler Meta e bloqueado → white ou gray editorial em <strong>Páginas</strong> (nunca a oferta).</p>
+          <strong>Como funciona</strong>
+          <p>1) Crie a página aqui (foto, nome, timer). 2) Em <strong>Meus Sites</strong>, ligue o convite no link e escolha qual página usar. Lead e Meta veem o convite; no timer o Meta fica no <strong>mesmo link</strong> (white/gray) e o lead vai à oferta.</p>
         </div>
       </div>
-      <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.35);">
-        <div class="card-header"><h3 class="card-title"><i class="ri-user-star-line"></i> Editar convite do link</h3></div>
+      <div id="invitePagesList" class="info-grid" style="grid-template-columns: 1fr;">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+      <p id="invitePagesEmpty" style="display:none; color: var(--text-secondary); padding: 12px 0;">Nenhuma página de convite. Clique em <strong>Nova página de convite</strong>.</p>
+
+      <div class="card" style="margin-top: 24px; border: 1px solid rgba(99, 102, 241, 0.35);">
+        <div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Vincular convite a um link</h3></div>
         <div class="card-body">
           <div class="form-group">
             <label class="form-label">Link / site Stealth</label>
-            <select class="form-select" id="inviteSiteSelect" onchange="loadInviteEditorFromSelect()">
+            <select class="form-select" id="inviteSiteSelect" onchange="loadInviteLinkBinder()">
               <option value="">— Selecione um site —</option>
             </select>
           </div>
-          <div id="inviteEditorWrap" style="display:none;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
-              <div>
-                <div class="form-group">
-                  <label class="form-label">Nome do influenciador</label>
-                  <input type="text" class="form-input" id="inviteInfluencerName" placeholder="Ex: RINCON61" maxlength="80" oninput="scheduleInvitePreview()">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">URL da foto (perfil)</label>
-                  <input type="url" class="form-input" id="inviteInfluencerPhoto" placeholder="https://.../foto.jpg" oninput="scheduleInvitePreview()">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">URL do banner (opcional)</label>
-                  <input type="url" class="form-input" id="inviteInfluencerBanner" placeholder="Vazio = usa a mesma foto" oninput="scheduleInvitePreview()">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Timer até a oferta (segundos)</label>
-                  <input type="number" class="form-input" id="inviteBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;" oninput="scheduleInvitePreview()">
-                </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <button type="button" class="btn btn-primary" onclick="saveInviteEditor()"><i class="ri-save-line"></i> Salvar convite</button>
-                  <button type="button" class="btn btn-secondary" onclick="refreshInvitePreview(true)"><i class="ri-eye-line"></i> Preview com timer</button>
-                  <span id="inviteSaveMsg" style="font-size:13px;"></span>
-                </div>
-              </div>
-              <div>
-                <div class="form-label" style="margin-bottom:8px;">Pré-visualização</div>
-                <iframe id="invitePreviewFrame" title="Preview do convite" style="width:100%; height:560px; border:1px solid var(--border); border-radius:12px; background:#e8ecf1;"></iframe>
-              </div>
+          <div id="inviteLinkBinder" style="display:none;">
+            <label class="radio-label" style="margin-bottom:12px;">
+              <input type="checkbox" id="inviteEnabledCheck" onchange="toggleInvitePageSelect()">
+              <strong>Usar convite exclusivo neste link</strong>
+            </label>
+            <div class="form-group" id="invitePageSelectWrap">
+              <label class="form-label">Qual página de convite</label>
+              <select class="form-select" id="invitePageSelectForSite"></select>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary" onclick="saveInviteLinkBinder()"><i class="ri-save-line"></i> Salvar no link</button>
+              <span id="inviteSaveMsg" style="font-size:13px;"></span>
             </div>
           </div>
-          <p id="inviteEmptyHint" style="color:var(--text-secondary); font-size:13px; margin:8px 0 0;">Selecione um site Stealth para editar o convite. Crie o link em <strong>Link para Ads</strong> se ainda não tiver.</p>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="modal" id="invitePageModal">
+    <div class="modal-content" style="max-width: 920px;">
+      <div class="modal-header">
+        <h3 id="invitePageModalTitle">Nova página de convite</h3>
+        <button class="modal-close" onclick="closeInvitePageModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editInvitePageId" value="">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+          <div>
+            <div class="form-group">
+              <label class="form-label">Nome interno (painel)</label>
+              <input type="text" class="form-input" id="invitePageName" placeholder="Ex: Convite Rincon campanha 1" maxlength="120">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nome do influenciador</label>
+              <input type="text" class="form-input" id="invitePageInfluencer" placeholder="Ex: RINCON61" maxlength="80" oninput="scheduleInvitePagePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL da foto (perfil)</label>
+              <input type="url" class="form-input" id="invitePagePhoto" placeholder="https://.../foto.jpg" oninput="scheduleInvitePagePreview()">
+              <small style="color:var(--text-secondary);font-size:12px;">Use link <strong>https</strong> direto da imagem (.jpg/.png/.webp). Evite links do Google Drive/Facebook que pedem login.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL do banner (opcional)</label>
+              <input type="url" class="form-input" id="invitePageBanner" placeholder="Vazio = usa a mesma foto" oninput="scheduleInvitePagePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timer (segundos)</label>
+              <input type="number" class="form-input" id="invitePageTimer" min="2" max="30" value="6" style="max-width:120px;" oninput="scheduleInvitePagePreview()">
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button type="button" class="btn btn-primary" onclick="saveInvitePageModal()"><i class="ri-save-line"></i> Salvar página</button>
+              <button type="button" class="btn btn-secondary" onclick="closeInvitePageModal()">Cancelar</button>
+            </div>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:8px;">Pré-visualização</div>
+            <iframe id="invitePreviewFrame" title="Preview" style="width:100%;height:560px;border:1px solid var(--border);border-radius:12px;background:#e8ecf1;"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Pacote Stealth -->
   <div class="modal" id="stealthPackModal">
@@ -2485,10 +2506,19 @@
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
             <div id="inviteBridgeBox" style="margin-bottom: 14px; padding: 12px 14px; background: rgba(15,23,42,0.04); border-radius: 10px; border: 1px solid var(--border);">
-              <label class="form-label" style="margin-bottom: 6px;"><i class="ri-user-star-line"></i> White do lead = Convite exclusivo</label>
-              <small style="display:block;color:var(--text-secondary);font-size:12px;margin-bottom:10px;">Foto, nome e timer ficam no menu <strong>Convite Exclusivo</strong>. Aqui só o funil: lead → convite → oferta; bot → white/gray.</small>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="goToSection('invite'); closeSiteModal();"><i class="ri-edit-line"></i> Abrir editor do convite</button>
-              <input type="hidden" id="siteBridgeStyle" value="invite">
+              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> Convite exclusivo (opcional)</label>
+              <label class="radio-label" style="margin-bottom:10px;">
+                <input type="checkbox" id="siteUseInvite" onchange="syncSiteInviteSelect()">
+                <span>Usar convite neste link</span>
+              </label>
+              <div class="form-group" id="siteInvitePageWrap" style="display:none;margin-bottom:8px;">
+                <label class="form-label">Página de convite</label>
+                <select class="form-select" id="siteInvitePageId">
+                  <option value="">— Selecione —</option>
+                </select>
+                <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Crie páginas em <a href="#invite" onclick="goToSection('invite'); closeSiteModal(); return false;">Convite Exclusivo</a>.</small>
+              </div>
+              <input type="hidden" id="siteBridgeStyle" value="editorial">
               <input type="hidden" id="siteInfluencerName" value="">
               <input type="hidden" id="siteInfluencerPhoto" value="">
               <input type="hidden" id="siteInfluencerBanner" value="">
@@ -3095,11 +3125,11 @@
       document.getElementById('siteOfferPageId').value = '';
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
-      if (document.getElementById('siteInfluencerName')) document.getElementById('siteInfluencerName').value = '';
-      if (document.getElementById('siteInfluencerPhoto')) document.getElementById('siteInfluencerPhoto').value = '';
-      if (document.getElementById('siteInfluencerBanner')) document.getElementById('siteInfluencerBanner').value = '';
-      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = '6';
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'invite';
+      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = false;
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'editorial';
+      await loadInvitePages();
+      fillInvitePageSelects('');
+      syncSiteInviteSelect();
       document.getElementById('siteBlockDesktop').checked = true;
       document.getElementById('siteBlockFacebook').checked = true;
       document.getElementById('siteBlockBots').checked = true;
@@ -3173,11 +3203,13 @@
       const offerPageMode = (site.offer_delivery || 'url') === 'page';
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = offerPageMode;
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = !offerPageMode;
-      if (document.getElementById('siteInfluencerName')) document.getElementById('siteInfluencerName').value = site.influencer_name || '';
-      if (document.getElementById('siteInfluencerPhoto')) document.getElementById('siteInfluencerPhoto').value = site.influencer_photo_url || '';
-      if (document.getElementById('siteInfluencerBanner')) document.getElementById('siteInfluencerBanner').value = site.influencer_banner_url || '';
-      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec || 6;
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = site.bridge_style || 'invite';
+      await loadInvitePages();
+      fillInvitePageSelects(site.invite_page_id || '');
+      const useInvite = (site.bridge_style || '') === 'invite';
+      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = useInvite;
+      if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = useInvite ? 'invite' : 'editorial';
+      syncSiteInviteSelect();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
       document.getElementById('siteBlockBots').checked = site.block_bots;
@@ -3362,11 +3394,10 @@
         gray_page_id: isStealthBehavior && !autoStealthPages ? (document.getElementById('siteGrayPageId').value || null) : null,
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
-        bridge_style: isStealthBehavior ? (document.getElementById('siteBridgeStyle') && document.getElementById('siteBridgeStyle').value) || 'invite' : 'invite',
-        influencer_name: isStealthBehavior ? ((document.getElementById('siteInfluencerName') && document.getElementById('siteInfluencerName').value) || '').trim() : '',
-        influencer_photo_url: isStealthBehavior ? ((document.getElementById('siteInfluencerPhoto') && document.getElementById('siteInfluencerPhoto').value) || '').trim() : '',
-        influencer_banner_url: isStealthBehavior ? ((document.getElementById('siteInfluencerBanner') && document.getElementById('siteInfluencerBanner').value) || '').trim() : '',
-        bridge_timer_sec: isStealthBehavior ? parseInt((document.getElementById('siteBridgeTimer') && document.getElementById('siteBridgeTimer').value) || '6', 10) : 6,
+        bridge_style: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked ? 'invite' : 'editorial',
+        invite_page_id: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked
+          ? (document.getElementById('siteInvitePageId') && document.getElementById('siteInvitePageId').value) || null
+          : null,
         auto_stealth_pages: autoStealthPages,
         stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
@@ -3460,73 +3491,144 @@
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
 
+    var invitePagesCache = [];
     var invitePreviewTimer = null;
+
+    async function loadInvitePages() {
+      try {
+        const res = await fetch('/api/invite-pages', { credentials: 'include' });
+        invitePagesCache = res.ok ? await res.json() : [];
+      } catch (e) { invitePagesCache = []; }
+      return invitePagesCache;
+    }
+
+    function fillInvitePageSelects(selectedId) {
+      const selects = [document.getElementById('siteInvitePageId'), document.getElementById('invitePageSelectForSite')];
+      selects.forEach(function(sel) {
+        if (!sel) return;
+        const cur = selectedId != null ? String(selectedId) : sel.value;
+        sel.innerHTML = '<option value="">— Selecione —</option>';
+        (invitePagesCache || []).forEach(function(p) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = (p.name || ('Convite #' + p.id)) + (p.influencer_name ? ' · ' + p.influencer_name : '');
+          sel.appendChild(opt);
+        });
+        if (cur) sel.value = cur;
+      });
+    }
+
+    function renderInvitePagesList() {
+      const list = document.getElementById('invitePagesList');
+      const empty = document.getElementById('invitePagesEmpty');
+      if (!list) return;
+      if (!invitePagesCache.length) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+      list.innerHTML = invitePagesCache.map(function(p) {
+        const photo = (p.photo_url || '').replace(/"/g, '&quot;');
+        const thumb = photo
+          ? '<img src="' + photo + '" alt="" referrerpolicy="no-referrer" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border);" onerror="this.style.display=\'none\'">'
+          : '<div style="width:48px;height:48px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-weight:700;">?</div>';
+        return '<div class="card" style="padding:14px 16px;"><div style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">' +
+          '<div style="display:flex;gap:12px;align-items:center;min-width:0;">' + thumb +
+          '<div><strong>' + escapeHtml(p.name || '') + '</strong><div style="font-size:12px;color:var(--text-secondary);">' + escapeHtml(p.influencer_name || 'Sem nome') + ' · timer ' + (p.timer_sec || 6) + 's</div></div></div>' +
+          '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-sm" onclick="openInvitePageModal(' + p.id + ')"><i class="ri-edit-line"></i></button>' +
+          '<button class="btn btn-danger btn-sm" onclick="deleteInvitePage(' + p.id + ')"><i class="ri-delete-bin-line"></i></button></div></div></div>';
+      }).join('');
+    }
+
     async function loadInviteSection() {
-      await loadSites();
+      await Promise.all([loadSites(), loadInvitePages()]);
+      fillInvitePageSelects();
+      renderInvitePagesList();
       const sel = document.getElementById('inviteSiteSelect');
       if (!sel) return;
-      const stealthSites = (sites || []).filter(function(s) {
-        return (s.block_behavior || '') === 'stealth' || !!s.landing_page_id;
-      });
       const prev = sel.value;
+      const stealthSites = (sites || []).filter(function(s) { return (s.block_behavior || '') === 'stealth'; });
       sel.innerHTML = '<option value="">— Selecione um site —</option>';
       stealthSites.forEach(function(s) {
         const opt = document.createElement('option');
         opt.value = s.site_id;
-        opt.textContent = (s.name || s.site_id) + (s.influencer_name ? ' · ' + s.influencer_name : '');
+        opt.textContent = (s.name || s.site_id) + ((s.bridge_style === 'invite') ? ' · convite ON' : '');
         sel.appendChild(opt);
       });
-      if (prev && stealthSites.some(function(s) { return s.site_id === prev; })) {
-        sel.value = prev;
-        loadInviteEditorFromSelect();
-      } else if (stealthSites.length === 1) {
-        sel.value = stealthSites[0].site_id;
-        loadInviteEditorFromSelect();
-      } else {
-        document.getElementById('inviteEditorWrap').style.display = 'none';
-        document.getElementById('inviteEmptyHint').style.display = 'block';
+      if (prev) { sel.value = prev; loadInviteLinkBinder(); }
+    }
+
+    function loadInviteLinkBinder() {
+      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
+      const box = document.getElementById('inviteLinkBinder');
+      if (!siteId) { if (box) box.style.display = 'none'; return; }
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      if (!site || !box) return;
+      box.style.display = 'block';
+      const on = (site.bridge_style || '') === 'invite';
+      document.getElementById('inviteEnabledCheck').checked = on;
+      fillInvitePageSelects(site.invite_page_id || '');
+      toggleInvitePageSelect();
+    }
+
+    function toggleInvitePageSelect() {
+      const on = document.getElementById('inviteEnabledCheck') && document.getElementById('inviteEnabledCheck').checked;
+      const wrap = document.getElementById('invitePageSelectWrap');
+      if (wrap) wrap.style.display = on ? 'block' : 'none';
+    }
+
+    async function saveInviteLinkBinder() {
+      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
+      const msg = document.getElementById('inviteSaveMsg');
+      if (!siteId) return;
+      const on = !!(document.getElementById('inviteEnabledCheck') && document.getElementById('inviteEnabledCheck').checked);
+      const pageId = (document.getElementById('invitePageSelectForSite') && document.getElementById('invitePageSelectForSite').value) || '';
+      if (on && !pageId) { alert('Selecione uma página de convite (ou crie uma acima).'); return; }
+      if (msg) { msg.textContent = 'Salvando…'; msg.style.color = 'var(--text-secondary)'; }
+      try {
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ bridge_style: on ? 'invite' : 'editorial', invite_page_id: on ? pageId : null })
+        });
+        if (!res.ok) {
+          let err = 'Erro';
+          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+          throw new Error(err);
+        }
+        await loadSites();
+        if (msg) { msg.textContent = 'Salvo ✓'; msg.style.color = 'var(--success)'; }
+        loadInviteSection();
+      } catch (e) {
+        if (msg) { msg.textContent = e.message || 'Erro'; msg.style.color = 'var(--danger)'; }
       }
     }
 
-    function loadInviteEditorFromSelect() {
-      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
-      const wrap = document.getElementById('inviteEditorWrap');
-      const hint = document.getElementById('inviteEmptyHint');
-      if (!siteId) {
-        if (wrap) wrap.style.display = 'none';
-        if (hint) hint.style.display = 'block';
-        return;
-      }
-      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
-      if (!site) return;
-      if (wrap) wrap.style.display = 'block';
-      if (hint) hint.style.display = 'none';
-      document.getElementById('inviteInfluencerName').value = site.influencer_name || '';
-      document.getElementById('inviteInfluencerPhoto').value = site.influencer_photo_url || '';
-      document.getElementById('inviteInfluencerBanner').value = site.influencer_banner_url || '';
-      document.getElementById('inviteBridgeTimer').value = site.bridge_timer_sec || 6;
-      refreshInvitePreview(false);
+    function openInvitePageModal(id) {
+      document.getElementById('editInvitePageId').value = id || '';
+      document.getElementById('invitePageModalTitle').textContent = id ? 'Editar página de convite' : 'Nova página de convite';
+      const p = id ? (invitePagesCache || []).find(function(x) { return Number(x.id) === Number(id); }) : null;
+      document.getElementById('invitePageName').value = p ? (p.name || '') : '';
+      document.getElementById('invitePageInfluencer').value = p ? (p.influencer_name || '') : '';
+      document.getElementById('invitePagePhoto').value = p ? (p.photo_url || '') : '';
+      document.getElementById('invitePageBanner').value = p ? (p.banner_url || '') : '';
+      document.getElementById('invitePageTimer').value = p ? (p.timer_sec || 6) : 6;
+      document.getElementById('invitePageModal').classList.add('active');
+      scheduleInvitePagePreview();
     }
 
-    function getInviteEditorPayload(withTimer) {
-      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
-      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
-      return {
-        influencer_name: (document.getElementById('inviteInfluencerName').value || '').trim(),
-        influencer_photo_url: (document.getElementById('inviteInfluencerPhoto').value || '').trim(),
-        influencer_banner_url: (document.getElementById('inviteInfluencerBanner').value || '').trim(),
-        bridge_timer_sec: parseInt(document.getElementById('inviteBridgeTimer').value || '6', 10),
-        dest_url: (site && site.target_url) || 'https://example.com/',
-        with_timer: !!withTimer
-      };
+    function closeInvitePageModal() {
+      document.getElementById('invitePageModal').classList.remove('active');
     }
 
-    function scheduleInvitePreview() {
+    function scheduleInvitePagePreview() {
       clearTimeout(invitePreviewTimer);
-      invitePreviewTimer = setTimeout(function() { refreshInvitePreview(false); }, 400);
+      invitePreviewTimer = setTimeout(refreshInvitePagePreview, 350);
     }
 
-    async function refreshInvitePreview(withTimer) {
+    async function refreshInvitePagePreview() {
       const frame = document.getElementById('invitePreviewFrame');
       if (!frame) return;
       try {
@@ -3534,57 +3636,68 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify(getInviteEditorPayload(!!withTimer))
+          body: JSON.stringify({
+            influencer_name: document.getElementById('invitePageInfluencer').value,
+            photo_url: document.getElementById('invitePagePhoto').value,
+            banner_url: document.getElementById('invitePageBanner').value,
+            timer_sec: parseInt(document.getElementById('invitePageTimer').value || '6', 10),
+            with_timer: false
+          })
         });
         if (!res.ok) throw new Error('preview');
-        const html = await res.text();
-        frame.srcdoc = html;
+        frame.srcdoc = await res.text();
       } catch (e) {
-        frame.srcdoc = '<p style="padding:20px;font-family:sans-serif;color:#64748b">Não foi possível gerar o preview.</p>';
+        frame.srcdoc = '<p style="padding:20px;font-family:sans-serif;color:#64748b">Preview indisponível.</p>';
       }
     }
 
-    async function saveInviteEditor() {
-      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
-      const msg = document.getElementById('inviteSaveMsg');
-      if (!siteId) { alert('Selecione um site'); return; }
-      if (msg) { msg.style.color = 'var(--text-secondary)'; msg.textContent = 'Salvando…'; }
-      try {
-        const payload = getInviteEditorPayload(false);
-        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            bridge_style: 'invite',
-            influencer_name: payload.influencer_name,
-            influencer_photo_url: payload.influencer_photo_url,
-            influencer_banner_url: payload.influencer_banner_url,
-            bridge_timer_sec: payload.bridge_timer_sec
-          })
-        });
-        if (!res.ok) {
-          let err = 'Erro ao salvar';
-          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
-          throw new Error(err);
-        }
-        await loadSites();
-        if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'Convite salvo ✓'; }
-        refreshInvitePreview(false);
-      } catch (e) {
-        if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = e.message || 'Erro'; }
+    async function saveInvitePageModal() {
+      const id = (document.getElementById('editInvitePageId').value || '').trim();
+      const payload = {
+        name: (document.getElementById('invitePageName').value || '').trim(),
+        influencer_name: (document.getElementById('invitePageInfluencer').value || '').trim(),
+        photo_url: (document.getElementById('invitePagePhoto').value || '').trim(),
+        banner_url: (document.getElementById('invitePageBanner').value || '').trim(),
+        timer_sec: parseInt(document.getElementById('invitePageTimer').value || '6', 10)
+      };
+      if (!payload.name) { alert('Digite um nome interno para a página'); return; }
+      if (!payload.influencer_name) { alert('Digite o nome do influenciador'); return; }
+      const url = id ? ('/api/invite-pages/' + id) : '/api/invite-pages';
+      const method = id ? 'PUT' : 'POST';
+      const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+      if (!res.ok) {
+        let err = 'Erro ao salvar';
+        try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+        alert(err);
+        return;
       }
+      closeInvitePageModal();
+      await loadInvitePages();
+      fillInvitePageSelects();
+      renderInvitePagesList();
+    }
+
+    async function deleteInvitePage(id) {
+      if (!confirm('Apagar esta página de convite?')) return;
+      await fetch('/api/invite-pages/' + id, { method: 'DELETE', credentials: 'include' });
+      await loadInvitePages();
+      fillInvitePageSelects();
+      renderInvitePagesList();
+    }
+
+    function syncSiteInviteSelect() {
+      const on = document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked;
+      const wrap = document.getElementById('siteInvitePageWrap');
+      if (wrap) wrap.style.display = on ? 'block' : 'none';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = on ? 'invite' : 'editorial';
     }
 
     function openInviteEditorForSite(siteId) {
       goToSection('invite');
       setTimeout(function() {
         const sel = document.getElementById('inviteSiteSelect');
-        if (sel && siteId) {
-          sel.value = siteId;
-          loadInviteEditorFromSelect();
-        }
-      }, 200);
+        if (sel && siteId) { sel.value = siteId; loadInviteLinkBinder(); }
+      }, 250);
     }
 
     function toggleSiteSelection(siteId, checked) {
@@ -4944,10 +5057,7 @@
             offer_delivery: 'url',
             auto_stealth_pages: true,
             stealth_theme: 'auto',
-            bridge_style: 'invite',
-            influencer_name: (document.getElementById('quickInfluencerName') && document.getElementById('quickInfluencerName').value || '').trim(),
-            influencer_photo_url: (document.getElementById('quickInfluencerPhoto') && document.getElementById('quickInfluencerPhoto').value || '').trim(),
-            bridge_timer_sec: parseInt((document.getElementById('quickBridgeTimer') && document.getElementById('quickBridgeTimer').value) || '6', 10),
+            bridge_style: 'editorial',
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
@@ -4970,7 +5080,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado.\n\nLead → convite → oferta.\nBot/crawler → white/gray.\n\nEdite foto/nome/timer em: Convite Exclusivo.' + (ap.themeLabel ? '\nTema gray/white: ' + ap.themeLabel : ''));
+          alert('Link Stealth criado.\n\nPor padrão SEM convite.\nPara ativar: menu Convite Exclusivo → criar página → vincular ao link.' + (ap.themeLabel ? '\nTema white/gray: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }

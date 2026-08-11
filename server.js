@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1537,12 +1537,13 @@ app.post('/api/sites', async (req, res) => {
     }
     if (!safeRedirect) safeRedirect = 'https://about.meta.com/';
     const bridgeStyle = behavior === 'stealth' ? normalizeBridgeStyle(req.body.bridge_style) : 'editorial';
+    const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(req.body.invite_page_id) : null;
     const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
-    const influencerPhoto = (req.body.influencer_photo_url || '').trim().slice(0, 500) || null;
-    const influencerBanner = (req.body.influencer_banner_url || '').trim().slice(0, 500) || null;
+    const influencerPhoto = normalizeImageUrl(req.body.influencer_photo_url || '') || null;
+    const influencerBanner = normalizeImageUrl(req.body.influencer_banner_url || '') || null;
     const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec);
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer]);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
@@ -1578,10 +1579,11 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
     let pathPrefix = (data.path_prefix != null && typeof data.path_prefix === 'string') ? data.path_prefix.trim().toLowerCase() : null;
     if (pathPrefix !== null && (!pathPrefix || !pathPrefixRegex.test(pathPrefix))) pathPrefix = null;
-    const bridgeStyle = blockBehavior === 'stealth' ? normalizeBridgeStyle(data.bridge_style) : (data.bridge_style ? normalizeBridgeStyle(data.bridge_style) : 'invite');
+    const bridgeStyle = blockBehavior === 'stealth' ? normalizeBridgeStyle(data.bridge_style) : 'editorial';
+    const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(data.invite_page_id) : null;
     const influencerName = (data.influencer_name || '').trim().slice(0, 80) || null;
-    const influencerPhoto = (data.influencer_photo_url || '').trim().slice(0, 500) || null;
-    const influencerBanner = (data.influencer_banner_url || '').trim().slice(0, 500) || null;
+    const influencerPhoto = normalizeImageUrl(data.influencer_photo_url || '') || null;
+    const influencerBanner = normalizeImageUrl(data.influencer_banner_url || '') || null;
     const bridgeTimer = clampBridgeTimer(data.bridge_timer_sec != null ? data.bridge_timer_sec : 6);
     const sql = `
       UPDATE sites SET
@@ -1589,7 +1591,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
         allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, gray_page_id = ?, offer_page_id = ?, offer_delivery = ?, use_fallback = ?, path_prefix = ?,
-        bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ?${clearFallback}
+        bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ?, invite_page_id = ?${clearFallback}
       WHERE site_id = ?
     `;
     const countriesNorm = normalizeAllowedBlockedCountries(data.allowed_countries, data.blocked_countries);
@@ -1599,7 +1601,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       countriesNorm.allowed, countriesNorm.blocked, data.is_active ? 1 : 0, refToken,
       selDomain, lpId, grayId, offerPageId, offerDelivery, useFb, pathPrefix,
-      bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer,
+      bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId,
       req.params.siteId
     ]);
     res.json({ success: true });
@@ -1647,7 +1649,7 @@ app.put('/api/sites/bulk/primary-url', async (req, res) => {
   }
 });
 
-/** Salva só os campos do convite exclusivo (white do lead). */
+/** Salva opção de convite no link (ligar/desligar + qual página). */
 app.put('/api/sites/:siteId/invite', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const site = await db.get('SELECT site_id, user_id, block_behavior FROM sites WHERE site_id = ?', [req.params.siteId]);
@@ -1656,20 +1658,82 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
     return res.status(403).json({ error: 'Acesso negado a este site' });
   }
   try {
-    const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'invite');
-    const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
-    const influencerPhoto = (req.body.influencer_photo_url || '').trim().slice(0, 500) || null;
-    const influencerBanner = (req.body.influencer_banner_url || '').trim().slice(0, 500) || null;
-    const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec != null ? req.body.bridge_timer_sec : 6);
+    const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
+    const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(req.body.invite_page_id) : null;
+    if (bridgeStyle === 'invite' && !invitePageId) {
+      return res.status(400).json({ error: 'Selecione uma página de convite (crie em Convite Exclusivo).' });
+    }
     await db.run(
-      `UPDATE sites SET bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ? WHERE site_id = ?`,
-      [bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, req.params.siteId]
+      `UPDATE sites SET bridge_style = ?, invite_page_id = ? WHERE site_id = ?`,
+      [bridgeStyle, invitePageId, req.params.siteId]
     );
-    const updated = await db.get('SELECT site_id, name, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
+    const updated = await db.get('SELECT site_id, name, bridge_style, invite_page_id, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
     res.json({ success: true, site: updated });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Erro ao salvar convite' });
   }
+});
+
+/** CRUD páginas de convite (admin do funil). */
+app.get('/api/invite-pages', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const list = await db.all(
+    'SELECT id, user_id, name, influencer_name, photo_url, banner_url, timer_sec, created_at FROM invite_pages WHERE user_id = ? ORDER BY id DESC',
+    [req.session.userId]
+  );
+  res.json(list);
+});
+
+app.post('/api/invite-pages', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const name = String(req.body.name || '').trim().slice(0, 120);
+  if (!name) return res.status(400).json({ error: 'Nome obrigatório' });
+  const influencerName = String(req.body.influencer_name || '').trim().slice(0, 80) || null;
+  const photoUrl = normalizeImageUrl(req.body.photo_url || '') || null;
+  const bannerUrl = normalizeImageUrl(req.body.banner_url || '') || null;
+  const timerSec = clampBridgeTimer(req.body.timer_sec);
+  if (db.usePg) {
+    const row = await db.get(
+      'INSERT INTO invite_pages (user_id, name, influencer_name, photo_url, banner_url, timer_sec) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
+      [req.session.userId, name, influencerName, photoUrl, bannerUrl, timerSec]
+    );
+    return res.status(201).json(row);
+  }
+  await db.run(
+    'INSERT INTO invite_pages (user_id, name, influencer_name, photo_url, banner_url, timer_sec) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.session.userId, name, influencerName, photoUrl, bannerUrl, timerSec]
+  );
+  const row = await db.get('SELECT * FROM invite_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [req.session.userId]);
+  res.status(201).json(row);
+});
+
+app.put('/api/invite-pages/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const id = parseInt(req.params.id, 10);
+  const existing = await db.get('SELECT * FROM invite_pages WHERE id = ? AND user_id = ?', [id, req.session.userId]);
+  if (!existing) return res.status(404).json({ error: 'Convite não encontrado' });
+  const name = String(req.body.name != null ? req.body.name : existing.name || '').trim().slice(0, 120);
+  if (!name) return res.status(400).json({ error: 'Nome obrigatório' });
+  const influencerName = String(req.body.influencer_name != null ? req.body.influencer_name : existing.influencer_name || '').trim().slice(0, 80) || null;
+  const photoUrl = normalizeImageUrl(req.body.photo_url != null ? req.body.photo_url : existing.photo_url || '') || null;
+  const bannerUrl = normalizeImageUrl(req.body.banner_url != null ? req.body.banner_url : existing.banner_url || '') || null;
+  const timerSec = clampBridgeTimer(req.body.timer_sec != null ? req.body.timer_sec : existing.timer_sec);
+  await db.run(
+    'UPDATE invite_pages SET name = ?, influencer_name = ?, photo_url = ?, banner_url = ?, timer_sec = ? WHERE id = ? AND user_id = ?',
+    [name, influencerName, photoUrl, bannerUrl, timerSec, id, req.session.userId]
+  );
+  const row = await db.get('SELECT * FROM invite_pages WHERE id = ?', [id]);
+  res.json(row);
+});
+
+app.delete('/api/invite-pages/:id', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const id = parseInt(req.params.id, 10);
+  const existing = await db.get('SELECT id FROM invite_pages WHERE id = ? AND user_id = ?', [id, req.session.userId]);
+  if (!existing) return res.status(404).json({ error: 'Convite não encontrado' });
+  await db.run('UPDATE sites SET invite_page_id = NULL WHERE invite_page_id = ? AND user_id = ?', [id, req.session.userId]);
+  await db.run('DELETE FROM invite_pages WHERE id = ? AND user_id = ?', [id, req.session.userId]);
+  res.json({ success: true });
 });
 
 /** Preview HTML do convite (sem salvar). */
@@ -1678,10 +1742,11 @@ app.post('/api/invite-preview', (req, res) => {
   try {
     const html = buildInviteBridgeHtml({
       influencerName: req.body.influencer_name || 'CONVIDADO',
-      photoUrl: req.body.influencer_photo_url || '',
-      bannerUrl: req.body.influencer_banner_url || req.body.influencer_photo_url || '',
-      timerSeconds: clampBridgeTimer(req.body.bridge_timer_sec),
+      photoUrl: req.body.photo_url || req.body.influencer_photo_url || '',
+      bannerUrl: req.body.banner_url || req.body.influencer_banner_url || '',
+      timerSeconds: clampBridgeTimer(req.body.timer_sec != null ? req.body.timer_sec : req.body.bridge_timer_sec),
       destUrl: req.body.dest_url || 'https://example.com/',
+      navPath: '',
       withTimer: req.body.with_timer === true || req.body.with_timer === 1 || req.body.with_timer === '1'
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -1768,7 +1833,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth: lead vê convite exclusivo + timer → oferta; bot/crawler/bloqueado vê white ou gray editorial.'
+        : 'Stealth: com convite, todos veem o convite; no timer Meta/bot fica no mesmo link (white/gray) e lead vai à oferta.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2595,12 +2660,11 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
-/** White emocional (convite influenciador) — padrão no Stealth; editorial = matéria clássica. */
+/** White emocional (convite) — só se o link tiver a opção ligada. */
 function usesInviteBridge(site) {
   if (!site || !wantsStealthBehavior(site)) return false;
-  const style = String(site.bridge_style || 'invite').toLowerCase().trim();
-  if (style === 'editorial' || style === 'article' || style === 'materia') return false;
-  return true;
+  const style = String(site.bridge_style || '').toLowerCase().trim();
+  return style === 'invite';
 }
 
 function clampBridgeTimer(sec) {
@@ -2610,18 +2674,44 @@ function clampBridgeTimer(sec) {
 }
 
 function normalizeBridgeStyle(v) {
-  const s = String(v || 'invite').toLowerCase().trim();
-  if (s === 'editorial' || s === 'article' || s === 'materia') return 'editorial';
-  return 'invite';
+  const s = String(v || '').toLowerCase().trim();
+  if (s === 'invite' || s === '1' || s === 'true' || s === 'on') return 'invite';
+  return 'editorial';
 }
 
-function sendInviteBridgeResponse(res, site, options = {}) {
-  const html = buildInviteBridgeHtml({
+async function resolveInviteConfig(site) {
+  const fallback = {
     influencerName: site.influencer_name || 'CONVIDADO',
     photoUrl: site.influencer_photo_url || '',
     bannerUrl: site.influencer_banner_url || site.influencer_photo_url || '',
-    timerSeconds: clampBridgeTimer(site.bridge_timer_sec),
+    timerSeconds: clampBridgeTimer(site.bridge_timer_sec)
+  };
+  if (!site.invite_page_id || !site.user_id) return fallback;
+  const page = await db.get(
+    'SELECT influencer_name, photo_url, banner_url, timer_sec FROM invite_pages WHERE id = ? AND user_id = ?',
+    [site.invite_page_id, site.user_id]
+  );
+  if (!page) return fallback;
+  return {
+    influencerName: page.influencer_name || fallback.influencerName,
+    photoUrl: page.photo_url || '',
+    bannerUrl: page.banner_url || page.photo_url || '',
+    timerSeconds: clampBridgeTimer(page.timer_sec != null ? page.timer_sec : fallback.timerSeconds)
+  };
+}
+
+async function sendInviteBridgeResponse(res, site, options = {}) {
+  const cfg = await resolveInviteConfig(site);
+  const prefix = options.prefix || '';
+  const code = options.code || '';
+  const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
+  const html = buildInviteBridgeHtml({
+    influencerName: cfg.influencerName,
+    photoUrl: cfg.photoUrl,
+    bannerUrl: cfg.bannerUrl,
+    timerSeconds: cfg.timerSeconds,
     destUrl: options.destUrl || '',
+    navPath: options.withTimer ? navPath : '',
     withTimer: !!options.withTimer
   });
   sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
@@ -2753,20 +2843,22 @@ async function sendStealthDelivery(res, site, delivery, navOpts) {
 }
 
 async function stealthDeliveryToJson(site, ctx, delivery) {
-  if (delivery.kind === 'white' || (delivery.kind === 'gray' && !site.gray_page_id)) {
-    return { next: null };
+  if (delivery.kind === 'white') {
+    const whiteHtml = await getStealthBridgeInnerHtml(site);
+    return { inline: true, html: composeStealthHtml(wrapPageHtmlFragment(whiteHtml || ''), '') };
   }
   if (delivery.kind === 'gray') {
     const grayHtml = await getUserPageHtml(site.gray_page_id, site.user_id);
     if (grayHtml) return { inline: true, html: wrapPageHtmlFragment(grayHtml) };
-    return { next: null };
+    const whiteHtml = await getStealthBridgeInnerHtml(site);
+    return { inline: true, html: composeStealthHtml(wrapPageHtmlFragment(whiteHtml || ''), '') };
   }
   if (delivery.kind === 'offer') {
     const offerHtml = await getUserPageHtml(site.offer_page_id, site.user_id);
     if (offerHtml) return { inline: true, html: wrapPageHtmlFragment(offerHtml) };
     return { next: ctx.destWithQs };
   }
-  // soft_redirect / redirect legado → só URL via JSON (cliente faz location.replace, sem 302)
+  // soft_redirect / redirect → URL da oferta (cliente faz location.replace)
   return { next: delivery.url || ctx.destWithQs };
 }
 
@@ -4033,7 +4125,9 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado: convite exclusivo + timer → oferta. Bot/crawler/bloqueado: white ou gray editorial (nunca a oferta).' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: usesInviteBridge(site)
+        ? 'Convite ON: lead e Meta veem o convite; no timer Meta/bot recebe white/gray no mesmo link e o lead vai à oferta.'
+        : 'Sem convite: lead liberado → oferta; bot/crawler → white/gray editorial.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4188,24 +4282,27 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Só LEAD liberado vê o convite emocional → timer → oferta
-  if ((delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') && usesInviteBridge(site)) {
+  // Convite ligado: TODOS (lead + Meta/bot) veem o convite primeiro.
+  // No timer → /api/n/: lead vai à oferta; bot/Meta recebe white/gray no MESMO link (inline).
+  if (usesInviteBridge(site)) {
     return sendInviteBridgeResponse(res, site, {
-      destUrl: delivery.url || ctx.destWithQs,
+      prefix,
+      code,
+      destUrl: (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect')
+        ? (delivery.url || ctx.destWithQs)
+        : (delivery.kind === 'offer' ? '' : (ctx.destWithQs || '')),
       withTimer: true,
-      metaSafe: false
+      metaSafe: delivery.kind === 'white' || delivery.kind === 'gray' || delivery.reason === 'crawler' || delivery.reason === 'reviewer'
     });
   }
 
-  // Lead sem modo convite → 302 / oferta interna
+  // Sem convite: lead → oferta; bot → white/gray
   if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
     return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
   }
   if (delivery.kind === 'offer') {
     return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
   }
-
-  // Bot / crawler / revisor / bloqueado: white ou gray editorial criada — NUNCA o convite do lead
   return sendStealthDelivery(res, site, delivery, { includeNavScript: false, metaSafe: true });
 }
 
