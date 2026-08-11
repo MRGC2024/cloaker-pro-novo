@@ -1528,6 +1528,22 @@
               <option value="">Padrão</option>
             </select>
           </div>
+          <div style="margin: 16px 0; padding: 14px 16px; background: rgba(15,23,42,0.04); border-radius: 12px; border: 1px solid var(--border);">
+            <div class="form-label" style="margin-bottom: 10px;"><i class="ri-user-star-line"></i> Convite exclusivo (white do lead)</div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">O lead vê um convite com cara de seleção pessoal e segue sozinho à oferta após o timer. O crawler Meta vê o mesmo convite <strong>sem</strong> o salto automático.</p>
+            <div class="form-group">
+              <label class="form-label">Nome do influenciador</label>
+              <input type="text" class="form-input" id="quickInfluencerName" placeholder="Ex: RINCON61" maxlength="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL da foto (perfil)</label>
+              <input type="url" class="form-input" id="quickInfluencerPhoto" placeholder="https://.../foto.jpg">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Timer até a oferta (segundos)</label>
+              <input type="number" class="form-input" id="quickBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;">
+            </div>
+          </div>
           <button class="btn btn-primary" onclick="generateLinkFromUrl()"><i class="ri-link"></i> Gerar link para Ads</button>
           <div id="generatedLinkBox" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--success);">
             <div class="form-label" style="margin-bottom: 8px;">✅ Links gerados para Ads:</div>
@@ -2380,7 +2396,7 @@
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
               <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
-              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead com <strong>fbclid/ref</strong> no celular → oferta. Sem prova de clique / desktop → white/gray</li>
+              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead → <strong>convite exclusivo</strong> + timer → oferta. Crawler → mesmo convite <strong>sem</strong> salto</li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
@@ -2410,6 +2426,27 @@
           </div>
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
+            <div id="inviteBridgeBox" style="margin-bottom: 14px; padding: 12px 14px; background: rgba(15,23,42,0.04); border-radius: 10px; border: 1px solid var(--border);">
+              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> White = Convite exclusivo</label>
+              <small style="display:block;color:var(--text-secondary);font-size:12px;margin-bottom:12px;">Lead sente que foi selecionado; após o timer vai sozinho à oferta. Botão só visual (não precisa clicar).</small>
+              <div class="form-group">
+                <label class="form-label">Nome do influenciador</label>
+                <input type="text" class="form-input" id="siteInfluencerName" placeholder="Ex: RINCON61" maxlength="80">
+              </div>
+              <div class="form-group">
+                <label class="form-label">URL da foto (perfil)</label>
+                <input type="url" class="form-input" id="siteInfluencerPhoto" placeholder="https://.../foto.jpg">
+              </div>
+              <div class="form-group">
+                <label class="form-label">URL do banner (opcional)</label>
+                <input type="url" class="form-input" id="siteInfluencerBanner" placeholder="Vazio = usa a mesma foto">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Timer (segundos)</label>
+                <input type="number" class="form-input" id="siteBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;">
+              </div>
+              <input type="hidden" id="siteBridgeStyle" value="invite">
+            </div>
             <div class="form-group" id="siteGrayManualBox" style="margin-bottom: 12px; display: none;">
               <label class="form-label"><i class="ri-contrast-drop-line"></i> Gray page — isca para bloqueados (opcional)</label>
               <select class="form-select" id="siteGrayPageId">
@@ -2420,7 +2457,7 @@
             <div class="form-group" style="margin-bottom: 8px;">
               <label class="form-label"><i class="ri-flashlight-line"></i> Entrega da oferta</label>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url" checked> <strong>URL externa</strong> — soft-redirect após white page (sem 302 no GET)</label>
+                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url" checked> <strong>URL externa</strong> — após o convite (timer)</label>
                 <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryPage" value="page"> <strong>Zero-Redirect</strong> — oferta em Páginas (HTML interno)</label>
               </div>
             </div>
@@ -2523,8 +2560,8 @@
         <p id="stealthConfirmIntro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:</p>
         <ul class="stealth-checklist" style="margin-bottom: 16px;">
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Lead liberado vai <strong>direto para a oferta</strong></li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Bot/crawler Meta vê só a <strong>white limpa</strong></li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Lead vê <strong>convite exclusivo</strong> e segue sozinho à oferta</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Bot/crawler Meta vê o <strong>mesmo convite</strong> sem timer de salto</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> nas campanhas</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
         </ul>
@@ -3009,6 +3046,11 @@
       document.getElementById('siteOfferPageId').value = '';
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
+      if (document.getElementById('siteInfluencerName')) document.getElementById('siteInfluencerName').value = '';
+      if (document.getElementById('siteInfluencerPhoto')) document.getElementById('siteInfluencerPhoto').value = '';
+      if (document.getElementById('siteInfluencerBanner')) document.getElementById('siteInfluencerBanner').value = '';
+      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = '6';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'invite';
       document.getElementById('siteBlockDesktop').checked = true;
       document.getElementById('siteBlockFacebook').checked = true;
       document.getElementById('siteBlockBots').checked = true;
@@ -3082,6 +3124,11 @@
       const offerPageMode = (site.offer_delivery || 'url') === 'page';
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = offerPageMode;
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = !offerPageMode;
+      if (document.getElementById('siteInfluencerName')) document.getElementById('siteInfluencerName').value = site.influencer_name || '';
+      if (document.getElementById('siteInfluencerPhoto')) document.getElementById('siteInfluencerPhoto').value = site.influencer_photo_url || '';
+      if (document.getElementById('siteInfluencerBanner')) document.getElementById('siteInfluencerBanner').value = site.influencer_banner_url || '';
+      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec || 6;
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = site.bridge_style || 'invite';
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
       document.getElementById('siteBlockBots').checked = site.block_bots;
@@ -3266,6 +3313,11 @@
         gray_page_id: isStealthBehavior && !autoStealthPages ? (document.getElementById('siteGrayPageId').value || null) : null,
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
+        bridge_style: isStealthBehavior ? (document.getElementById('siteBridgeStyle') && document.getElementById('siteBridgeStyle').value) || 'invite' : 'invite',
+        influencer_name: isStealthBehavior ? ((document.getElementById('siteInfluencerName') && document.getElementById('siteInfluencerName').value) || '').trim() : '',
+        influencer_photo_url: isStealthBehavior ? ((document.getElementById('siteInfluencerPhoto') && document.getElementById('siteInfluencerPhoto').value) || '').trim() : '',
+        influencer_banner_url: isStealthBehavior ? ((document.getElementById('siteInfluencerBanner') && document.getElementById('siteInfluencerBanner').value) || '').trim() : '',
+        bridge_timer_sec: isStealthBehavior ? parseInt((document.getElementById('siteBridgeTimer') && document.getElementById('siteBridgeTimer').value) || '6', 10) : 6,
         auto_stealth_pages: autoStealthPages,
         stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
@@ -4716,6 +4768,10 @@
             offer_delivery: 'url',
             auto_stealth_pages: true,
             stealth_theme: 'auto',
+            bridge_style: 'invite',
+            influencer_name: (document.getElementById('quickInfluencerName') && document.getElementById('quickInfluencerName').value || '').trim(),
+            influencer_photo_url: (document.getElementById('quickInfluencerPhoto') && document.getElementById('quickInfluencerPhoto').value || '').trim(),
+            bridge_timer_sec: parseInt((document.getElementById('quickBridgeTimer') && document.getElementById('quickBridgeTimer').value) || '6', 10),
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
@@ -4738,7 +4794,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado.\n\nLead liberado → oferta direto.\nCrawler → white limpa.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : ''));
+          alert('Link Stealth criado.\n\nLead → convite exclusivo + timer → oferta.\nCrawler → mesmo convite (sem salto).' + (ap.themeLabel ? '\nTema gray: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }

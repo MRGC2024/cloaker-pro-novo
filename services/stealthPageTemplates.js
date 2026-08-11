@@ -404,4 +404,96 @@ function listStealthThemes() {
   ];
 }
 
-module.exports = { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, THEMES };
+/**
+ * White emocional estilo "convite exclusivo do influenciador".
+ * withTimer=false → crawler/revisor (HTML estático, sem JS de salto).
+ * withTimer=true  → lead (barra + countdown → location.replace na oferta).
+ */
+function buildInviteBridgeHtml(opts = {}) {
+  const name = String(opts.influencerName || 'CONVIDADO').trim() || 'CONVIDADO';
+  const nameEsc = esc(name);
+  const photo = String(opts.photoUrl || '').trim();
+  const banner = String(opts.bannerUrl || photo || '').trim();
+  const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 6));
+  const dest = String(opts.destUrl || '').trim();
+  const withTimer = !!opts.withTimer && !!dest;
+  const year = new Date().getFullYear();
+  const initials = name.replace(/[^A-Za-z0-9À-ÿ]/g, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+
+  const photoCss = photo
+    ? `background-image:url(${JSON.stringify(photo)});background-size:cover;background-position:center;`
+    : '';
+  const bannerCss = banner
+    ? `background-image:linear-gradient(180deg,rgba(15,23,42,.45),rgba(15,23,42,.78)),url(${JSON.stringify(banner)});`
+    : 'background-image:linear-gradient(145deg,#1e293b 0%,#0f172a 55%,#334155 100%);';
+
+  const timerScript = withTimer
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,dest=${JSON.stringify(dest)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn');function go(){try{location.replace(dest)}catch(e){location.href=dest}}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){go();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    : '';
+
+  const styles = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#e8ecf1;color:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 14px;-webkit-font-smoothing:antialiased}
+    .card{width:100%;max-width:400px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.12)}
+    .hero{height:168px;background-size:cover;background-position:center;position:relative;${bannerCss}}
+    .hero-meta{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px}
+    .avatar{width:52px;height:52px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#64748b,#334155);${photoCss}}
+    .hero-txt{min-width:0}
+    .hero-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+    .hero-sub{font-size:12px;color:rgba(255,255,255,.88);margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+    .body{padding:22px 22px 18px}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2563eb;background:#eff6ff;padding:5px 10px;border-radius:999px;margin-bottom:14px}
+    .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#2563eb}
+    h1{font-size:1.35rem;font-weight:800;line-height:1.25;letter-spacing:-.02em;color:#0f172a;margin-bottom:14px}
+    .body p{font-size:14px;line-height:1.6;color:#475569;margin-bottom:12px}
+    .body p strong{color:#0f172a;font-weight:700}
+    .progress{height:4px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:22px 0 10px}
+    .progress>i{display:block;height:100%;width:${withTimer ? '2%' : '100%'};background:#334155;border-radius:99px;transition:width .15s linear}
+    .timer{text-align:center;font-size:13px;color:#64748b;margin-bottom:16px;min-height:1.3em}
+    .btn-main{display:block;width:100%;border:none;border-radius:10px;padding:14px 16px;background:#3f3f46;color:#fff;font-size:15px;font-weight:700;text-align:center;pointer-events:none;cursor:default;user-select:none}
+    .btn-sec{display:block;width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;color:#94a3b8;font-size:14px;font-weight:600;text-align:center;text-decoration:none;pointer-events:none;cursor:default}
+    .foot{text-align:center;font-size:11px;color:#94a3b8;padding:4px 22px 18px;line-height:1.45}
+  `;
+
+  const staticTimerLabel = withTimer
+    ? `Preparando seu <strong>acesso exclusivo</strong> em ${timerSec}s…`
+    : 'Seu convite está ativo. Aguarde a confirmação da equipe.';
+
+  const body = `
+  <div class="card">
+    <div class="hero">
+      <div class="hero-meta">
+        <div class="avatar" aria-hidden="true">${photo ? '' : esc(initials)}</div>
+        <div class="hero-txt">
+          <div class="hero-name">${nameEsc}</div>
+          <div class="hero-sub">Convite exclusivo para você</div>
+        </div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="badge">Convite pessoal</div>
+      <h1>Você foi selecionado para esta oportunidade</h1>
+      <p>O influenciador <strong>${nameEsc}</strong> selecionou você para participar de uma ação exclusiva. Poucas pessoas recebem este acesso — a participação é voluntária e você pode encerrar a qualquer momento.</p>
+      <p>Estamos preparando o ambiente oficial da oportunidade. Em instantes você entra com o mesmo privilégio de quem foi escolhido.</p>
+      <div class="progress" aria-hidden="true"><i id="inv-bar"></i></div>
+      <div class="timer" id="inv-timer">${staticTimerLabel}</div>
+      <div class="btn-main" id="inv-btn">${withTimer ? 'Preparando seu acesso…' : 'Convite reservado'}</div>
+      <div class="btn-sec">Não, obrigado</div>
+    </div>
+    <div class="foot">Ação veiculada em conformidade com as diretrizes da plataforma parceira. © ${year}</div>
+  </div>${timerScript}`;
+
+  return wrapHtml(`${name} · Convite exclusivo`, body, styles, {
+    description: `${name} selecionou você para uma oportunidade exclusiva.`,
+    ogTitle: `Convite exclusivo · ${name}`
+  });
+}
+
+module.exports = {
+  getStealthPagePack,
+  getStealthWhiteGrayPack,
+  listStealthThemes,
+  resolveThemeKey,
+  buildInviteBridgeHtml,
+  THEMES
+};
