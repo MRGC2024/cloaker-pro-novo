@@ -2523,9 +2523,9 @@
         <p id="stealthConfirmIntro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:</p>
         <ul class="stealth-checklist" style="margin-bottom: 16px;">
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Leads reais vão <strong>direto para a oferta</strong> (302)</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Crawler/revisor Meta vê a <strong>white page</strong></li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> deste site nas campanhas</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Link do <strong>Ads = só a white</strong> (site normal — o Meta aprova assim)</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Oferta em <strong>/continuar</strong> no mesmo domínio (não vai no anúncio)</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Criativo do anúncio = <strong>mesmo tema da white</strong></li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
         </ul>
         <label class="radio-label" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;font-size:13px;color:var(--text-secondary);">
@@ -4738,7 +4738,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado.\n\nWhite + gray geradas e vinculadas.\nLead liberado vai direto à oferta.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : ''));
+          alert('Link criado para APROVAÇÃO Meta.\n\nCole este link no anúncio (é só a white — site normal).\nO lead clica em "Próxima página" e vai à oferta.\n\nIMPORTANTE: criativo = tema da white.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
