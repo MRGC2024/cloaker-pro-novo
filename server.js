@@ -2682,7 +2682,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (/continuar)',
+    soft_redirect: '→ Oferta (página 2)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
