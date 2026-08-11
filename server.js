@@ -3548,9 +3548,8 @@ function getEffectiveTargetUrl(site) {
 
 // Pool de prefixos de link – palavras editoriais (evita /go/ /r/ /x7k2m/ de cloaker)
 const DEFAULT_PATH_POOL = [
-  'artigo', 'leitura', 'materia', 'guia', 'dicas', 'blog', 'conteudo', 'revista',
-  'noticia', 'habitos', 'saude', 'rotina', 'aprender', 'editorial', 'coluna',
-  'especial', 'serie', 'curiosidades', 'bem-estar', 'portal', 'go', 'r', 'l', 'v'
+  'artigos', 'blog', 'noticias', 'saude', 'financas', 'receitas', 'familia',
+  'casa', 'pets', 'tech', 'viagens', 'educacao', 'carreira', 'cultura', 'estilo'
 ];
 const RESERVED_PREFIXES = new Set(['api', 'login', 'logout', 't', 'static', 'assets', 'favicon.ico', '']);
 
@@ -4267,7 +4266,23 @@ app.get('/api/n/:prefix/:code', (req, res) => {
   handleStealthNavigation(req, res).catch((err) => { console.error(err); res.status(500).json({ error: 'Erro interno' }); });
 });
 
-// Oferta no mesmo domínio (NÃO é o URL do Ads) — Meta scrapa só /:prefix/:code
+// Oferta no mesmo domínio (NÃO é o URL do Ads) — parece "página 2" da matéria
+app.get('/:prefix/:code/pagina-2', (req, res, next) => {
+  const prefix = (req.params.prefix || '').trim().toLowerCase();
+  if (RESERVED_PREFIXES.has(prefix) || prefix.includes('.')) return next();
+  (async () => {
+    const code = (req.params.code || '').toLowerCase();
+    const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
+    if (!site) return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+    if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+    if (!wantsStealthBehavior(site)) return res.status(404).type('html').send(LINK_PUBLIC_404_HTML);
+    return handleStealthContinuarGet(req, res, site);
+  })().catch((err) => {
+    console.error(err);
+    res.status(500).type('html').send(LINK_PUBLIC_404_HTML);
+  });
+});
+// Alias legado
 app.get('/:prefix/:code/continuar', (req, res, next) => {
   const prefix = (req.params.prefix || '').trim().toLowerCase();
   if (RESERVED_PREFIXES.has(prefix) || prefix.includes('.')) return next();
