@@ -3443,6 +3443,10 @@
           alert('Informe a URL externa da oferta (checkout / landing).');
           return;
         }
+        if (data.bridge_style === 'invite' && !data.invite_page_id) {
+          alert('Convite ligado: selecione uma página de convite (menu Convite Exclusivo).');
+          return;
+        }
         if (!siteId) {
           openStealthConfirmModal({ mode: 'site', payload: data, siteId: '' });
           return;
