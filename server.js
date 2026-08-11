@@ -2655,8 +2655,12 @@ async function sendStealthDelivery(res, site, delivery, navOpts) {
   } else {
     inner = await getStealthBridgeInnerHtml(site);
   }
-  const navScript = (navOpts && navOpts.includeNavScript) ? buildStealthNavScript(navOpts.prefix, navOpts.code) : '';
-  sendStealthHtmlResponse(res, composeStealthHtml(wrapPageHtmlFragment(inner || ''), navScript));
+  // Nunca injeta script /api/n/ nem CTA na white/gray que o bot vê
+  sendStealthHtmlResponse(
+    res,
+    composeStealthHtml(wrapPageHtmlFragment(inner || ''), ''),
+    { metaSafe: !!(navOpts && navOpts.metaSafe) || delivery.kind === 'white' || delivery.kind === 'gray' }
+  );
 }
 
 async function stealthDeliveryToJson(site, ctx, delivery) {
@@ -2682,7 +2686,7 @@ function stealthDeliveryLabel(kind) {
     white: 'White page',
     gray: 'Gray page',
     offer: 'Página da oferta (Zero-Redirect)',
-    soft_redirect: '→ Oferta (página 2)',
+    soft_redirect: '→ Oferta (direto)',
     soft_redirect_ok: '→ Oferta CONFIRMADA ✓',
     redirect: '→ Oferta (legado)'
   };
@@ -4093,16 +4097,18 @@ async function handleStealthLinkGet(req, res, site) {
     void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth get:', err.message));
   }
 
-  // REFORMULAÇÃO META: o URL do anúncio é SEMPRE a mesma white (200) para TODOS.
-  // Sem 302, sem JS cloaker, sem URL da oferta no HTML — igual um site normal (globo.com).
-  // Oferta só em /pagina-2 (mesmo domínio), depois do lead seguir a matéria.
-  const qs = req.originalUrl.includes('?') ? '?' + req.originalUrl.split('?')[1] : '';
-  return sendStealthBridgeResponse(res, site, prefix, code, {
-    includeNavScript: false,
-    injectContinuar: true,
-    queryString: qs,
-    metaSafe: true
-  });
+  const delivery = await resolveStealthDelivery(site, ctx);
+
+  // Lead → oferta NA HORA (302). Sem white no meio, sem clique.
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
+    return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
+  }
+  if (delivery.kind === 'offer') {
+    return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
+  }
+
+  // Crawler / revisor / bloqueado: só white/gray limpa (sem JS cloaker, sem CTA, sem /api/n/)
+  return sendStealthDelivery(res, site, delivery, { includeNavScript: false, metaSafe: true });
 }
 
 /** Oferta: rota separada no mesmo domínio (não é o URL colado no Ads). */
