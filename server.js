@@ -1723,7 +1723,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth: crawler vê convite estático; lead vê o mesmo convite com timer e vai à oferta.';
+        : 'Stealth: crawler vê convite estático; lead vê o mesmo convite com timer e vai à oferta.'
     });
   }
   if (redirectChain.length > 2) {
