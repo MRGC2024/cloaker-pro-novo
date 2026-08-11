@@ -1647,6 +1647,51 @@ app.put('/api/sites/bulk/primary-url', async (req, res) => {
   }
 });
 
+/** Salva só os campos do convite exclusivo (white do lead). */
+app.put('/api/sites/:siteId/invite', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT site_id, user_id, block_behavior FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) {
+    return res.status(403).json({ error: 'Acesso negado a este site' });
+  }
+  try {
+    const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'invite');
+    const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
+    const influencerPhoto = (req.body.influencer_photo_url || '').trim().slice(0, 500) || null;
+    const influencerBanner = (req.body.influencer_banner_url || '').trim().slice(0, 500) || null;
+    const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec != null ? req.body.bridge_timer_sec : 6);
+    await db.run(
+      `UPDATE sites SET bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ? WHERE site_id = ?`,
+      [bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, req.params.siteId]
+    );
+    const updated = await db.get('SELECT site_id, name, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
+    res.json({ success: true, site: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erro ao salvar convite' });
+  }
+});
+
+/** Preview HTML do convite (sem salvar). */
+app.post('/api/invite-preview', (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  try {
+    const html = buildInviteBridgeHtml({
+      influencerName: req.body.influencer_name || 'CONVIDADO',
+      photoUrl: req.body.influencer_photo_url || '',
+      bannerUrl: req.body.influencer_banner_url || req.body.influencer_photo_url || '',
+      timerSeconds: clampBridgeTimer(req.body.bridge_timer_sec),
+      destUrl: req.body.dest_url || 'https://example.com/',
+      withTimer: req.body.with_timer === true || req.body.with_timer === 1 || req.body.with_timer === '1'
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(html);
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erro no preview' });
+  }
+});
+
 // API: Diagnóstico do link (simula perfis + cadeia de redirect) — não altera regras do cloaker
 app.get('/api/sites/:siteId/link-health', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
@@ -1723,7 +1768,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth: crawler vê convite estático; lead vê o mesmo convite com timer e vai à oferta.'
+        : 'Stealth: lead vê convite exclusivo + timer → oferta; bot/crawler/bloqueado vê white ou gray editorial.'
     });
   }
   if (redirectChain.length > 2) {
@@ -3988,7 +4033,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado vê o convite exclusivo e segue sozinho à oferta após o timer. Crawler Meta vê o mesmo convite sem script de salto.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado: convite exclusivo + timer → oferta. Bot/crawler/bloqueado: white ou gray editorial (nunca a oferta).' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4143,7 +4188,7 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Lead + convite: white emocional com timer → oferta (sem 302 imediato, sem clique)
+  // Só LEAD liberado vê o convite emocional → timer → oferta
   if ((delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') && usesInviteBridge(site)) {
     return sendInviteBridgeResponse(res, site, {
       destUrl: delivery.url || ctx.destWithQs,
@@ -4152,7 +4197,7 @@ async function handleStealthLinkGet(req, res, site) {
     });
   }
 
-  // Lead → oferta NA HORA (302) só se bridge editorial / sem convite
+  // Lead sem modo convite → 302 / oferta interna
   if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
     return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
   }
@@ -4160,10 +4205,7 @@ async function handleStealthLinkGet(req, res, site) {
     return sendStealthDelivery(res, site, delivery, { includeNavScript: false });
   }
 
-  // Crawler / revisor / bloqueado: convite estático (sem timer) OU white/gray editorial limpa
-  if (delivery.kind === 'white' && usesInviteBridge(site)) {
-    return sendInviteBridgeResponse(res, site, { withTimer: false, metaSafe: true });
-  }
+  // Bot / crawler / revisor / bloqueado: white ou gray editorial criada — NUNCA o convite do lead
   return sendStealthDelivery(res, site, delivery, { includeNavScript: false, metaSafe: true });
 }
 

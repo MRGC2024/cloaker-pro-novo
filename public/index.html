@@ -1020,6 +1020,7 @@
       <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Status dos links"><i class="ri-link-m"></i><span class="nav-link-text">Status dos links</span></a></li>
       <li class="nav-group-title">Configuração</li>
       <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-article-line"></i><span class="nav-link-text">Páginas</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convite Exclusivo"><i class="ri-user-star-line"></i><span class="nav-link-text">Convite Exclusivo</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-earth-line"></i><span class="nav-link-text">Domínios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
@@ -1529,8 +1530,8 @@
             </select>
           </div>
           <div style="margin: 16px 0; padding: 14px 16px; background: rgba(15,23,42,0.04); border-radius: 12px; border: 1px solid var(--border);">
-            <div class="form-label" style="margin-bottom: 10px;"><i class="ri-user-star-line"></i> Convite exclusivo (white do lead)</div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">O lead vê um convite com cara de seleção pessoal e segue sozinho à oferta após o timer. O crawler Meta vê o mesmo convite <strong>sem</strong> o salto automático.</p>
+            <div class="form-label" style="margin-bottom: 10px;"><i class="ri-user-star-line"></i> Convite exclusivo (opcional ao gerar)</div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Pode preencher agora ou depois no menu <strong>Convite Exclusivo</strong>. Lead vê o convite; bot/crawler vê white/gray.</p>
             <div class="form-group">
               <label class="form-label">Nome do influenciador</label>
               <input type="text" class="form-input" id="quickInfluencerName" placeholder="Ex: RINCON61" maxlength="80">
@@ -2134,15 +2135,72 @@
       </div>
       <p style="color: var(--text-secondary); margin-bottom: 12px;">Páginas HTML usadas no funil <strong>Stealth</strong> (mesmo domínio, sem redirect externo na liberação):</p>
       <ul style="color: var(--text-secondary); margin: 0 0 20px 20px; font-size: 0.95rem;">
-        <li><strong>White page</strong> — o que todos veem no GET (inclui revisores Meta)</li>
-        <li><strong>Gray page</strong> — conteúdo alternativo para visitantes bloqueados</li>
-        <li><strong>Oferta</strong> — página interna exibida quando o visitante é liberado (Zero-Redirect)</li>
+          <li><strong>White page</strong> — o que bot/crawler/bloqueado veem (editorial)</li>
+          <li><strong>Gray page</strong> — isca alternativa para visitantes bloqueados</li>
+          <li><strong>Oferta</strong> — só via Zero-Redirect interno (opcional). O lead normal passa pelo <strong>Convite Exclusivo</strong></li>
       </ul>
       <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar white, gray e oferta. Cada geração sorteia <strong>tema, layout e textos</strong> diferentes — ideal para rotacionar campanhas. A <strong>URL externa da oferta</strong> você configura em <strong>Meus Sites</strong>.</p>
       <div id="pagesList" class="info-grid" style="grid-template-columns: 1fr;">
         <div class="loading" style="grid-column: 1/-1;"><div class="spinner"></div></div>
       </div>
       <p id="pagesEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhuma página criada. Clique em &quot;Nova página&quot; para adicionar HTML customizado.</p>
+    </section>
+
+    <!-- Convite exclusivo (white do lead) -->
+    <section id="invite" class="section">
+      <div class="header">
+        <h2>Convite Exclusivo</h2>
+      </div>
+      <div class="panel-tip-banner" style="margin-bottom: 18px;">
+        <i class="ri-information-line"></i>
+        <div>
+          <strong>Só o lead real vê esta página</strong>
+          <p>Lead liberado → convite (foto/nome/timer) → sua oferta. Bot, crawler Meta e bloqueado → white ou gray editorial em <strong>Páginas</strong> (nunca a oferta).</p>
+        </div>
+      </div>
+      <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.35);">
+        <div class="card-header"><h3 class="card-title"><i class="ri-user-star-line"></i> Editar convite do link</h3></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Link / site Stealth</label>
+            <select class="form-select" id="inviteSiteSelect" onchange="loadInviteEditorFromSelect()">
+              <option value="">— Selecione um site —</option>
+            </select>
+          </div>
+          <div id="inviteEditorWrap" style="display:none;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+              <div>
+                <div class="form-group">
+                  <label class="form-label">Nome do influenciador</label>
+                  <input type="text" class="form-input" id="inviteInfluencerName" placeholder="Ex: RINCON61" maxlength="80" oninput="scheduleInvitePreview()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">URL da foto (perfil)</label>
+                  <input type="url" class="form-input" id="inviteInfluencerPhoto" placeholder="https://.../foto.jpg" oninput="scheduleInvitePreview()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">URL do banner (opcional)</label>
+                  <input type="url" class="form-input" id="inviteInfluencerBanner" placeholder="Vazio = usa a mesma foto" oninput="scheduleInvitePreview()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Timer até a oferta (segundos)</label>
+                  <input type="number" class="form-input" id="inviteBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;" oninput="scheduleInvitePreview()">
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <button type="button" class="btn btn-primary" onclick="saveInviteEditor()"><i class="ri-save-line"></i> Salvar convite</button>
+                  <button type="button" class="btn btn-secondary" onclick="refreshInvitePreview(true)"><i class="ri-eye-line"></i> Preview com timer</button>
+                  <span id="inviteSaveMsg" style="font-size:13px;"></span>
+                </div>
+              </div>
+              <div>
+                <div class="form-label" style="margin-bottom:8px;">Pré-visualização</div>
+                <iframe id="invitePreviewFrame" title="Preview do convite" style="width:100%; height:560px; border:1px solid var(--border); border-radius:12px; background:#e8ecf1;"></iframe>
+              </div>
+            </div>
+          </div>
+          <p id="inviteEmptyHint" style="color:var(--text-secondary); font-size:13px; margin:8px 0 0;">Selecione um site Stealth para editar o convite. Crie o link em <strong>Link para Ads</strong> se ainda não tiver.</p>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -2396,7 +2454,7 @@
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
               <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
-              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead → <strong>convite exclusivo</strong> + timer → oferta. Crawler → mesmo convite <strong>sem</strong> salto</li>
+              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead → <strong>convite</strong> → oferta. Bot/crawler → <strong>white/gray</strong> editorial</li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
@@ -2427,25 +2485,14 @@
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
             <div id="inviteBridgeBox" style="margin-bottom: 14px; padding: 12px 14px; background: rgba(15,23,42,0.04); border-radius: 10px; border: 1px solid var(--border);">
-              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> White = Convite exclusivo</label>
-              <small style="display:block;color:var(--text-secondary);font-size:12px;margin-bottom:12px;">Lead sente que foi selecionado; após o timer vai sozinho à oferta. Botão só visual (não precisa clicar).</small>
-              <div class="form-group">
-                <label class="form-label">Nome do influenciador</label>
-                <input type="text" class="form-input" id="siteInfluencerName" placeholder="Ex: RINCON61" maxlength="80">
-              </div>
-              <div class="form-group">
-                <label class="form-label">URL da foto (perfil)</label>
-                <input type="url" class="form-input" id="siteInfluencerPhoto" placeholder="https://.../foto.jpg">
-              </div>
-              <div class="form-group">
-                <label class="form-label">URL do banner (opcional)</label>
-                <input type="url" class="form-input" id="siteInfluencerBanner" placeholder="Vazio = usa a mesma foto">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Timer (segundos)</label>
-                <input type="number" class="form-input" id="siteBridgeTimer" min="2" max="30" value="6" style="max-width: 120px;">
-              </div>
+              <label class="form-label" style="margin-bottom: 6px;"><i class="ri-user-star-line"></i> White do lead = Convite exclusivo</label>
+              <small style="display:block;color:var(--text-secondary);font-size:12px;margin-bottom:10px;">Foto, nome e timer ficam no menu <strong>Convite Exclusivo</strong>. Aqui só o funil: lead → convite → oferta; bot → white/gray.</small>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="goToSection('invite'); closeSiteModal();"><i class="ri-edit-line"></i> Abrir editor do convite</button>
               <input type="hidden" id="siteBridgeStyle" value="invite">
+              <input type="hidden" id="siteInfluencerName" value="">
+              <input type="hidden" id="siteInfluencerPhoto" value="">
+              <input type="hidden" id="siteInfluencerBanner" value="">
+              <input type="hidden" id="siteBridgeTimer" value="6">
             </div>
             <div class="form-group" id="siteGrayManualBox" style="margin-bottom: 12px; display: none;">
               <label class="form-label"><i class="ri-contrast-drop-line"></i> Gray page — isca para bloqueados (opcional)</label>
@@ -2561,7 +2608,7 @@
         <ul class="stealth-checklist" style="margin-bottom: 16px;">
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Lead vê <strong>convite exclusivo</strong> e segue sozinho à oferta</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Bot/crawler Meta vê o <strong>mesmo convite</strong> sem timer de salto</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Bot/crawler Meta vê <strong>white ou gray</strong> editorial (nunca a oferta)</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> nas campanhas</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
         </ul>
@@ -2732,8 +2779,8 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas', systemhealth: 'Saúde do Sistema' };
-    var sectionIcons = { dashboard: 'ri-layout-grid-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', systemhealth: 'ri-heart-pulse-line' };
+    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas', invite: 'Convite Exclusivo', systemhealth: 'Saúde do Sistema' };
+    var sectionIcons = { dashboard: 'ri-layout-grid-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
       var titleEl = document.getElementById('pageTopBarTitle');
@@ -2753,6 +2800,7 @@
       if (sectionId === 'reports') loadReports();
       if (sectionId === 'domains') loadDomains();
       if (sectionId === 'pages') loadPages();
+      if (sectionId === 'invite') loadInviteSection();
       if (sectionId === 'script') loadScriptSection();
       if (sectionId === 'analytics') loadAnalytics();
       if (sectionId === 'settings') { loadSettings(); if (currentUser && currentUser.role === 'admin') loadFallbackSettings(); }
@@ -2901,7 +2949,8 @@
             </div>
             <div class="site-card-actions">
               <button class="btn btn-primary btn-sm" onclick="openReport('${s.site_id}')" title="Ver relatório individual"><i class="ri-file-chart-line"></i> Relatório</button>
-              <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')"><i class="ri-edit-line"></i></button>
+              <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')" title="Editar site"><i class="ri-edit-line"></i></button>
+              ${(s.block_behavior === 'stealth') ? `<button class="btn btn-secondary btn-sm" onclick="openInviteEditorForSite('${s.site_id}')" title="Convite exclusivo"><i class="ri-user-star-line"></i></button>` : ''}
               <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')"><i class="ri-delete-bin-line"></i></button>
             </div>
           </div>
@@ -3410,6 +3459,133 @@
     }
 
     function closeSiteModal() { document.getElementById('siteModal').classList.remove('active'); }
+
+    var invitePreviewTimer = null;
+    async function loadInviteSection() {
+      await loadSites();
+      const sel = document.getElementById('inviteSiteSelect');
+      if (!sel) return;
+      const stealthSites = (sites || []).filter(function(s) {
+        return (s.block_behavior || '') === 'stealth' || !!s.landing_page_id;
+      });
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">— Selecione um site —</option>';
+      stealthSites.forEach(function(s) {
+        const opt = document.createElement('option');
+        opt.value = s.site_id;
+        opt.textContent = (s.name || s.site_id) + (s.influencer_name ? ' · ' + s.influencer_name : '');
+        sel.appendChild(opt);
+      });
+      if (prev && stealthSites.some(function(s) { return s.site_id === prev; })) {
+        sel.value = prev;
+        loadInviteEditorFromSelect();
+      } else if (stealthSites.length === 1) {
+        sel.value = stealthSites[0].site_id;
+        loadInviteEditorFromSelect();
+      } else {
+        document.getElementById('inviteEditorWrap').style.display = 'none';
+        document.getElementById('inviteEmptyHint').style.display = 'block';
+      }
+    }
+
+    function loadInviteEditorFromSelect() {
+      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
+      const wrap = document.getElementById('inviteEditorWrap');
+      const hint = document.getElementById('inviteEmptyHint');
+      if (!siteId) {
+        if (wrap) wrap.style.display = 'none';
+        if (hint) hint.style.display = 'block';
+        return;
+      }
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      if (!site) return;
+      if (wrap) wrap.style.display = 'block';
+      if (hint) hint.style.display = 'none';
+      document.getElementById('inviteInfluencerName').value = site.influencer_name || '';
+      document.getElementById('inviteInfluencerPhoto').value = site.influencer_photo_url || '';
+      document.getElementById('inviteInfluencerBanner').value = site.influencer_banner_url || '';
+      document.getElementById('inviteBridgeTimer').value = site.bridge_timer_sec || 6;
+      refreshInvitePreview(false);
+    }
+
+    function getInviteEditorPayload(withTimer) {
+      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      return {
+        influencer_name: (document.getElementById('inviteInfluencerName').value || '').trim(),
+        influencer_photo_url: (document.getElementById('inviteInfluencerPhoto').value || '').trim(),
+        influencer_banner_url: (document.getElementById('inviteInfluencerBanner').value || '').trim(),
+        bridge_timer_sec: parseInt(document.getElementById('inviteBridgeTimer').value || '6', 10),
+        dest_url: (site && site.target_url) || 'https://example.com/',
+        with_timer: !!withTimer
+      };
+    }
+
+    function scheduleInvitePreview() {
+      clearTimeout(invitePreviewTimer);
+      invitePreviewTimer = setTimeout(function() { refreshInvitePreview(false); }, 400);
+    }
+
+    async function refreshInvitePreview(withTimer) {
+      const frame = document.getElementById('invitePreviewFrame');
+      if (!frame) return;
+      try {
+        const res = await fetch('/api/invite-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(getInviteEditorPayload(!!withTimer))
+        });
+        if (!res.ok) throw new Error('preview');
+        const html = await res.text();
+        frame.srcdoc = html;
+      } catch (e) {
+        frame.srcdoc = '<p style="padding:20px;font-family:sans-serif;color:#64748b">Não foi possível gerar o preview.</p>';
+      }
+    }
+
+    async function saveInviteEditor() {
+      const siteId = (document.getElementById('inviteSiteSelect') && document.getElementById('inviteSiteSelect').value) || '';
+      const msg = document.getElementById('inviteSaveMsg');
+      if (!siteId) { alert('Selecione um site'); return; }
+      if (msg) { msg.style.color = 'var(--text-secondary)'; msg.textContent = 'Salvando…'; }
+      try {
+        const payload = getInviteEditorPayload(false);
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            bridge_style: 'invite',
+            influencer_name: payload.influencer_name,
+            influencer_photo_url: payload.influencer_photo_url,
+            influencer_banner_url: payload.influencer_banner_url,
+            bridge_timer_sec: payload.bridge_timer_sec
+          })
+        });
+        if (!res.ok) {
+          let err = 'Erro ao salvar';
+          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+          throw new Error(err);
+        }
+        await loadSites();
+        if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'Convite salvo ✓'; }
+        refreshInvitePreview(false);
+      } catch (e) {
+        if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = e.message || 'Erro'; }
+      }
+    }
+
+    function openInviteEditorForSite(siteId) {
+      goToSection('invite');
+      setTimeout(function() {
+        const sel = document.getElementById('inviteSiteSelect');
+        if (sel && siteId) {
+          sel.value = siteId;
+          loadInviteEditorFromSelect();
+        }
+      }, 200);
+    }
 
     function toggleSiteSelection(siteId, checked) {
       if (checked) selectedSiteIds.add(siteId);
@@ -4794,7 +4970,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado.\n\nLead → convite exclusivo + timer → oferta.\nCrawler → mesmo convite (sem salto).' + (ap.themeLabel ? '\nTema gray: ' + ap.themeLabel : ''));
+          alert('Link Stealth criado.\n\nLead → convite → oferta.\nBot/crawler → white/gray.\n\nEdite foto/nome/timer em: Convite Exclusivo.' + (ap.themeLabel ? '\nTema gray/white: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
