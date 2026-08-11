@@ -4738,7 +4738,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link criado para APROVAÇÃO Meta.\n\nCole no anúncio (white limpa).\nLead segue em Página 2 → oferta.\n\nCriativo = tema da white.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : ''));
+          alert('Link Stealth criado.\n\nLead liberado → oferta direto.\nCrawler → white limpa.' + (ap.themeLabel ? '\nTema: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
