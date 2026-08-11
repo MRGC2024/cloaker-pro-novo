@@ -1322,12 +1322,32 @@ app.get('/api/sites', async (req, res) => {
 
 const LINK_SLUG_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 
-/** Prefixos que parecem seção de portal/blog (não código de cloaker). */
-const NATURAL_PATH_PREFIXES = [
-  'artigo', 'leitura', 'materia', 'guia', 'dicas', 'blog', 'conteudo',
-  'revista', 'noticia', 'habitos', 'saude', 'rotina', 'aprender',
-  'editorial', 'coluna', 'especial', 'serie', 'curiosidades', 'bem-estar'
-];
+/**
+ * Prefixo ESTÁVEL por tema (como seção de portal real).
+ * Evita prefixo aleatório a cada link — isso parece cloaker/redirect farm.
+ */
+const THEME_SECTION_PREFIX = {
+  'central-leituras': 'artigos',
+  'bem-estar': 'saude',
+  financas: 'financas',
+  geral: 'artigos',
+  receitas: 'receitas',
+  maternidade: 'familia',
+  'casa-jardim': 'casa',
+  pets: 'pets',
+  tecnologia: 'tech',
+  viagens: 'viagens',
+  educacao: 'educacao',
+  carreira: 'carreira',
+  mente: 'bem-estar',
+  cultura: 'cultura',
+  moda: 'estilo',
+  sustentabilidade: 'sustentavel',
+  noticias: 'noticias'
+};
+
+/** Segmento da "próxima página" — parece paginação editorial, não redirect. */
+const STEALTH_NEXT_SEGMENT = 'pagina-2';
 
 const NATURAL_SLUG_WORDS = [
   'habitos', 'bem-estar', 'sono', 'energia', 'foco', 'rotina', 'saude',
@@ -1353,9 +1373,10 @@ function randomLinkSuffix(len = 4) {
   return s;
 }
 
-/** Prefixo natural: /artigo/ /leitura/ /guia/ — parece site editorial. */
-function generateNaturalPathPrefix() {
-  return NATURAL_PATH_PREFIXES[Math.floor(Math.random() * NATURAL_PATH_PREFIXES.length)];
+/** Prefixo fixo da seção editorial do tema (ex: /artigos/slug — não /x7k2m/). */
+function generateNaturalPathPrefix(themeKey) {
+  const key = resolveThemeKey(themeKey || 'geral');
+  return THEME_SECTION_PREFIX[key] || THEME_SECTION_PREFIX.geral || 'artigos';
 }
 
 /**
@@ -1444,7 +1465,10 @@ async function provisionStealthWhiteGray(userId, { siteName, theme, brandName, s
 app.get('/api/sites/random-path-prefix', (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const natural = req.query.natural !== '0' && req.query.style !== 'random';
-  if (natural) return res.json({ path_prefix: generateNaturalPathPrefix() });
+  if (natural) {
+    const theme = resolveStealthTheme(req.query.theme, '', '');
+    return res.json({ path_prefix: generateNaturalPathPrefix(theme) });
+  }
   const length = parseInt(req.query.length, 10) || 8;
   res.json({ path_prefix: generateRandomPathPrefix(length) });
 });
@@ -1492,14 +1516,16 @@ app.post('/api/sites', async (req, res) => {
     const linkCode = await generateLinkCode({ hint: slugHint });
     const selDomain = (selected_domain || '').trim() || null;
     const useFb = use_fallback === false || use_fallback === 0 ? 0 : 1;
+    const themeForPrefix = (autoPagesMeta && autoPagesMeta.themeKey)
+      || resolveStealthTheme(req.body.stealth_theme, (selected_domain || '').trim() || null, (domain || '').trim() || null);
     const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
     let pathPrefix = (bodyPathPrefix != null && typeof bodyPathPrefix === 'string') ? bodyPathPrefix.trim() : '';
     if (!pathPrefix || !pathPrefixRegex.test(pathPrefix)) {
-      pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix() : generateRandomPathPrefix(8);
+      pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix(themeForPrefix) : generateRandomPathPrefix(8);
     } else {
       pathPrefix = pathPrefix.toLowerCase();
       if (RESERVED_PREFIXES.has(pathPrefix)) {
-        pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix() : generateRandomPathPrefix(8);
+        pathPrefix = behavior === 'stealth' ? generateNaturalPathPrefix(themeForPrefix) : generateRandomPathPrefix(8);
       }
     }
     const defaultParams = (req.body.default_link_params || '').trim() || null;
@@ -1685,7 +1711,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth reformulado p/ Meta: URL do anúncio = white limpa (200) para todos. Oferta só em /continuar (mesmo domínio).'
+        : 'Stealth reformulado p/ Meta: URL do anúncio = white limpa (200). Oferta em /pagina-2 no mesmo domínio.'
     });
   }
   if (redirectChain.length > 2) {
@@ -2571,14 +2597,14 @@ function sendStealthHtmlResponse(res, html, options = {}) {
   res.status(200).send(html);
 }
 
-/** CTA no MESMO domínio — Meta scrapa o ads URL e NÃO vê a oferta externa no HTML. */
+/** CTA no MESMO domínio — parece paginação de matéria, não redirect. */
 function injectSameDomainContinuarCta(html, prefix, code, queryString) {
   if (!html) return html;
-  const path = '/' + prefix + '/' + code + '/continuar' + (queryString || '');
-  if (html.includes('/continuar') || html.includes('data-stealth-go')) return html;
+  const path = '/' + prefix + '/' + code + '/' + STEALTH_NEXT_SEGMENT + (queryString || '');
+  if (html.includes('/' + STEALTH_NEXT_SEGMENT) || html.includes('/continuar') || html.includes('data-stealth-go')) return html;
   const cta = `<div style="max-width:720px;margin:36px auto 48px;padding:0 20px;text-align:center;font-family:Georgia,'Times New Roman',serif">
-  <p style="margin:0 0 14px;font-size:15px;color:#475569">Continue nesta matéria:</p>
-  <a href="${path.replace(/"/g, '&quot;')}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:1.05rem">Próxima página →</a>
+  <p style="margin:0 0 14px;font-size:15px;color:#475569">Esta matéria continua:</p>
+  <a href="${path.replace(/"/g, '&quot;')}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:1.05rem">Página 2 →</a>
 </div>`;
   if (/<\/article>/i.test(html)) return html.replace(/<\/article>/i, '</article>' + cta);
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, cta + '</body>');
@@ -3915,7 +3941,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'info', code: 'stealth_soft_offer', message: 'Modo aprovação Meta: o link do Ads é só a white (igual site normal). A oferta fica em /continuar no mesmo domínio — o Meta não vê 302 no URL do anúncio.' });
+      warnings.push({ level: 'info', code: 'stealth_soft_offer', message: 'Modo aprovação Meta: link do Ads = white limpa. Oferta em /pagina-2 (mesmo domínio), como continuação da matéria.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4070,7 +4096,7 @@ async function handleStealthLinkGet(req, res, site) {
 
   // REFORMULAÇÃO META: o URL do anúncio é SEMPRE a mesma white (200) para TODOS.
   // Sem 302, sem JS cloaker, sem URL da oferta no HTML — igual um site normal (globo.com).
-  // Oferta só em /continuar (mesmo domínio), depois do lead seguir a matéria.
+  // Oferta só em /pagina-2 (mesmo domínio), depois do lead seguir a matéria.
   const qs = req.originalUrl.includes('?') ? '?' + req.originalUrl.split('?')[1] : '';
   return sendStealthBridgeResponse(res, site, prefix, code, {
     includeNavScript: false,
@@ -4084,7 +4110,7 @@ async function handleStealthLinkGet(req, res, site) {
 async function handleStealthContinuarGet(req, res, site) {
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false });
   if (ctx.visitorSql && ctx.visitorParams) {
-    void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth continuar:', err.message));
+    void db.run(ctx.visitorSql, ctx.visitorParams).catch((err) => console.error('[visitor] stealth pagina-2:', err.message));
   }
   const delivery = await resolveStealthDelivery(site, ctx);
 
