@@ -1711,7 +1711,7 @@ app.get('/api/sites/:siteId/link-health', async (req, res) => {
       level: zeroRedirect ? 'info' : 'medium',
       message: zeroRedirect
         ? 'Stealth + Zero-Redirect: crawler vê white page; lead aprovado recebe oferta na mesma URL (sem 302). Alinhe white page, gray page e oferta ao criativo do anúncio.'
-        : 'Stealth reformulado p/ Meta: URL do anúncio = white limpa (200). Oferta em /pagina-2 no mesmo domínio.'
+        : 'Stealth: crawler vê white limpa; lead liberado vai direto à oferta (302).'
     });
   }
   if (redirectChain.length > 2) {
@@ -3944,7 +3944,7 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'info', code: 'stealth_soft_offer', message: 'Modo aprovação Meta: link do Ads = white limpa. Oferta em /pagina-2 (mesmo domínio), como continuação da matéria.' });
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: 'Lead liberado vai direto à oferta (302). Crawler Meta recebe white limpa, sem JS de cloaker.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
