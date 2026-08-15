@@ -1652,21 +1652,30 @@ app.put('/api/sites/bulk/primary-url', async (req, res) => {
 /** Salva opção de convite no link (ligar/desligar + qual página). */
 app.put('/api/sites/:siteId/invite', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const site = await db.get('SELECT site_id, user_id, block_behavior FROM sites WHERE site_id = ?', [req.params.siteId]);
+  const site = await db.get('SELECT site_id, user_id, block_behavior, invite_page_id FROM sites WHERE site_id = ?', [req.params.siteId]);
   if (!site) return res.status(404).json({ error: 'Site não encontrado' });
   if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) {
     return res.status(403).json({ error: 'Acesso negado a este site' });
   }
   try {
     const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
-    const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(req.body.invite_page_id) : null;
-    if (bridgeStyle === 'invite' && !invitePageId) {
-      return res.status(400).json({ error: 'Selecione uma página de convite (crie em Convite Exclusivo).' });
+    let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
+    if (bridgeStyle !== 'invite') {
+      await db.run(`UPDATE sites SET bridge_style = ? WHERE site_id = ?`, ['editorial', req.params.siteId]);
+    } else {
+      if (!invitePageId) invitePageId = resolveOptionalPageId(site.invite_page_id);
+      if (!invitePageId) {
+        const first = await db.get('SELECT id FROM invite_pages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [req.session.userId]);
+        invitePageId = first ? first.id : null;
+      }
+      if (!invitePageId) {
+        return res.status(400).json({ error: 'Crie uma página de convite em Convite Exclusivo antes de ativar.' });
+      }
+      await db.run(
+        `UPDATE sites SET bridge_style = ?, invite_page_id = ? WHERE site_id = ?`,
+        ['invite', invitePageId, req.params.siteId]
+      );
     }
-    await db.run(
-      `UPDATE sites SET bridge_style = ?, invite_page_id = ? WHERE site_id = ?`,
-      [bridgeStyle, invitePageId, req.params.siteId]
-    );
     const updated = await db.get('SELECT site_id, name, bridge_style, invite_page_id, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
     res.json({ success: true, site: updated });
   } catch (e) {

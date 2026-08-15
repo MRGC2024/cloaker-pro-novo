@@ -699,21 +699,44 @@
 
     .site-card { 
       background: var(--bg-card); 
-      border-radius: 12px; 
-      padding: 20px; 
+      border-radius: 14px; 
+      padding: 16px 18px; 
       border: 1px solid var(--border); 
-      margin-bottom: 12px; 
-      transition: border-color 0.15s; 
+      margin-bottom: 10px; 
+      transition: border-color 0.15s, box-shadow 0.15s; 
     }
-    .site-card:hover { border-color: var(--border-hover); }
-    .site-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-    .site-card-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-    .site-card-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
-    .site-card-domain { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
-    .site-card-stats { display: flex; gap: 24px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .site-card-stat { text-align: center; }
-    .site-card-stat-value { font-size: 20px; font-weight: 700; color: var(--text-primary); }
-    .site-card-stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+    .site-card:hover { border-color: var(--border-hover); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .site-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .site-card-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .site-card-title { font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .site-card-domain { color: var(--text-tertiary); font-size: 12px; margin-top: 4px; }
+    .site-card-stats { display: flex; gap: 16px; }
+    .site-card-stat { text-align: center; min-width: 64px; }
+    .site-card-stat-value { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .site-card-stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+    .site-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .site-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .site-chip { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em; }
+    .site-chip-ok { background: rgba(52, 211, 153, 0.16); color: #6ee7b7; }
+    .site-chip-off { background: rgba(148, 163, 184, 0.16); color: #94a3b8; }
+    .site-chip-warn { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+    .site-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); }
+    .site-invite-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .site-invite-box .form-select { max-width: 220px; padding: 6px 10px; font-size: 12px; }
+    .site-invite-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+    .switch-sm { width: 42px; height: 24px; flex-shrink: 0; }
+    .switch-sm .slider:before { height: 16px; width: 16px; left: 2px; bottom: 2px; }
+    .switch-sm input:checked + .slider:before { transform: translateX(18px); }
+    .btn-icon { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .site-links-panel { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+    .site-links-panel.open { display: block; }
+    .site-landing { font-size: 12px; color: var(--text-secondary); margin-top: 6px; word-break: break-all; }
+    .sites-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .sites-toolbar .form-group { flex: 1; min-width: 160px; margin-bottom: 0; }
+    .sites-mass { margin-top: 10px; }
+    .sites-mass summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); list-style: none; display: flex; align-items: center; gap: 6px; }
+    .sites-mass summary::-webkit-details-marker { display: none; }
+    .sites-mass[open] summary { margin-bottom: 12px; color: var(--text-primary); }
 
     .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 99; }
     .sidebar-overlay.active { display: block; }
@@ -855,23 +878,27 @@
       .stat-icon { width: 34px; height: 34px; font-size: 17px; margin-bottom: 8px; }
       .stat-label { font-size: 11px; }
 
-      .site-card { padding: 16px; }
+      .site-card { padding: 14px; }
       .site-card .form-select { max-width: 100% !important; width: 100%; }
-      .site-card-header { flex-direction: column; align-items: stretch; }
+      .site-card-top { flex-direction: column; }
       .site-card-title { font-size: 15px; line-height: 1.4; }
       .site-card-actions { width: 100%; }
       .site-card-actions .btn {
         flex: 1;
-        min-width: calc(33.333% - 6px);
+        min-width: calc(20% - 6px);
         justify-content: center;
-        min-height: 44px;
+        min-height: 40px;
       }
       .site-card-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
+        width: 100%;
       }
-      .site-card-stat-value { font-size: 18px; }
+      .site-card-stat-value { font-size: 16px; }
+      .site-invite-box { width: 100%; }
+      .sites-toolbar { flex-direction: column; align-items: stretch; }
+      .sites-toolbar .form-group { min-width: 0; width: 100%; flex: none; }
 
       .toolbar-row { flex-direction: column; align-items: stretch; }
       .toolbar-row .form-group { min-width: 0; width: 100%; flex: none; }
@@ -973,7 +1000,7 @@
     @media (max-width: 480px) {
       .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
       .stat-value { font-size: 20px; }
-      .site-card-actions .btn { min-width: 100%; flex: 1 1 100%; }
+      .site-card-actions .btn { min-width: 40px; flex: 1 1 auto; }
       .site-card-stats { grid-template-columns: repeat(3, 1fr); }
       .filter-btn { flex: 1 1 100%; }
       .period-btn { font-size: 10px; letter-spacing: -0.02em; }
@@ -1205,65 +1232,59 @@
           <button class="btn btn-primary" onclick="openNewSiteModal()"><i class="ri-add-line"></i> Novo Site</button>
         </div>
       </div>
-      <div class="panel-tip-banner">
-        <i class="ri-shield-check-line"></i>
-        <div>
-          <strong>Campanhas novas no Meta → use modo Stealth</strong>
-          <p>Crie o site em <strong>Stealth</strong>, cadastre uma <strong>white page</strong> em Páginas e use o <strong>link novo</strong> no anúncio. Links antigos com redirect 302 devem continuar nas campanhas que já estão rodando.</p>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom: 16px;">
-        <div class="card-body toolbar-row">
-          <div class="form-group">
-            <label class="form-label">Buscar</label>
-            <input type="text" class="form-input" id="sitesSearchInput" placeholder="Buscar por nome, domínio, URL ou código..." oninput="renderSitesList()">
-          </div>
-          <div class="form-group" style="flex:0 1 180px;">
-            <label class="form-label">Filtro</label>
-            <select class="form-select" id="sitesQuickFilter" onchange="renderSitesList()">
-              <option value="all">Todos</option>
-              <option value="active">Ativos</option>
-              <option value="paused">Pausados</option>
-              <option value="fallback_active">Com fallback ativo</option>
-              <option value="fallback_enabled">Fallback habilitado</option>
-              <option value="no_target">Sem URL principal</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:0 1 180px;">
-            <label class="form-label">Ordenar</label>
-            <select class="form-select" id="sitesSortOrder" onchange="renderSitesList()">
-              <option value="newest">Mais novos</option>
-              <option value="oldest">Mais antigos</option>
-              <option value="name_asc">Nome A-Z</option>
-              <option value="name_desc">Nome Z-A</option>
-              <option value="visits_desc">Mais visitas</option>
-              <option value="blocked_desc">Mais bloqueios</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom: 16px;">
-        <div class="card-body bulk-bar">
-          <label class="radio-label"><input type="checkbox" id="sitesSelectAll" onchange="toggleSelectAllSites(this.checked)"> Selecionar todos (visíveis)</label>
-          <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(true)"><i class="ri-play-circle-line"></i> Ativar selecionados</button>
-          <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(false)"><i class="ri-pause-circle-line"></i> Pausar selecionados</button>
-          <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(true)"><i class="ri-links-line"></i> Habilitar fallback</button>
-          <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(false)"><i class="ri-links-line"></i> Desabilitar fallback</button>
-          <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteAllSites()" title="Remove todos os seus links e dados de visitantes de cada um"><i class="ri-delete-bin-2-line"></i> Deletar todos os sites</button>
-          <span id="sitesBulkMsg" style="margin-left: 8px; font-size: 13px;"></span>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom: 16px; border: 1px solid rgba(0, 217, 255, 0.25);">
+      <div class="card" style="margin-bottom: 14px;">
         <div class="card-body">
-          <h4 style="margin: 0 0 8px; font-size: 14px;"><i class="ri-link"></i> Alterar URL principal da landing (em massa)</h4>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Marque os links na lista abaixo (use <strong>Selecionar ativos</strong> ou marque manualmente), cole a nova URL de cadastro e aplique em todos de uma vez. A contingência (override) dos selecionados será removida.</p>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <input type="url" class="form-input" id="sitesBulkPrimaryUrlInput" placeholder="https://sua-landing.com/pagina" style="flex: 1; min-width: 260px;">
-            <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetSitesPrimaryUrl()"><i class="ri-checkbox-multiple-line"></i> Aplicar nos selecionados</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="selectActiveSitesOnly()"><i class="ri-check-double-line"></i> Selecionar ativos</button>
+          <div class="sites-toolbar">
+            <div class="form-group">
+              <label class="form-label">Buscar</label>
+              <input type="text" class="form-input" id="sitesSearchInput" placeholder="Nome, domínio, URL ou código..." oninput="renderSitesList()">
+            </div>
+            <div class="form-group" style="flex:0 1 160px;">
+              <label class="form-label">Filtro</label>
+              <select class="form-select" id="sitesQuickFilter" onchange="renderSitesList()">
+                <option value="all">Todos</option>
+                <option value="active">Ativos</option>
+                <option value="paused">Pausados</option>
+                <option value="invite_on">Convite ligado</option>
+                <option value="invite_off">Convite desligado</option>
+                <option value="fallback_active">Fallback em uso</option>
+                <option value="no_target">Sem URL principal</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:0 1 160px;">
+              <label class="form-label">Ordenar</label>
+              <select class="form-select" id="sitesSortOrder" onchange="renderSitesList()">
+                <option value="newest">Mais novos</option>
+                <option value="oldest">Mais antigos</option>
+                <option value="name_asc">Nome A-Z</option>
+                <option value="name_desc">Nome Z-A</option>
+                <option value="visits_desc">Mais visitas</option>
+                <option value="blocked_desc">Mais bloqueios</option>
+              </select>
+            </div>
           </div>
-          <span id="sitesBulkPrimaryUrlMsg" style="display: block; margin-top: 10px; font-size: 13px;"></span>
-          <span id="sitesSelectedCount" style="display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary);"></span>
+          <div class="bulk-bar" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);">
+            <label class="radio-label"><input type="checkbox" id="sitesSelectAll" onchange="toggleSelectAllSites(this.checked)"> Selecionar visíveis</label>
+            <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(true)"><i class="ri-play-circle-line"></i> Ativar</button>
+            <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesActive(false)"><i class="ri-pause-circle-line"></i> Pausar</button>
+            <span id="sitesSelectedCount" style="font-size: 12px; color: var(--text-secondary);"></span>
+            <span id="sitesBulkMsg" style="margin-left: 8px; font-size: 13px;"></span>
+          </div>
+          <details class="sites-mass">
+            <summary><i class="ri-more-line"></i> Ações em massa (URL, fallback, excluir)</summary>
+            <div class="bulk-bar" style="margin-bottom: 12px;">
+              <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(true)"><i class="ri-links-line"></i> Habilitar fallback</button>
+              <button class="btn btn-secondary btn-sm" onclick="bulkSetSitesFallback(false)"><i class="ri-links-line"></i> Desabilitar fallback</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteAllSites()"><i class="ri-delete-bin-2-line"></i> Deletar todos os sites</button>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 10px;">Altera a URL principal dos links selecionados e remove contingência.</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <input type="url" class="form-input" id="sitesBulkPrimaryUrlInput" placeholder="https://sua-landing.com/pagina" style="flex: 1; min-width: 220px;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="bulkSetSitesPrimaryUrl()"><i class="ri-checkbox-multiple-line"></i> Aplicar nos selecionados</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="selectActiveSitesOnly()"><i class="ri-check-double-line"></i> Selecionar ativos</button>
+            </div>
+            <span id="sitesBulkPrimaryUrlMsg" style="display: block; margin-top: 10px; font-size: 13px;"></span>
+          </details>
         </div>
       </div>
       <div id="sitesList"></div>
@@ -2885,6 +2906,7 @@
           if (dr && dr.ok) { const ddata = await dr.json(); domainsList = ddata.domains || []; }
           else domainsList = [];
         } catch (e) { domainsList = []; }
+        await loadInvitePages();
         updateSiteSelectors();
         renderSitesList();
       } catch (e) { sites = []; domainsList = []; updateSiteSelectors(); renderSitesList(); }
@@ -2917,6 +2939,8 @@
         if (filter === 'paused' && (s.is_active !== 0 && s.is_active !== false)) return false;
         if (filter === 'fallback_active' && !((s.fallback_override_url || '').trim())) return false;
         if (filter === 'fallback_enabled' && !(s.use_fallback !== 0 && s.use_fallback !== false)) return false;
+        if (filter === 'invite_on' && (s.bridge_style || '') !== 'invite') return false;
+        if (filter === 'invite_off' && (s.bridge_style || '') === 'invite') return false;
         if (filter === 'no_target' && ((s.target_url || '').trim())) return false;
         return true;
       }).sort((a, b) => {
@@ -2936,74 +2960,100 @@
       el.textContent = n > 0 ? (n + ' link(s) selecionado(s) para ação em massa.') : 'Nenhum link selecionado.';
     }
 
+    function invitePageOptionsHtml(selectedId) {
+      const pages = invitePagesCache || [];
+      if (!pages.length) return '<option value="">Crie uma página em Convite Exclusivo</option>';
+      return pages.map(function(p) {
+        const sel = String(p.id) === String(selectedId || '') ? ' selected' : '';
+        const label = (p.name || ('Convite #' + p.id)) + (p.influencer_name ? ' · ' + p.influencer_name : '');
+        return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(label) + '</option>';
+      }).join('');
+    }
+
     function renderSitesList() {
       const container = document.getElementById('sitesList');
       const filtered = getFilteredSitesList();
 
       const meta = document.getElementById('sitesListMeta');
-      if (meta) meta.textContent = `${filtered.length} de ${sites.length} site(s) exibidos`;
+      if (meta) meta.textContent = `${filtered.length} de ${sites.length} site(s)`;
 
       const selectAll = document.getElementById('sitesSelectAll');
       if (selectAll) selectAll.checked = filtered.length > 0 && filtered.every(s => selectedSiteIds.has(s.site_id));
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state"><i class="ri-global-line"></i><h3>Nenhum site cadastrado</h3><p>Clique em "Novo Site" para começar</p></div>`;
+        container.innerHTML = `<div class="empty-state"><i class="ri-global-line"></i><h3>Nenhum site encontrado</h3><p>Ajuste o filtro ou clique em "Novo Site"</p></div>`;
+        updateSitesSelectedCountUI();
         return;
       }
       container.innerHTML = filtered.map(s => {
-        const effUrl = ((s.fallback_override_url || s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const primUrl = ((s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
         const behavior = (s.block_behavior || 'redirect');
-        const behaviorBadge = behavior === 'stealth'
-          ? '<span class="badge-stealth" title="Modo Stealth — Meta Ads">Stealth</span>'
-          : behavior === 'redirect'
-            ? '<span class="badge-redirect" title="Redirect 302 — campanhas antigas">302</span>'
-            : '<span class="badge-redirect">' + behavior + '</span>';
-        const statusBadge = !isActive
-          ? '<span class="badge" style="background:var(--text-secondary);font-size:10px;margin-left:6px;">Pausado</span>'
-          : hasFb
-            ? '<span class="badge badge-warning" style="font-size:10px;margin-left:6px;">Fallback em uso</span>'
-            : '<span class="badge badge-success" style="font-size:10px;margin-left:6px;">Ativo</span>';
-        const destinoCard = (s.fallback_override_url || '').trim()
-          ? `<div style="margin-top:10px;padding:10px 12px;background:rgba(210,153,34,0.12);border-radius:8px;border:1px solid rgba(210,153,34,0.35);font-size:12px;line-height:1.45;"><div style="font-weight:600;color:var(--warning);margin-bottom:6px;"><i class="ri-arrow-right-circle-line"></i> Destino agora (link do anúncio)</div><code style="font-size:11px;word-break:break-all;display:block;">${effUrl || '—'}</code><div style="margin-top:8px;color:var(--text-secondary);font-size:11px;">URL principal cadastrada (não é alterada pelo fallback):<br><code style="word-break:break-all;">${primUrl || '—'}</code></div></div>`
-          : (primUrl ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">Landing: <code style="word-break:break-all;font-size:11px;">${primUrl}</code></div>` : '');
+        const inviteOn = (s.bridge_style || '') === 'invite';
+        const isStealth = behavior === 'stealth';
+        const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
+        const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
+        const inviteSelect = isStealth
+          ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" ${inviteOn ? '' : 'style="display:none"'} onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>`
+          : '';
         return `
         <div class="site-card">
-          <div class="site-card-header">
-            <div>
-              <div class="site-card-title"><label class="radio-label" style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;"><input type="checkbox" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)"></label>${s.name} ${behaviorBadge} ${statusBadge} ${(s.use_fallback !== 0 && s.use_fallback !== false) ? '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--primary);opacity:0.9;" title="Substituição de link ativa ao cair">Fallback</span>' : '<span class="badge" style="font-size:10px;margin-left:4px;background:var(--text-secondary);" title="Sem substituição ao cair">Sem fallback</span>'}</div>
-              <div class="site-card-domain">${s.domain || 'Sem domínio'}</div>
-              ${destinoCard}
+          <div class="site-card-top">
+            <div style="min-width:0;flex:1;">
+              <div class="site-card-title">
+                <label class="radio-label" style="display:inline-flex;margin:0;">
+                  <input type="checkbox" class="site-select-cb" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)">
+                </label>
+                <span>${escapeHtml(s.name || s.site_id)}</span>
+              </div>
+              <div class="site-card-domain">${escapeHtml(s.domain || s.selected_domain || 'Sem domínio')}</div>
+              <div class="site-card-meta">
+                ${isStealth ? '<span class="badge-stealth" style="margin:0;">Stealth</span>' : '<span class="site-chip site-chip-off">' + escapeHtml(behavior) + '</span>'}
+                ${!isActive ? '<span class="site-chip site-chip-off">Pausado</span>' : '<span class="site-chip site-chip-ok">Ativo</span>'}
+                ${inviteOn ? '<span class="site-chip site-chip-ok">Convite ON</span>' : (isStealth ? '<span class="site-chip site-chip-off">Convite OFF</span>' : '')}
+                ${hasFb ? '<span class="site-chip site-chip-warn">Fallback</span>' : ''}
+              </div>
+              ${landingShort ? '<div class="site-landing">' + landingShort + '</div>' : ''}
+            </div>
+            <div class="site-card-stats">
+              <div class="site-card-stat"><div class="site-card-stat-value">${s.total_visits || 0}</div><div class="site-card-stat-label">Visitas</div></div>
+              <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--danger)">${s.blocked_visits || 0}</div><div class="site-card-stat-label">Bloq.</div></div>
+              <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--success)">${allowed}</div><div class="site-card-stat-label">Leads</div></div>
+            </div>
+          </div>
+          <div class="site-card-row">
+            <div class="site-invite-box">
+              ${isStealth ? `
+                <span class="site-invite-label"><i class="ri-user-star-line"></i> Convite exclusivo</span>
+                <label class="switch switch-sm" title="Ativar ou desativar o convite neste link">
+                  <input type="checkbox" ${inviteOn ? 'checked' : ''} onchange="toggleSiteInvite('${s.site_id}', this.checked)">
+                  <span class="slider"></span>
+                </label>
+                ${inviteSelect}
+              ` : '<span class="site-invite-label" style="opacity:.55">Convite só no modo Stealth</span>'}
             </div>
             <div class="site-card-actions">
-              <button class="btn btn-primary btn-sm" onclick="openReport('${s.site_id}')" title="Ver relatório individual"><i class="ri-file-chart-line"></i> Relatório</button>
-              <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')" title="Editar site"><i class="ri-edit-line"></i></button>
-              ${(s.block_behavior === 'stealth') ? `<button class="btn btn-secondary btn-sm" onclick="openInviteEditorForSite('${s.site_id}')" title="Convite exclusivo"><i class="ri-user-star-line"></i></button>` : ''}
-              <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')"><i class="ri-delete-bin-line"></i></button>
+              <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')" title="Copiar link do Ads"><i class="ri-file-copy-line"></i> Copiar link</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')" title="Ver links"><i class="ri-links-line"></i></button>
+              <button class="btn btn-secondary btn-sm btn-icon" onclick="openReport('${s.site_id}')" title="Relatório"><i class="ri-file-chart-line"></i></button>
+              <button class="btn btn-secondary btn-sm btn-icon" onclick="editSite('${s.site_id}')" title="Editar"><i class="ri-edit-line"></i></button>
+              <button class="btn btn-danger btn-sm btn-icon" onclick="deleteSite('${s.site_id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
             </div>
           </div>
-          <div class="site-card-stats">
-            <div class="site-card-stat"><div class="site-card-stat-value">${s.total_visits || 0}</div><div class="site-card-stat-label">Visitas</div></div>
-            <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--danger)">${s.blocked_visits || 0}</div><div class="site-card-stat-label">Bloqueados</div></div>
-            <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--success)">${(s.total_visits || 0) - (s.blocked_visits || 0)}</div><div class="site-card-stat-label">Permitidos</div></div>
-          </div>
-          <div style="margin-top: 15px;">
-            <div class="form-label" style="margin-bottom: 6px;">🔗 Link para usar nos Ads (Meta Ads, etc.)</div>
+          <div class="site-links-panel" id="siteFullLinksWrap-${s.site_id}">
             <div style="margin-bottom: 8px;">
-              <label class="form-label" style="margin-bottom: 4px; font-size: 12px;">Usar domínio:</label>
+              <label class="form-label" style="margin-bottom: 4px; font-size: 12px;">Domínio do link</label>
               <select class="form-select" id="domainSelect-${s.site_id}" style="max-width: 280px;" onchange="updateSiteLinkDisplays('${s.site_id}')">
                 <option value="" ${!s.selected_domain ? 'selected' : ''}>Padrão</option>
                 ${(domainsList || []).map(d => '<option value="' + (d.domain || '') + '" ' + (s.selected_domain === d.domain ? 'selected' : '') + '>' + (d.domain || '') + '</option>').join('')}
               </select>
             </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Domínio gerado</div>
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link gerado</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkBase('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkBase-${s.site_id}">${s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—'}</span>
             </div>
-            <p style="margin: 10px 0 8px; color: var(--text-secondary); font-size: 12px;">UTMs configuradas em <strong>Configurações</strong> e no <strong>Editar Site</strong>.</p>
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Referência + UTMs (Meta Ads)</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
@@ -3014,10 +3064,6 @@
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkTikTokRefOnly-${s.site_id}">${s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok')) : '—'}</span>
             </div>
-            <div style="display: flex; justify-content: flex-end; margin: 10px 0 8px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')"><i class="ri-eye-line"></i> Mostrar/Ocultar links completos</button>
-            </div>
-            <div id="siteFullLinksWrap-${s.site_id}" style="display: none;">
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Link completo (Meta Ads)</div>
             <div class="code-block" style="font-size: 12px; padding: 10px;">
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
@@ -3028,8 +3074,6 @@
               <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
               <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
             </div>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">Use os links completos por plataforma nos anúncios.</p>
           </div>
         </div>
       `;
@@ -3707,15 +3751,15 @@
     function toggleSiteSelection(siteId, checked) {
       if (checked) selectedSiteIds.add(siteId);
       else selectedSiteIds.delete(siteId);
-      const filteredCount = document.querySelectorAll('#sitesList input[type="checkbox"]').length;
-      const checkedCount = document.querySelectorAll('#sitesList input[type="checkbox"]:checked').length;
+      const filteredCount = document.querySelectorAll('#sitesList .site-select-cb').length;
+      const checkedCount = document.querySelectorAll('#sitesList .site-select-cb:checked').length;
       const allEl = document.getElementById('sitesSelectAll');
       if (allEl) allEl.checked = filteredCount > 0 && checkedCount === filteredCount;
       updateSitesSelectedCountUI();
     }
 
     function toggleSelectAllSites(checked) {
-      document.querySelectorAll('#sitesList input[type="checkbox"]').forEach(cb => {
+      document.querySelectorAll('#sitesList .site-select-cb').forEach(cb => {
         const id = cb.getAttribute('data-site-id');
         cb.checked = checked;
         if (!id) return;
@@ -5322,7 +5366,83 @@
     function toggleSiteFullLinks(siteId) {
       const wrap = document.getElementById('siteFullLinksWrap-' + siteId);
       if (!wrap) return;
-      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+      wrap.classList.toggle('open');
+    }
+
+    async function toggleSiteInvite(siteId, enabled) {
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      if (!site) return;
+      if (enabled && !(invitePagesCache || []).length && !site.invite_page_id) {
+        alert('Crie uma página de convite em Convite Exclusivo antes de ativar.');
+        renderSitesList();
+        goToSection('invite');
+        return;
+      }
+      const sel = document.getElementById('inviteQuickSelect-' + siteId);
+      const pageId = (sel && sel.value) || site.invite_page_id || ((invitePagesCache[0] && invitePagesCache[0].id) || null);
+      try {
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            bridge_style: enabled ? 'invite' : 'editorial',
+            invite_page_id: enabled ? pageId : null
+          })
+        });
+        if (!res.ok) {
+          let err = 'Não foi possível alterar o convite';
+          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+          alert(err);
+          renderSitesList();
+          return;
+        }
+        const data = await res.json();
+        if (data && data.site) {
+          site.bridge_style = data.site.bridge_style;
+          site.invite_page_id = data.site.invite_page_id;
+        } else {
+          site.bridge_style = enabled ? 'invite' : 'editorial';
+          if (enabled && pageId) site.invite_page_id = pageId;
+        }
+        renderSitesList();
+      } catch (e) {
+        alert(e.message || 'Erro ao salvar convite');
+        renderSitesList();
+      }
+    }
+
+    async function changeSiteInvitePage(siteId, pageId) {
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      if (!site || !pageId) return;
+      try {
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ bridge_style: 'invite', invite_page_id: pageId })
+        });
+        if (!res.ok) {
+          let err = 'Não foi possível trocar a página';
+          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+          alert(err);
+          return;
+        }
+        site.bridge_style = 'invite';
+        site.invite_page_id = pageId;
+        renderSitesList();
+      } catch (e) {
+        alert(e.message || 'Erro ao salvar');
+      }
+    }
+
+    function copySiteAdsLinkQuick(siteId) {
+      const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+      if (!site || !site.link_code) { alert('Salve o site para gerar o link.'); return; }
+      const sel = document.getElementById('domainSelect-' + siteId);
+      const domainHost = sel ? sel.value : (site.selected_domain || '');
+      const full = buildSitePlatformLink(site, getLinkBaseUrl(domainHost), 'meta') || buildFullLink(site, getLinkBaseUrl(domainHost));
+      if (full) copyToClipboard(full);
     }
 
     function showCopyToast() {
