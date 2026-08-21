@@ -419,7 +419,7 @@ function listStealthThemes() {
 /**
  * Convite exclusivo.
  * withTimer + navPath → após timer consulta /api/n/ (lead→oferta; bot→white/gray no mesmo link).
- * withTimer + destUrl (legado) → location.replace direto.
+ * NUNCA embute URL da oferta no HTML — o Meta lê o código-fonte e rejeita o anúncio.
  */
 function buildInviteBridgeHtml(opts = {}) {
   const name = String(opts.influencerName || 'CONVIDADO').trim() || 'CONVIDADO';
@@ -427,16 +427,16 @@ function buildInviteBridgeHtml(opts = {}) {
   const photo = normalizeImageUrl(opts.photoUrl);
   const banner = normalizeImageUrl(opts.bannerUrl) || photo;
   const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 6));
-  const dest = String(opts.destUrl || '').trim();
   const navPath = String(opts.navPath || '').trim();
-  const withTimer = !!opts.withTimer && (!!navPath || !!dest);
+  const withTimer = !!opts.withTimer && !!navPath;
   const year = new Date().getFullYear();
   const initials = name.replace(/[^A-Za-z0-9À-ÿ]/g, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
   const photoAttr = photo ? esc(photo) : '';
   const bannerAttr = banner ? esc(banner) : '';
 
+  // Sem URL de oferta no HTML. Sem fallback para oferta. Só /api/n/ decide.
   const timerScript = withTimer
-    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},dest=${JSON.stringify(dest)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn'),done=false;function goUrl(u){try{location.replace(u)}catch(e){location.href=u}}function apply(d){if(!d||done)return;done=true;if(d.inline&&d.html){try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next)goUrl(d.next);else if(dest)goUrl(dest)}function pull(){if(!nav){if(dest)goUrl(dest);return}var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(apply).catch(function(){if(dest)goUrl(dest)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Convite reservado. Aguarde.'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
     : '';
 
   const styles = `

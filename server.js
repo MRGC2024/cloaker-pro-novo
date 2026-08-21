@@ -2714,12 +2714,13 @@ async function sendInviteBridgeResponse(res, site, options = {}) {
   const prefix = options.prefix || '';
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
+  // NUNCA passa destUrl (oferta) no HTML — Meta lê o fonte e rejeita o ads.
   const html = buildInviteBridgeHtml({
     influencerName: cfg.influencerName,
     photoUrl: cfg.photoUrl,
     bannerUrl: cfg.bannerUrl,
     timerSeconds: cfg.timerSeconds,
-    destUrl: options.destUrl || '',
+    destUrl: '',
     navPath: options.withTimer ? navPath : '',
     withTimer: !!options.withTimer
   });
@@ -3260,7 +3261,8 @@ function isLearnedBot(ua, headers = {}) {
 // Só crawlers/revisores — NUNCA fb_iab/fban/fb4a (aparecem em Instagram/Facebook no celular).
 const META_DEFENSE_PATTERNS = [
   'facebookexternalhit', 'facebookcatalog', 'facebot', 'instagrambot',
-  'meta-externalagent', 'meta-inspector', 'whatsappbot'
+  'meta-externalagent', 'meta-externalads', 'meta-inspector', 'meta-webindexer',
+  'whatsappbot', 'facebook.com/externalhit'
 ];
 
 const LEGACY_FALSE_BOT_PATTERNS = ['fb_iab', 'fban', 'fbios', 'fb4a', 'facebooksdk', 'facebookplatform', 'fbinternal', 'messenger_lite'];
@@ -3953,10 +3955,13 @@ function evaluateLinkVisitLegacy(site, ctx) {
   const suspectedReviewer = !!ctx.suspectedReviewer;
   const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
 
-  if (ctx.allowMetaReviewers && seemsActualReviewer && destUrl) {
+  // Revisor Meta nunca vai para a oferta (legado também)
+  if (reviewerUa || suspectedReviewer || seemsActualReviewer) {
     out.reviewerBypass = true;
-    out.redirectTarget = destUrl;
-    out.redirectMode = 'offer';
+    out.blocked = true;
+    out.blockReason = 'Revisor/crawler Meta (nunca vê oferta)';
+    out.redirectTarget = safeUrl;
+    out.redirectMode = blockBehavior === 'page' ? 'page' : (shouldEmbedBlock(site, userAgent) ? 'embed' : 'safe');
     return out;
   }
 
@@ -4044,11 +4049,11 @@ function evaluateLinkVisitStealth(site, ctx) {
   const suspectedReviewer = !!ctx.suspectedReviewer;
   const seemsActualReviewer = suspectedReviewer && (reviewerUa || refFromMeta || hasFbclid);
 
-  // Revisores Meta: safe page na mesma URL (embed), nunca oferta — evita padrão bot→A / lead→B
-  if (ctx.allowMetaReviewers && seemsActualReviewer) {
+  // Revisores / crawlers Meta: NUNCA oferta (mesmo com fbclid). Antes só bloqueava se a opção global estivesse ligada — buraco crítico.
+  if (reviewerUa || suspectedReviewer || seemsActualReviewer) {
     out.reviewerBypass = true;
     out.blocked = true;
-    out.blockReason = 'Revisor Meta (página segura)';
+    out.blockReason = 'Revisor/crawler Meta (nunca vê oferta)';
     out.redirectTarget = safeUrl;
     out.redirectMode = blockBehavior === 'page' ? 'page' : 'embed';
     return out;
@@ -4135,8 +4140,8 @@ function getMetaLinkConfigWarnings(site) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
       warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: usesInviteBridge(site)
-        ? 'Convite ON: lead e Meta veem o convite; no timer Meta/bot recebe white/gray no mesmo link e o lead vai à oferta.'
-        : 'Sem convite: lead liberado → oferta; bot/crawler → white/gray editorial.' });
+        ? 'Convite ON: Meta vê convite estático (sem URL da oferta no HTML). Lead → timer → /api/n/ → oferta. Revisores/crawlers Meta nunca recebem a oferta.'
+        : 'Sem convite: lead liberado → oferta; bot/crawler → white/gray. Ative o Convite Exclusivo para o Meta não ver URL da oferta no código.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4262,7 +4267,7 @@ async function handleStealthOfferOk(req, res) {
   return res.status(204).end();
 }
 
-// Navegação pós-ponte Stealth — lead liberado recebe next automaticamente (JS no load).
+// Navegação pós-ponte Stealth — lead liberado recebe next; Meta/bot NUNCA recebe oferta.
 async function handleStealthNavigation(req, res) {
   const prefix = (req.params.prefix || '').toLowerCase().trim();
   const code = (req.params.code || '').toLowerCase();
@@ -4270,14 +4275,30 @@ async function handleStealthNavigation(req, res) {
   const ua = req.headers['user-agent'] || '';
   if (!ua || ua.length < 10) return res.status(403).json({ error: 'Forbidden' });
   if (!checkTrackPostRateLimit(ip)) return res.status(429).json({ error: 'Too many requests' });
-  if (isMetaCrawlerUA(ua)) return res.json({ next: null });
 
   const site = await db.get('SELECT * FROM sites WHERE link_code = ? AND is_active = 1', [code]);
   if (!site || !wantsStealthBehavior(site) || !siteHasOfferDestination(site)) return res.status(404).json({ error: 'Not found' });
   if (!(await validateSiteLinkPrefix(req, site))) return res.status(404).json({ error: 'Not found' });
 
   const ctx = await resolveLinkVisitContext(req, site, { skipRefCheck: false, skipVisitorLog: true });
+
+  // Crawler / revisor / bot / bloqueado: só white/gray no mesmo link — zero URL de oferta no JSON
+  if (
+    isMetaCrawlerUA(ua) ||
+    isBotUserAgent(ua, req.headers) ||
+    isSuspectedReviewerIP(ip) ||
+    (ctx.decision && (ctx.decision.blocked || ctx.decision.reviewerBypass))
+  ) {
+    const safeDelivery = site.gray_page_id && ctx.decision && ctx.decision.blocked && !isMetaCrawlerUA(ua)
+      ? { kind: 'gray', reason: 'nav_safe' }
+      : { kind: 'white', reason: 'nav_safe' };
+    return res.json(await stealthDeliveryToJson(site, ctx, safeDelivery));
+  }
+
   const delivery = await resolveStealthDelivery(site, ctx);
+  if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect' || delivery.kind === 'offer') {
+    return res.json(await stealthDeliveryToJson(site, ctx, delivery));
+  }
   return res.json(await stealthDeliveryToJson(site, ctx, delivery));
 }
 
@@ -4291,21 +4312,20 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Convite ligado: TODOS (lead + Meta/bot) veem o convite primeiro.
-  // No timer → /api/n/: lead vai à oferta; bot/Meta recebe white/gray no MESMO link (inline).
+  // Convite ligado:
+  // - Lead liberado: convite + timer → /api/n/ (oferta só no JSON, nunca no HTML)
+  // - Meta/bot/bloqueado: mesmo convite ESTÁTICO (sem timer, sem URL de oferta no fonte)
   if (usesInviteBridge(site)) {
+    const isLeadOffer = delivery.kind === 'soft_redirect' || delivery.kind === 'redirect' || delivery.kind === 'offer';
     return sendInviteBridgeResponse(res, site, {
       prefix,
       code,
-      destUrl: (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect')
-        ? (delivery.url || ctx.destWithQs)
-        : (delivery.kind === 'offer' ? '' : (ctx.destWithQs || '')),
-      withTimer: true,
-      metaSafe: delivery.kind === 'white' || delivery.kind === 'gray' || delivery.reason === 'crawler' || delivery.reason === 'reviewer'
+      withTimer: isLeadOffer,
+      metaSafe: !isLeadOffer
     });
   }
 
-  // Sem convite: lead → oferta; bot → white/gray
+  // Sem convite: lead → oferta; bot → white/gray (Meta nunca recebe 302 da oferta)
   if (delivery.kind === 'soft_redirect' || delivery.kind === 'redirect') {
     return sendStealthDelivery(res, site, { kind: 'soft_redirect', url: delivery.url || ctx.destWithQs });
   }
