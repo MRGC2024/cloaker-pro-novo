@@ -1555,7 +1555,7 @@ app.post('/api/sites', async (req, res) => {
 // API: Atualizar site (apenas se o site pertencer ao usuário)
 app.put('/api/sites/:siteId', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
-  const existing = await db.get('SELECT link_code, user_id, required_ref_token, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
+  const existing = await db.get('SELECT link_code, user_id, required_ref_token, target_url, bridge_style, invite_page_id, influencer_name, influencer_photo_url, bridge_timer_sec FROM sites WHERE site_id = ?', [req.params.siteId]);
   if (!existing) return res.status(404).json({ error: 'Site não encontrado' });
   if (existing.user_id != null && Number(existing.user_id) !== Number(req.session.userId)) return res.status(403).json({ error: 'Acesso negado a este site' });
   const data = req.body;
@@ -1579,8 +1579,34 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const pathPrefixRegex = /^[a-z0-9_-]{1,32}$/i;
     let pathPrefix = (data.path_prefix != null && typeof data.path_prefix === 'string') ? data.path_prefix.trim().toLowerCase() : null;
     if (pathPrefix !== null && (!pathPrefix || !pathPrefixRegex.test(pathPrefix))) pathPrefix = null;
-    const bridgeStyle = blockBehavior === 'stealth' ? normalizeBridgeStyle(data.bridge_style) : 'editorial';
-    const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(data.invite_page_id) : null;
+    let bridgeStyle;
+    let invitePageId;
+    if (blockBehavior !== 'stealth') {
+      bridgeStyle = 'editorial';
+      invitePageId = null;
+    } else if (data.bridge_style != null && String(data.bridge_style).trim() !== '') {
+      bridgeStyle = normalizeBridgeStyle(data.bridge_style);
+      invitePageId = bridgeStyle === 'invite'
+        ? (data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id)
+        : (data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id);
+    } else {
+      const prev = String(existing.bridge_style || '').toLowerCase().trim();
+      if (prev === 'invite' || prev === '1' || prev === 'true' || prev === 'on') {
+        bridgeStyle = 'invite';
+      } else if (prev === 'editorial' || prev === 'off') {
+        bridgeStyle = 'editorial';
+      } else if (existing.invite_page_id || existing.influencer_name || existing.influencer_photo_url) {
+        bridgeStyle = 'invite';
+      } else {
+        bridgeStyle = 'editorial';
+      }
+      invitePageId = data.invite_page_id !== undefined
+        ? resolveOptionalPageId(data.invite_page_id)
+        : existing.invite_page_id;
+    }
+    if (bridgeStyle !== 'invite' && data.invite_page_id === null) {
+      invitePageId = null;
+    }
     const influencerName = (data.influencer_name || '').trim().slice(0, 80) || null;
     const influencerPhoto = normalizeImageUrl(data.influencer_photo_url || '') || null;
     const influencerBanner = normalizeImageUrl(data.influencer_banner_url || '') || null;
@@ -1661,7 +1687,13 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
     const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
     let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
     if (bridgeStyle !== 'invite') {
-      await db.run(`UPDATE sites SET bridge_style = ? WHERE site_id = ?`, ['editorial', req.params.siteId]);
+      const pageIdOff = req.body.invite_page_id !== undefined
+        ? resolveOptionalPageId(req.body.invite_page_id)
+        : site.invite_page_id;
+      await db.run(
+        `UPDATE sites SET bridge_style = ?, invite_page_id = ? WHERE site_id = ?`,
+        ['editorial', pageIdOff, req.params.siteId]
+      );
     } else {
       if (!invitePageId) invitePageId = resolveOptionalPageId(site.invite_page_id);
       if (!invitePageId) {
@@ -2673,7 +2705,10 @@ function shouldSoftRedirectOffer(site) {
 function usesInviteBridge(site) {
   if (!site || !wantsStealthBehavior(site)) return false;
   const style = String(site.bridge_style || '').toLowerCase().trim();
-  return style === 'invite';
+  if (style === 'invite' || style === '1' || style === 'true' || style === 'on') return true;
+  // Legado: convite vinculado (invite_page_id) ou bridge_style=loading da UI quebrada
+  if (site.invite_page_id) return true;
+  return false;
 }
 
 function clampBridgeTimer(sec) {

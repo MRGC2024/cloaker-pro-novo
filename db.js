@@ -523,13 +523,31 @@ function sqliteAll(sql, params) {
   }
 }
 
+async function repairBridgeStylesAfterRevert() {
+  try {
+    await run(
+      `UPDATE sites SET bridge_style = 'invite'
+       WHERE invite_page_id IS NOT NULL
+         AND (bridge_style IS NULL OR TRIM(bridge_style) = '' OR LOWER(TRIM(bridge_style)) = 'loading')`
+    );
+    await run(
+      `UPDATE sites SET bridge_style = 'editorial'
+       WHERE (invite_page_id IS NULL OR invite_page_id = 0)
+         AND LOWER(TRIM(COALESCE(bridge_style, ''))) = 'loading'`
+    );
+  } catch (e) {
+    console.warn('[db] repairBridgeStylesAfterRevert:', e.message);
+  }
+}
+
 // ---------- API unificada (sempre async) ----------
 async function initDb() {
   if (usePg) {
     await initPg();
-    return;
+  } else {
+    await initSqlite();
   }
-  await initSqlite();
+  await repairBridgeStylesAfterRevert();
 }
 
 function run(sql, params = []) {
