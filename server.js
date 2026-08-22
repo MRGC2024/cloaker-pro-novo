@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, buildLoadingBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1536,7 +1536,9 @@ app.post('/api/sites', async (req, res) => {
       safeRedirect = d ? ('https://' + d + '/') : safeRedirect;
     }
     if (!safeRedirect) safeRedirect = 'https://about.meta.com/';
-    const bridgeStyle = behavior === 'stealth' ? normalizeBridgeStyle(req.body.bridge_style) : 'editorial';
+    const bridgeStyle = behavior === 'stealth'
+      ? normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'loading')
+      : 'editorial';
     const invitePageId = bridgeStyle === 'invite' ? resolveOptionalPageId(req.body.invite_page_id) : null;
     const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
     const influencerPhoto = normalizeImageUrl(req.body.influencer_photo_url || '') || null;
@@ -1649,7 +1651,7 @@ app.put('/api/sites/bulk/primary-url', async (req, res) => {
   }
 });
 
-/** Salva opção de convite no link (ligar/desligar + qual página). */
+/** Salva opção de ponte no link (carregando / convite / desligado). */
 app.put('/api/sites/:siteId/invite', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const site = await db.get('SELECT site_id, user_id, block_behavior, invite_page_id FROM sites WHERE site_id = ?', [req.params.siteId]);
@@ -1660,7 +1662,9 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
   try {
     const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
     let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
-    if (bridgeStyle !== 'invite') {
+    if (bridgeStyle === 'loading') {
+      await db.run(`UPDATE sites SET bridge_style = ? WHERE site_id = ?`, ['loading', req.params.siteId]);
+    } else if (bridgeStyle !== 'invite') {
       await db.run(`UPDATE sites SET bridge_style = ? WHERE site_id = ?`, ['editorial', req.params.siteId]);
     } else {
       if (!invitePageId) invitePageId = resolveOptionalPageId(site.invite_page_id);
@@ -2669,21 +2673,34 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
-/** White emocional (convite) — só se o link tiver a opção ligada. */
-function usesInviteBridge(site) {
-  if (!site || !wantsStealthBehavior(site)) return false;
-  const style = String(site.bridge_style || '').toLowerCase().trim();
-  return style === 'invite';
+/** Ponte stealth (carregando ou convite legado) — só se o link tiver a opção ligada. */
+function getBridgeStyleKind(site) {
+  const style = String(site?.bridge_style || '').toLowerCase().trim();
+  if (style === 'invite') return 'invite';
+  if (style === 'loading' || style === 'load' || style === 'carregando') return 'loading';
+  return 'editorial';
 }
 
-function clampBridgeTimer(sec) {
+function usesStealthBridge(site) {
+  if (!site || !wantsStealthBehavior(site)) return false;
+  const kind = getBridgeStyleKind(site);
+  return kind === 'loading' || kind === 'invite';
+}
+
+function usesInviteBridge(site) {
+  return usesStealthBridge(site) && getBridgeStyleKind(site) === 'invite';
+}
+
+function clampBridgeTimer(sec, style) {
   const n = parseInt(sec, 10);
-  if (!Number.isFinite(n)) return 6;
+  const def = style === 'loading' ? 3 : 6;
+  if (!Number.isFinite(n)) return def;
   return Math.max(2, Math.min(30, n));
 }
 
 function normalizeBridgeStyle(v) {
   const s = String(v || '').toLowerCase().trim();
+  if (s === 'loading' || s === 'load' || s === 'carregando') return 'loading';
   if (s === 'invite' || s === '1' || s === 'true' || s === 'on') return 'invite';
   return 'editorial';
 }
@@ -2693,7 +2710,7 @@ async function resolveInviteConfig(site) {
     influencerName: site.influencer_name || 'CONVIDADO',
     photoUrl: site.influencer_photo_url || '',
     bannerUrl: site.influencer_banner_url || site.influencer_photo_url || '',
-    timerSeconds: clampBridgeTimer(site.bridge_timer_sec)
+    timerSeconds: clampBridgeTimer(site.bridge_timer_sec, 'invite')
   };
   if (!site.invite_page_id || !site.user_id) return fallback;
   const page = await db.get(
@@ -2705,22 +2722,32 @@ async function resolveInviteConfig(site) {
     influencerName: page.influencer_name || fallback.influencerName,
     photoUrl: page.photo_url || '',
     bannerUrl: page.banner_url || page.photo_url || '',
-    timerSeconds: clampBridgeTimer(page.timer_sec != null ? page.timer_sec : fallback.timerSeconds)
+    timerSeconds: clampBridgeTimer(page.timer_sec != null ? page.timer_sec : fallback.timerSeconds, 'invite')
   };
 }
 
-async function sendInviteBridgeResponse(res, site, options = {}) {
-  const cfg = await resolveInviteConfig(site);
+async function sendStealthBridgeResponse(res, site, options = {}) {
   const prefix = options.prefix || '';
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
+  const kind = getBridgeStyleKind(site);
   // NUNCA passa destUrl (oferta) no HTML — Meta lê o fonte e rejeita o ads.
-  const html = buildInviteBridgeHtml({
-    influencerName: cfg.influencerName,
-    photoUrl: cfg.photoUrl,
-    bannerUrl: cfg.bannerUrl,
-    timerSeconds: cfg.timerSeconds,
-    destUrl: '',
+  if (kind === 'invite') {
+    const cfg = await resolveInviteConfig(site);
+    const html = buildInviteBridgeHtml({
+      influencerName: cfg.influencerName,
+      photoUrl: cfg.photoUrl,
+      bannerUrl: cfg.bannerUrl,
+      timerSeconds: cfg.timerSeconds,
+      destUrl: '',
+      navPath: options.withTimer ? navPath : '',
+      withTimer: !!options.withTimer
+    });
+    return sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
+  }
+  const timerSec = clampBridgeTimer(site.bridge_timer_sec, 'loading');
+  const html = buildLoadingBridgeHtml({
+    timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
     withTimer: !!options.withTimer
   });
@@ -4139,9 +4166,12 @@ function getMetaLinkConfigWarnings(site) {
     } else if (normalizeOfferDelivery(site.offer_delivery) === 'page' && site.offer_page_id) {
       warnings.push({ level: 'info', code: 'stealth_zero_redirect', message: 'Zero-Redirect ativo: oferta entregue na mesma URL (página interna), sem salto para outro domínio.' });
     } else {
-      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: usesInviteBridge(site)
-        ? 'Convite ON: Meta vê convite estático (sem URL da oferta no HTML). Lead → timer → /api/n/ → oferta. Revisores/crawlers Meta nunca recebem a oferta.'
-        : 'Sem convite: lead liberado → oferta; bot/crawler → white/gray. Ative o Convite Exclusivo para o Meta não ver URL da oferta no código.' });
+      const bridgeKind = getBridgeStyleKind(site);
+      warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: bridgeKind === 'loading'
+        ? 'Ponte carregando ON: Meta vê skeleton estático (sem URL da oferta no HTML). Lead → timer → /api/n/ → oferta. Revisores/crawlers Meta nunca recebem a oferta.'
+        : bridgeKind === 'invite'
+          ? 'Convite ON (legado): Meta vê convite estático. Prefira a ponte de carregamento — o layout de convite pode estar fingerprintado.'
+          : 'Sem ponte: lead liberado → oferta; bot/crawler → white/gray. Ative a ponte de carregamento para o Meta não ver URL da oferta no código.' });
     }
     if (!site.gray_page_id) {
       warnings.push({ level: 'low', code: 'no_gray_page', message: 'Sem Gray Page: visitantes bloqueados ficam na white page. Configure uma página cinza (isca) em Páginas para bots e revisores.' });
@@ -4312,12 +4342,12 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Convite ligado:
-  // - Lead liberado: convite + timer → /api/n/ (oferta só no JSON, nunca no HTML)
-  // - Meta/bot/bloqueado: mesmo convite ESTÁTICO (sem timer, sem URL de oferta no fonte)
-  if (usesInviteBridge(site)) {
+  // Ponte stealth (carregando ou convite):
+  // - Lead liberado: timer → /api/n/ (oferta só no JSON, nunca no HTML)
+  // - Meta/bot/bloqueado: mesma ponte ESTÁTICA (sem timer, sem URL de oferta no fonte)
+  if (usesStealthBridge(site)) {
     const isLeadOffer = delivery.kind === 'soft_redirect' || delivery.kind === 'redirect' || delivery.kind === 'offer';
-    return sendInviteBridgeResponse(res, site, {
+    return sendStealthBridgeResponse(res, site, {
       prefix,
       code,
       withTimer: isLeadOffer,

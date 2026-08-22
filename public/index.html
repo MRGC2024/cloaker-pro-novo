@@ -1245,8 +1245,10 @@
                 <option value="all">Todos</option>
                 <option value="active">Ativos</option>
                 <option value="paused">Pausados</option>
-                <option value="invite_on">Convite ligado</option>
-                <option value="invite_off">Convite desligado</option>
+                <option value="bridge_on">Ponte ligada</option>
+                <option value="bridge_loading">Ponte · Carregando</option>
+                <option value="bridge_invite">Ponte · Convite</option>
+                <option value="bridge_off">Sem ponte</option>
                 <option value="fallback_active">Fallback em uso</option>
                 <option value="no_target">Sem URL principal</option>
               </select>
@@ -1535,7 +1537,7 @@
       <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.4);">
         <div class="card-header"><h3 class="card-title"><i class="ri-links-line"></i> Gerar novo link para Ads</h3></div>
         <div class="card-body">
-          <p style="color: var(--text-secondary); margin-bottom: 15px;">Cole a URL da oferta, configure o <strong>convite do influenciador</strong> (foto, nome, timer) e gere o link. O lead vê o convite e segue sozinho; o crawler Meta vê o mesmo convite sem salto automático.</p>
+          <p style="color: var(--text-secondary); margin-bottom: 15px;">Cole a URL da oferta e gere o link Stealth. Por padrão o lead passa pela ponte <strong>Carregando</strong> (neutra, recomendada). Opcional: <strong>Convite exclusivo</strong> com foto e nome do influenciador.</p>
           <div class="form-group">
             <label class="form-label">URL da sua landing page</label>
             <input type="url" class="form-input" id="quickTargetUrl" placeholder="https://seusite.com/landing">
@@ -1551,8 +1553,8 @@
             </select>
           </div>
           <div style="margin: 16px 0; padding: 14px 16px; background: rgba(15,23,42,0.04); border-radius: 12px; border: 1px solid var(--border);">
-            <div class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> Convite exclusivo</div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 10px;">Crie a página em <strong>Convite Exclusivo</strong> e ligue no link depois (ou ao editar o site). Por padrão o link nasce <strong>sem</strong> convite.</p>
+            <div class="form-label" style="margin-bottom: 8px;"><i class="ri-loader-4-line"></i> Ponte do lead</div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 10px;">Novos links nascem com <strong>Carregando</strong> (skeleton neutro). Para convite com influenciador, escolha em Meus Sites ou em <strong>Convite Exclusivo</strong>.</p>
           </div>
           <button class="btn btn-primary" onclick="generateLinkFromUrl()"><i class="ri-link"></i> Gerar link para Ads</button>
           <div id="generatedLinkBox" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--success);">
@@ -2146,7 +2148,7 @@
       <ul style="color: var(--text-secondary); margin: 0 0 20px 20px; font-size: 0.95rem;">
           <li><strong>White page</strong> — o que bot/crawler/bloqueado veem (editorial)</li>
           <li><strong>Gray page</strong> — isca alternativa para visitantes bloqueados</li>
-          <li><strong>Oferta</strong> — só via Zero-Redirect interno (opcional). O lead normal passa pelo <strong>Convite Exclusivo</strong></li>
+          <li><strong>Oferta</strong> — só via Zero-Redirect interno (opcional). O lead normal passa pela <strong>ponte Carregando</strong> ou <strong>Convite</strong></li>
       </ul>
       <p style="color: var(--text-secondary); margin-bottom: 20px;">Use <strong>Gerar pacote Stealth</strong> para criar white, gray e oferta. Cada geração sorteia <strong>tema, layout e textos</strong> diferentes — ideal para rotacionar campanhas. A <strong>URL externa da oferta</strong> você configura em <strong>Meus Sites</strong>.</p>
       <div id="pagesList" class="info-grid" style="grid-template-columns: 1fr;">
@@ -2165,7 +2167,7 @@
         <i class="ri-information-line"></i>
         <div>
           <strong>Como funciona</strong>
-          <p>1) Crie a página aqui (foto, nome, timer). 2) Em <strong>Meus Sites</strong>, ligue o convite no link e escolha qual página usar. Lead e Meta veem o convite; no timer o Meta fica no <strong>mesmo link</strong> (white/gray) e o lead vai à oferta.</p>
+          <p>1) Crie a página aqui (foto, nome, timer). 2) Em <strong>Meus Sites</strong>, escolha <strong>Ponte · Convite</strong> no link. Recomendamos <strong>Carregando</strong> para campanhas novas — layout neutro, menos risco de detecção.</p>
         </div>
       </div>
       <div id="invitePagesList" class="info-grid" style="grid-template-columns: 1fr;">
@@ -2496,7 +2498,7 @@
               <li id="stealthCheckPage" class="ok"><i class="ri-checkbox-circle-fill"></i> <strong>White + gray</strong> criadas automaticamente para esta campanha (textos únicos)</li>
               <li id="stealthCheckOffer" class="fail"><i class="ri-close-circle-fill"></i> URL externa da <strong>oferta</strong> (checkout / landing)</li>
               <li id="stealthCheckTheme" class="ok"><i class="ri-information-line"></i> Tema sorteado automaticamente — <strong>17 nichos</strong> editoriais diferentes</li>
-              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead → <strong>convite</strong> → oferta. Bot/crawler → <strong>white/gray</strong> editorial</li>
+              <li id="stealthCheckAttribution" class="ok"><i class="ri-information-line"></i> Lead → <strong>ponte</strong> (carregando ou convite) → oferta. Bot/crawler → <strong>white/gray</strong></li>
             </ul>
             <div id="stealthWarningBanner" class="stealth-warning-banner" style="display:none;">
               <i class="ri-error-warning-fill"></i>
@@ -2527,11 +2529,14 @@
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
             <div id="inviteBridgeBox" style="margin-bottom: 14px; padding: 12px 14px; background: rgba(15,23,42,0.04); border-radius: 10px; border: 1px solid var(--border);">
-              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> Convite exclusivo (opcional)</label>
-              <label class="radio-label" style="margin-bottom:10px;">
-                <input type="checkbox" id="siteUseInvite" onchange="syncSiteInviteSelect()">
-                <span>Usar convite neste link</span>
-              </label>
+              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-route-line"></i> Ponte do lead (mesma URL)</label>
+              <div class="form-group" style="margin-bottom:8px;">
+                <select class="form-select" id="siteBridgeStyleSelect" onchange="syncSiteBridgeSelect()">
+                  <option value="loading">Carregando — skeleton neutro (recomendado)</option>
+                  <option value="invite">Convite exclusivo — influenciador</option>
+                  <option value="editorial">Desligado — lead vai direto à oferta</option>
+                </select>
+              </div>
               <div class="form-group" id="siteInvitePageWrap" style="display:none;margin-bottom:8px;">
                 <label class="form-label">Página de convite</label>
                 <select class="form-select" id="siteInvitePageId">
@@ -2539,7 +2544,7 @@
                 </select>
                 <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Crie páginas em <a href="#invite" onclick="goToSection('invite'); closeSiteModal(); return false;">Convite Exclusivo</a>.</small>
               </div>
-              <input type="hidden" id="siteBridgeStyle" value="editorial">
+              <input type="hidden" id="siteBridgeStyle" value="loading">
               <input type="hidden" id="siteInfluencerName" value="">
               <input type="hidden" id="siteInfluencerPhoto" value="">
               <input type="hidden" id="siteInfluencerBanner" value="">
@@ -2555,7 +2560,7 @@
             <div class="form-group" style="margin-bottom: 8px;">
               <label class="form-label"><i class="ri-flashlight-line"></i> Entrega da oferta</label>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url" checked> <strong>URL externa</strong> — após o convite (timer)</label>
+                <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryUrl" value="url" checked> <strong>URL externa</strong> — após a ponte (timer)</label>
                 <label class="radio-label"><input type="radio" name="siteOfferDelivery" id="siteOfferDeliveryPage" value="page"> <strong>Zero-Redirect</strong> — oferta em Páginas (HTML interno)</label>
               </div>
             </div>
@@ -2658,7 +2663,7 @@
         <p id="stealthConfirmIntro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Você está criando um <strong>site novo em modo Stealth</strong> para Meta Ads. Confirme que entendeu:</p>
         <ul class="stealth-checklist" style="margin-bottom: 16px;">
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> White + gray criadas <strong>automaticamente</strong> e já vinculadas ao link</li>
-          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Lead vê <strong>convite exclusivo</strong> e segue sozinho à oferta</li>
+          <li class="ok"><i class="ri-checkbox-circle-fill"></i> Lead vê a <strong>ponte</strong> (carregando ou convite) e segue sozinho à oferta</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Bot/crawler Meta vê <strong>white ou gray</strong> editorial (nunca a oferta)</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Use o <strong>link novo</strong> nas campanhas</li>
           <li class="ok"><i class="ri-checkbox-circle-fill"></i> Campanhas <strong>já ativas</strong> devem continuar nos links antigos</li>
@@ -2939,8 +2944,12 @@
         if (filter === 'paused' && (s.is_active !== 0 && s.is_active !== false)) return false;
         if (filter === 'fallback_active' && !((s.fallback_override_url || '').trim())) return false;
         if (filter === 'fallback_enabled' && !(s.use_fallback !== 0 && s.use_fallback !== false)) return false;
-        if (filter === 'invite_on' && (s.bridge_style || '') !== 'invite') return false;
-        if (filter === 'invite_off' && (s.bridge_style || '') === 'invite') return false;
+        if (filter === 'bridge_on' && !['loading', 'invite'].includes(s.bridge_style || '')) return false;
+        if (filter === 'bridge_loading' && (s.bridge_style || '') !== 'loading') return false;
+        if (filter === 'bridge_invite' && (s.bridge_style || '') !== 'invite') return false;
+        if (filter === 'bridge_off' && (s.bridge_style || 'editorial') !== 'editorial') return false;
+        if (filter === 'invite_on' && !['loading', 'invite'].includes(s.bridge_style || '')) return false;
+        if (filter === 'invite_off' && ['loading', 'invite'].includes(s.bridge_style || '')) return false;
         if (filter === 'no_target' && ((s.target_url || '').trim())) return false;
         return true;
       }).sort((a, b) => {
@@ -2958,6 +2967,25 @@
       if (!el) return;
       const n = selectedSiteIds.size;
       el.textContent = n > 0 ? (n + ' link(s) selecionado(s) para ação em massa.') : 'Nenhum link selecionado.';
+    }
+
+    function bridgeStyleChip(style) {
+      if (style === 'loading') return '<span class="site-chip site-chip-ok">Carregando</span>';
+      if (style === 'invite') return '<span class="site-chip site-chip-ok">Convite</span>';
+      return '<span class="site-chip site-chip-off">Sem ponte</span>';
+    }
+
+    function bridgeStyleSelectHtml(siteId, style, invitePageId) {
+      const bs = style || 'editorial';
+      const inviteSel = bs === 'invite'
+        ? `<select class="form-select" id="inviteQuickSelect-${siteId}" onchange="changeSiteInvitePage('${siteId}', this.value)">${invitePageOptionsHtml(invitePageId)}</select>`
+        : '';
+      return `
+        <select class="form-select" style="max-width:170px" onchange="changeSiteBridgeStyle('${siteId}', this.value)">
+          <option value="loading" ${bs === 'loading' ? 'selected' : ''}>Carregando</option>
+          <option value="invite" ${bs === 'invite' ? 'selected' : ''}>Convite</option>
+          <option value="editorial" ${bs === 'editorial' ? 'selected' : ''}>Desligado</option>
+        </select>${inviteSel}`;
     }
 
     function invitePageOptionsHtml(selectedId) {
@@ -2990,13 +3018,11 @@
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
         const behavior = (s.block_behavior || 'redirect');
-        const inviteOn = (s.bridge_style || '') === 'invite';
+        const bridgeStyle = (s.bridge_style || 'editorial');
         const isStealth = behavior === 'stealth';
         const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
         const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
-        const inviteSelect = isStealth
-          ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" ${inviteOn ? '' : 'style="display:none"'} onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>`
-          : '';
+        const bridgeControls = isStealth ? bridgeStyleSelectHtml(s.site_id, bridgeStyle, s.invite_page_id) : '';
         return `
         <div class="site-card">
           <div class="site-card-top">
@@ -3011,7 +3037,7 @@
               <div class="site-card-meta">
                 ${isStealth ? '<span class="badge-stealth" style="margin:0;">Stealth</span>' : '<span class="site-chip site-chip-off">' + escapeHtml(behavior) + '</span>'}
                 ${!isActive ? '<span class="site-chip site-chip-off">Pausado</span>' : '<span class="site-chip site-chip-ok">Ativo</span>'}
-                ${inviteOn ? '<span class="site-chip site-chip-ok">Convite ON</span>' : (isStealth ? '<span class="site-chip site-chip-off">Convite OFF</span>' : '')}
+                ${isStealth ? bridgeStyleChip(bridgeStyle) : ''}
                 ${hasFb ? '<span class="site-chip site-chip-warn">Fallback</span>' : ''}
               </div>
               ${landingShort ? '<div class="site-landing">' + landingShort + '</div>' : ''}
@@ -3025,13 +3051,9 @@
           <div class="site-card-row">
             <div class="site-invite-box">
               ${isStealth ? `
-                <span class="site-invite-label"><i class="ri-user-star-line"></i> Convite exclusivo</span>
-                <label class="switch switch-sm" title="Ativar ou desativar o convite neste link">
-                  <input type="checkbox" ${inviteOn ? 'checked' : ''} onchange="toggleSiteInvite('${s.site_id}', this.checked)">
-                  <span class="slider"></span>
-                </label>
-                ${inviteSelect}
-              ` : '<span class="site-invite-label" style="opacity:.55">Convite só no modo Stealth</span>'}
+                <span class="site-invite-label"><i class="ri-route-line"></i> Ponte</span>
+                ${bridgeControls}
+              ` : '<span class="site-invite-label" style="opacity:.55">Ponte só no modo Stealth</span>'}
             </div>
             <div class="site-card-actions">
               <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')" title="Copiar link do Ads"><i class="ri-file-copy-line"></i> Copiar link</button>
@@ -3169,11 +3191,11 @@
       document.getElementById('siteOfferPageId').value = '';
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
-      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = false;
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'editorial';
+      if (document.getElementById('siteBridgeStyleSelect')) document.getElementById('siteBridgeStyleSelect').value = 'loading';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'loading';
       await loadInvitePages();
       fillInvitePageSelects('');
-      syncSiteInviteSelect();
+      syncSiteBridgeSelect();
       document.getElementById('siteBlockDesktop').checked = true;
       document.getElementById('siteBlockFacebook').checked = true;
       document.getElementById('siteBlockBots').checked = true;
@@ -3249,11 +3271,11 @@
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = !offerPageMode;
       await loadInvitePages();
       fillInvitePageSelects(site.invite_page_id || '');
-      const useInvite = (site.bridge_style || '') === 'invite';
-      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = useInvite;
+      const bridgeStyle = (site.bridge_style || 'editorial');
+      if (document.getElementById('siteBridgeStyleSelect')) document.getElementById('siteBridgeStyleSelect').value = ['loading', 'invite'].includes(bridgeStyle) ? bridgeStyle : 'editorial';
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = useInvite ? 'invite' : 'editorial';
-      syncSiteInviteSelect();
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = bridgeStyle;
+      syncSiteBridgeSelect();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
       document.getElementById('siteBlockBots').checked = site.block_bots;
@@ -3438,8 +3460,10 @@
         gray_page_id: isStealthBehavior && !autoStealthPages ? (document.getElementById('siteGrayPageId').value || null) : null,
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
-        bridge_style: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked ? 'invite' : 'editorial',
-        invite_page_id: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked
+        bridge_style: isStealthBehavior
+          ? ((document.getElementById('siteBridgeStyleSelect') && document.getElementById('siteBridgeStyleSelect').value) || 'loading')
+          : 'editorial',
+        invite_page_id: isStealthBehavior && document.getElementById('siteBridgeStyleSelect') && document.getElementById('siteBridgeStyleSelect').value === 'invite'
           ? (document.getElementById('siteInvitePageId') && document.getElementById('siteInvitePageId').value) || null
           : null,
         auto_stealth_pages: autoStealthPages,
@@ -3601,7 +3625,10 @@
       stealthSites.forEach(function(s) {
         const opt = document.createElement('option');
         opt.value = s.site_id;
-        opt.textContent = (s.name || s.site_id) + ((s.bridge_style === 'invite') ? ' · convite ON' : '');
+        opt.textContent = (s.name || s.site_id) + (
+          s.bridge_style === 'invite' ? ' · convite' :
+          s.bridge_style === 'loading' ? ' · carregando' : ''
+        );
         sel.appendChild(opt);
       });
       if (prev) { sel.value = prev; loadInviteLinkBinder(); }
@@ -3639,7 +3666,7 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ bridge_style: on ? 'invite' : 'editorial', invite_page_id: on ? pageId : null })
+          body: JSON.stringify({ bridge_style: on ? 'invite' : 'loading', invite_page_id: on ? pageId : null })
         });
         if (!res.ok) {
           let err = 'Erro';
@@ -3733,11 +3760,12 @@
       renderInvitePagesList();
     }
 
-    function syncSiteInviteSelect() {
-      const on = document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked;
+    function syncSiteBridgeSelect() {
+      const sel = document.getElementById('siteBridgeStyleSelect');
+      const style = sel ? sel.value : 'loading';
       const wrap = document.getElementById('siteInvitePageWrap');
-      if (wrap) wrap.style.display = on ? 'block' : 'none';
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = on ? 'invite' : 'editorial';
+      if (wrap) wrap.style.display = style === 'invite' ? 'block' : 'none';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = style;
     }
 
     function openInviteEditorForSite(siteId) {
@@ -5105,7 +5133,7 @@
             offer_delivery: 'url',
             auto_stealth_pages: true,
             stealth_theme: 'auto',
-            bridge_style: 'editorial',
+            bridge_style: 'loading',
             allowed_countries: 'BR',
             selected_domain: selectedDomain || null
           })
@@ -5128,7 +5156,7 @@
         Promise.all([loadSites(), loadPages()]).catch(function() {});
         var ap = site.auto_pages;
         if (ap && !ap.error) {
-          alert('Link Stealth criado.\n\nPor padrão SEM convite.\nPara ativar: menu Convite Exclusivo → criar página → vincular ao link.' + (ap.themeLabel ? '\nTema white/gray: ' + ap.themeLabel : ''));
+          alert('Link Stealth criado com ponte <strong>Carregando</strong> (recomendado).\n\nPara convite com influenciador: Meus Sites → Ponte → Convite.' + (ap.themeLabel ? '\nTema white/gray: ' + ap.themeLabel : ''));
         } else if (ap && ap.error) {
           alert('Link criado, mas as páginas Stealth falharam. Edite o site e vincule white/gray em Páginas.');
         }
@@ -5369,29 +5397,30 @@
       wrap.classList.toggle('open');
     }
 
-    async function toggleSiteInvite(siteId, enabled) {
+    async function changeSiteBridgeStyle(siteId, style) {
       const site = (sites || []).find(function(s) { return s.site_id === siteId; });
       if (!site) return;
-      if (enabled && !(invitePagesCache || []).length && !site.invite_page_id) {
-        alert('Crie uma página de convite em Convite Exclusivo antes de ativar.');
-        renderSitesList();
-        goToSection('invite');
-        return;
+      if (style === 'invite') {
+        if (!(invitePagesCache || []).length && !site.invite_page_id) {
+          alert('Crie uma página de convite em Convite Exclusivo antes de usar esta opção.');
+          renderSitesList();
+          goToSection('invite');
+          return;
+        }
       }
-      const sel = document.getElementById('inviteQuickSelect-' + siteId);
-      const pageId = (sel && sel.value) || site.invite_page_id || ((invitePagesCache[0] && invitePagesCache[0].id) || null);
+      const pageId = (site.invite_page_id || ((invitePagesCache[0] && invitePagesCache[0].id) || null));
+      const payload = style === 'invite'
+        ? { bridge_style: 'invite', invite_page_id: pageId }
+        : { bridge_style: style === 'loading' ? 'loading' : 'editorial', invite_page_id: null };
       try {
         const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            bridge_style: enabled ? 'invite' : 'editorial',
-            invite_page_id: enabled ? pageId : null
-          })
+          body: JSON.stringify(payload)
         });
         if (!res.ok) {
-          let err = 'Não foi possível alterar o convite';
+          let err = 'Não foi possível alterar a ponte';
           try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
           alert(err);
           renderSitesList();
@@ -5402,14 +5431,18 @@
           site.bridge_style = data.site.bridge_style;
           site.invite_page_id = data.site.invite_page_id;
         } else {
-          site.bridge_style = enabled ? 'invite' : 'editorial';
-          if (enabled && pageId) site.invite_page_id = pageId;
+          site.bridge_style = payload.bridge_style;
+          site.invite_page_id = payload.invite_page_id;
         }
         renderSitesList();
       } catch (e) {
-        alert(e.message || 'Erro ao salvar convite');
+        alert(e.message || 'Erro ao salvar ponte');
         renderSitesList();
       }
+    }
+
+    async function toggleSiteInvite(siteId, enabled) {
+      return changeSiteBridgeStyle(siteId, enabled ? 'invite' : 'editorial');
     }
 
     async function changeSiteInvitePage(siteId, pageId) {

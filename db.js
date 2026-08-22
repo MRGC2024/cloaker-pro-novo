@@ -154,7 +154,7 @@ async function initPg() {
     try { await client.query('ALTER TABLE sites ADD COLUMN gray_page_id INTEGER'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN offer_page_id INTEGER'); } catch (e) {}
     try { await client.query("ALTER TABLE sites ADD COLUMN offer_delivery TEXT DEFAULT 'url'"); } catch (e) {}
-    try { await client.query("ALTER TABLE sites ADD COLUMN bridge_style TEXT DEFAULT 'invite'"); } catch (e) {}
+    try { await client.query("ALTER TABLE sites ADD COLUMN bridge_style TEXT DEFAULT 'loading'"); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN influencer_name TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN influencer_photo_url TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN influencer_banner_url TEXT'); } catch (e) {}
@@ -323,7 +323,7 @@ async function initSqlite() {
   try { db.run('ALTER TABLE sites ADD COLUMN gray_page_id INTEGER'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN offer_page_id INTEGER'); } catch (e) {}
   try { db.run("ALTER TABLE sites ADD COLUMN offer_delivery TEXT DEFAULT 'url'"); } catch (e) {}
-  try { db.run("ALTER TABLE sites ADD COLUMN bridge_style TEXT DEFAULT 'invite'"); } catch (e) {}
+  try { db.run("ALTER TABLE sites ADD COLUMN bridge_style TEXT DEFAULT 'loading'"); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN influencer_name TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN influencer_photo_url TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN influencer_banner_url TEXT'); } catch (e) {}

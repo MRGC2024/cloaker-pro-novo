@@ -436,77 +436,135 @@ function buildInviteBridgeHtml(opts = {}) {
 
   // Sem URL de oferta no HTML. Sem fallback para oferta. Só /api/n/ decide.
   const timerScript = withTimer
-    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Convite reservado. Aguarde.'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('vx-prog'),lab=document.getElementById('vx-msg'),cta=document.getElementById('vx-cta'),lock=false,tryN=0;function go(d){if(!d||lock)return;if(d.inline&&d.html){lock=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){lock=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function fetchNav(){tryN++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)go(d);else if(tryN<3)setTimeout(fetchNav,380);else if(lab)lab.textContent='Validando acesso. Aguarde.'}).catch(function(){if(tryN<3)setTimeout(fetchNav,380)})}function frame(){var rem=Math.max(0,total-(Date.now()-start)),sec=Math.ceil(rem/1000),pct=Math.min(100,((total-rem)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=sec>0?('Liberando conteúdo em <strong>'+sec+'s</strong>…'):'Entrando agora…';if(cta)cta.textContent=sec>0?'Aguarde um instante…':'Abrindo…';if(rem<=0){fetchNav();return}requestAnimationFrame(frame)}requestAnimationFrame(frame)}catch(e){}})();</script>`
     : '';
 
   const styles = `
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#e8ecf1;color:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 14px;-webkit-font-smoothing:antialiased}
-    .card{width:100%;max-width:400px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.12)}
-    .hero{height:168px;background:linear-gradient(145deg,#1e293b 0%,#0f172a 55%,#334155 100%);position:relative;overflow:hidden}
-    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-    .hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.35),rgba(15,23,42,.78));pointer-events:none}
-    .hero-meta{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px;z-index:2}
-    .avatar{width:52px;height:52px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#64748b,#334155);overflow:hidden}
-    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
-    .hero-txt{min-width:0}
-    .hero-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.35)}
-    .hero-sub{font-size:12px;color:rgba(255,255,255,.88);margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
-    .body{padding:22px 22px 18px}
-    .badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2563eb;background:#eff6ff;padding:5px 10px;border-radius:999px;margin-bottom:14px}
-    .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#2563eb}
-    h1{font-size:1.35rem;font-weight:800;line-height:1.25;letter-spacing:-.02em;color:#0f172a;margin-bottom:14px}
-    .body p{font-size:14px;line-height:1.6;color:#475569;margin-bottom:12px}
-    .body p strong{color:#0f172a;font-weight:700}
-    .progress{height:4px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:22px 0 10px}
-    .progress>i{display:block;height:100%;width:${withTimer ? '2%' : '100%'};background:#334155;border-radius:99px;transition:width .15s linear}
-    .timer{text-align:center;font-size:13px;color:#64748b;margin-bottom:16px;min-height:1.3em}
-    .btn-main{display:block;width:100%;border:none;border-radius:10px;padding:14px 16px;background:#3f3f46;color:#fff;font-size:15px;font-weight:700;text-align:center;pointer-events:none;cursor:default;user-select:none}
-    .btn-sec{display:block;width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;color:#94a3b8;font-size:14px;font-weight:600;text-align:center;text-decoration:none;pointer-events:none;cursor:default}
-    .foot{text-align:center;font-size:11px;color:#94a3b8;padding:4px 22px 18px;line-height:1.45}
+    body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#eef1f6;color:#111827;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px 16px;-webkit-font-smoothing:antialiased}
+    .vx-panel{width:100%;max-width:392px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 16px 48px rgba(17,24,39,.1);border:1px solid rgba(15,23,42,.06)}
+    .vx-cover{height:156px;background:linear-gradient(135deg,#312e81 0%,#1e1b4b 48%,#4338ca 100%);position:relative;overflow:hidden}
+    .vx-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:.55}
+    .vx-cover-mask{position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,27,75,.2),rgba(30,27,75,.82));pointer-events:none}
+    .vx-profile{position:absolute;left:50%;bottom:-28px;transform:translateX(-50%);z-index:2;text-align:center;width:calc(100% - 32px)}
+    .vx-avatar{width:56px;height:56px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.22);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(145deg,#6366f1,#4338ca);overflow:hidden}
+    .vx-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .vx-handle{font-size:14px;font-weight:800;color:#fff;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+    .vx-tagline{font-size:11px;color:rgba(255,255,255,.9);margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+    .vx-main{padding:42px 22px 20px}
+    .vx-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#4338ca;background:#eef2ff;padding:5px 11px;border-radius:999px;margin-bottom:12px}
+    .vx-chip i{width:5px;height:5px;border-radius:50%;background:#6366f1;display:inline-block}
+    h1{font-size:1.28rem;font-weight:800;line-height:1.28;letter-spacing:-.02em;color:#111827;margin-bottom:12px}
+    .vx-main p{font-size:14px;line-height:1.62;color:#4b5563;margin-bottom:11px}
+    .vx-main p strong{color:#111827;font-weight:700}
+    .vx-track{height:5px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:20px 0 9px}
+    .vx-track span{display:block;height:100%;width:${withTimer ? '3%' : '72%'};background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:99px;transition:width .14s linear}
+    .vx-status{text-align:center;font-size:13px;color:#6b7280;margin-bottom:14px;min-height:1.35em}
+    .vx-cta{display:block;width:100%;border:none;border-radius:11px;padding:13px 16px;background:#374151;color:#fff;font-size:14px;font-weight:700;text-align:center;pointer-events:none;cursor:default;user-select:none}
+    .vx-skip{display:block;width:100%;margin-top:9px;border:1px solid #e5e7eb;border-radius:11px;padding:11px 16px;background:#fafafa;color:#9ca3af;font-size:13px;font-weight:600;text-align:center;pointer-events:none;cursor:default}
+    .vx-foot{text-align:center;font-size:11px;color:#9ca3af;padding:2px 22px 18px;line-height:1.45}
   `;
 
   const staticTimerLabel = withTimer
-    ? `Preparando seu <strong>acesso exclusivo</strong> em ${timerSec}s…`
-    : 'Seu convite está ativo. Aguarde a confirmação da equipe.';
+    ? `Liberando conteúdo em <strong>${timerSec}s</strong>…`
+    : 'Validando acesso. Aguarde a confirmação.';
 
   const bannerImg = bannerAttr
-    ? `<img class="hero-bg" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+    ? `<img class="vx-cover-img" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
     : '';
   const avatarInner = photoAttr
     ? `<img src="${photoAttr}" alt="${nameEsc}" decoding="async" referrerpolicy="no-referrer" onerror="this.remove();this.parentNode.textContent='${esc(initials)}'">`
     : esc(initials);
 
   const body = `
-  <div class="card">
-    <div class="hero">
+  <div class="vx-panel">
+    <div class="vx-cover">
       ${bannerImg}
-      <div class="hero-shade"></div>
-      <div class="hero-meta">
-        <div class="avatar" aria-hidden="true">${avatarInner}</div>
-        <div class="hero-txt">
-          <div class="hero-name">${nameEsc}</div>
-          <div class="hero-sub">Convite exclusivo para você</div>
-        </div>
+      <div class="vx-cover-mask"></div>
+      <div class="vx-profile">
+        <div class="vx-avatar" aria-hidden="true">${avatarInner}</div>
+        <div class="vx-handle">${nameEsc}</div>
+        <div class="vx-tagline">Indicação personalizada</div>
       </div>
     </div>
-    <div class="body">
-      <div class="badge">Convite pessoal</div>
-      <h1>Você foi selecionado para esta oportunidade</h1>
-      <p>O influenciador <strong>${nameEsc}</strong> selecionou você para participar de uma ação exclusiva. Poucas pessoas recebem este acesso — a participação é voluntária e você pode encerrar a qualquer momento.</p>
-      <p>Estamos preparando o ambiente oficial da oportunidade. Em instantes você entra com o mesmo privilégio de quem foi escolhido.</p>
-      <div class="progress" aria-hidden="true"><i id="inv-bar"></i></div>
-      <div class="timer" id="inv-timer">${staticTimerLabel}</div>
-      <div class="btn-main" id="inv-btn">${withTimer ? 'Preparando seu acesso…' : 'Convite reservado'}</div>
-      <div class="btn-sec">Não, obrigado</div>
+    <div class="vx-main">
+      <div class="vx-chip"><i aria-hidden="true"></i> Indicação verificada</div>
+      <h1>Seu nome consta nesta lista de acesso</h1>
+      <p><strong>${nameEsc}</strong> indicou você para conferir o material reservado. O acesso é opcional e você pode sair quando quiser.</p>
+      <p>Estamos validando sua sessão antes de abrir o conteúdo completo.</p>
+      <div class="vx-track" aria-hidden="true"><span id="vx-prog"></span></div>
+      <div class="vx-status" id="vx-msg">${staticTimerLabel}</div>
+      <div class="vx-cta" id="vx-cta">${withTimer ? 'Aguarde um instante…' : 'Acesso reservado'}</div>
+      <div class="vx-skip">Prefiro sair</div>
     </div>
-    <div class="foot">Ação veiculada em conformidade com as diretrizes da plataforma parceira. © ${year}</div>
+    <div class="vx-foot">Conteúdo patrocinado · ${year}</div>
   </div>${timerScript}`;
 
-  return wrapHtml(`${name} · Convite exclusivo`, body, styles, {
-    description: `${name} selecionou você para uma oportunidade exclusiva.`,
-    ogTitle: `Convite exclusivo · ${name}`,
+  return wrapHtml(`${name} · Acesso reservado`, body, styles, {
+    description: `${name} liberou um acesso para você.`,
+    ogTitle: `Acesso · ${name}`,
     ogImage: photo || banner || ''
+  });
+}
+
+/**
+ * Ponte neutra — skeleton + "Carregando conteúdo…"
+ * Meta vê versão estática; lead usa timer → POST /api/n/ (sem URL da oferta no HTML).
+ */
+function buildLoadingBridgeHtml(opts = {}) {
+  const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 3));
+  const navPath = String(opts.navPath || '').trim();
+  const withTimer = !!opts.withTimer && !!navPath;
+  const year = new Date().getFullYear();
+
+  const timerScript = withTimer
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('ld-bar'),lab=document.getElementById('ld-status'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Carregando conteúdo…'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.textContent=s>0?('Carregando conteúdo… '+s+'s'):'Abrindo conteúdo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    : '';
+
+  const styles = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:#f4f6f8;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+    .top{height:3px;background:#e2e8f0;position:sticky;top:0;z-index:2}
+    .top>i{display:block;height:100%;width:${withTimer ? '4%' : '38%'};background:linear-gradient(90deg,#64748b,#94a3b8);border-radius:0 2px 2px 0;transition:width .12s linear}
+    .wrap{max-width:720px;margin:0 auto;padding:28px 20px 48px}
+    .head{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+    .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#cbd5e1,#94a3b8);flex-shrink:0}
+    .head-lines{flex:1;min-width:0}
+    .sk{display:block;border-radius:6px;background:linear-gradient(90deg,#e2e8f0 0%,#f1f5f9 45%,#e2e8f0 90%);background-size:200% 100%;animation:sh 1.4s ease-in-out infinite}
+    @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+    .sk-h{height:14px;width:42%;margin-bottom:8px}
+    .sk-s{height:10px;width:28%}
+    .hero-sk{height:200px;border-radius:12px;margin-bottom:24px}
+    .line-sk{height:12px;margin-bottom:12px}
+    .line-sk.w90{width:90%}.line-sk.w75{width:75%}.line-sk.w60{width:60%}.line-sk.w85{width:85%}
+    .status{margin-top:32px;text-align:center;font-size:14px;color:#64748b;min-height:1.4em}
+    .foot{margin-top:40px;text-align:center;font-size:11px;color:#94a3b8}
+  `;
+
+  const statusText = withTimer ? `Carregando conteúdo… ${timerSec}s` : 'Carregando conteúdo…';
+
+  const body = `
+  <div class="top" aria-hidden="true"><i id="ld-bar"></i></div>
+  <div class="wrap">
+    <div class="head">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="head-lines">
+        <span class="sk sk-h" aria-hidden="true"></span>
+        <span class="sk sk-s" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="sk hero-sk" aria-hidden="true"></div>
+    <span class="sk line-sk w90" aria-hidden="true"></span>
+    <span class="sk line-sk w75" aria-hidden="true"></span>
+    <span class="sk line-sk w85" aria-hidden="true"></span>
+    <span class="sk line-sk w60" aria-hidden="true"></span>
+    <p class="status" id="ld-status" role="status">${statusText}</p>
+    <p class="foot">© ${year}</p>
+  </div>${timerScript}`;
+
+  return wrapHtml('Carregando…', body, styles, {
+    description: 'Carregando conteúdo.',
+    ogTitle: 'Carregando…'
   });
 }
 
@@ -516,6 +574,7 @@ module.exports = {
   listStealthThemes,
   resolveThemeKey,
   buildInviteBridgeHtml,
+  buildLoadingBridgeHtml,
   normalizeImageUrl,
   THEMES
 };
