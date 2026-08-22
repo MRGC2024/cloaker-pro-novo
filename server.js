@@ -21,6 +21,7 @@ const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
 const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, buildLoadingBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
+const { generateBridgeFingerprint } = require('./services/bridgePageVariations');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1542,8 +1543,9 @@ app.post('/api/sites', async (req, res) => {
     const influencerPhoto = normalizeImageUrl(req.body.influencer_photo_url || '') || null;
     const influencerBanner = normalizeImageUrl(req.body.influencer_banner_url || '') || null;
     const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec);
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId]);
+    const bridgeSeed = behavior === 'stealth' ? generateBridgeFingerprint() : null;
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, bridge_seed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, bridgeSeed]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
@@ -1693,9 +1695,13 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
     const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
     let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
     if (bridgeStyle === 'loading') {
+      const cur = await db.get('SELECT bridge_seed FROM sites WHERE site_id = ?', [req.params.siteId]);
+      const timerSec = clampBridgeTimer(req.body.bridge_timer_sec);
+      const seedSql = (!cur || !cur.bridge_seed) ? ', bridge_seed = ?' : '';
+      const seedVal = (!cur || !cur.bridge_seed) ? [generateBridgeFingerprint()] : [];
       await db.run(
-        `UPDATE sites SET bridge_style = ?, invite_page_id = NULL WHERE site_id = ?`,
-        ['loading', req.params.siteId]
+        `UPDATE sites SET bridge_style = ?, invite_page_id = NULL, bridge_timer_sec = ?${seedSql} WHERE site_id = ?`,
+        ['loading', timerSec, ...seedVal, req.params.siteId]
       );
     } else if (bridgeStyle !== 'invite') {
       const pageIdOff = req.body.invite_page_id !== undefined
@@ -2786,11 +2792,12 @@ async function sendLoadingBridgeResponse(res, site, options = {}) {
   const prefix = options.prefix || '';
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
-  const timerSec = Math.max(2, Math.min(4, clampBridgeTimer(site.bridge_timer_sec) || 3));
+  const timerSec = clampBridgeTimer(site.bridge_timer_sec) || 3;
   const html = buildLoadingBridgeHtml({
     timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
-    withTimer: !!options.withTimer
+    withTimer: !!options.withTimer,
+    bridgeSeed: site.bridge_seed || null
   });
   sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
 }

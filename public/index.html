@@ -2540,11 +2540,12 @@
                 </select>
                 <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Crie páginas em <a href="#invite" onclick="goToSection('invite'); closeSiteModal(); return false;">Convite Exclusivo</a>.</small>
               </div>
+              <div class="form-group" id="siteBridgeTimerWrap" style="display:none;margin-bottom:8px;">
+                <label class="form-label">Timer da ponte (segundos)</label>
+                <input type="number" class="form-input" id="siteBridgeTimer" min="2" max="30" value="3" style="max-width:120px;">
+                <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Carregando: 2–30s (padrão 3). Convite: usa timer da página de convite.</small>
+              </div>
               <input type="hidden" id="siteBridgeStyle" value="editorial">
-              <input type="hidden" id="siteInfluencerName" value="">
-              <input type="hidden" id="siteInfluencerPhoto" value="">
-              <input type="hidden" id="siteInfluencerBanner" value="">
-              <input type="hidden" id="siteBridgeTimer" value="6">
             </div>
             <div class="form-group" id="siteGrayManualBox" style="margin-bottom: 12px; display: none;">
               <label class="form-label"><i class="ri-contrast-drop-line"></i> Gray page — isca para bloqueados (opcional)</label>
@@ -3170,6 +3171,7 @@
       document.getElementById('siteOfferPageId').value = '';
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
+      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = 3;
       if (document.getElementById('siteBridgeMode')) document.getElementById('siteBridgeMode').value = 'editorial';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'editorial';
       await loadInvitePages();
@@ -3255,6 +3257,7 @@
       if (document.getElementById('siteBridgeMode')) document.getElementById('siteBridgeMode').value = bridgeMode;
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = bridgeMode;
+      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec != null ? site.bridge_timer_sec : 3;
       syncSiteBridgeMode();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
@@ -3445,6 +3448,9 @@
           : 'editorial',
         invite_page_id: isStealthBehavior && document.getElementById('siteBridgeMode') && document.getElementById('siteBridgeMode').value === 'invite'
           ? (document.getElementById('siteInvitePageId') && document.getElementById('siteInvitePageId').value) || null
+          : null,
+        bridge_timer_sec: isStealthBehavior && document.getElementById('siteBridgeTimer')
+          ? parseInt(document.getElementById('siteBridgeTimer').value || '3', 10)
           : null,
         auto_stealth_pages: autoStealthPages,
         stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
@@ -3740,7 +3746,9 @@
     function syncSiteBridgeMode() {
       const mode = (document.getElementById('siteBridgeMode') && document.getElementById('siteBridgeMode').value) || 'editorial';
       const wrap = document.getElementById('siteInvitePageWrap');
+      const timerWrap = document.getElementById('siteBridgeTimerWrap');
       if (wrap) wrap.style.display = mode === 'invite' ? 'block' : 'none';
+      if (timerWrap) timerWrap.style.display = (mode === 'invite' || mode === 'loading') ? 'block' : 'none';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = mode;
     }
 
@@ -5405,7 +5413,10 @@
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ bridge_style: mode === 'loading' ? 'loading' : 'editorial' })
+            body: JSON.stringify({
+            bridge_style: mode === 'loading' ? 'loading' : 'editorial',
+            bridge_timer_sec: site.bridge_timer_sec || 3
+          })
           });
           if (!res.ok) throw new Error('Erro ao salvar');
           const data = await res.json();

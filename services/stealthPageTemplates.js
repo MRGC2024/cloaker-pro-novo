@@ -4,6 +4,7 @@
  */
 
 const { composePageData, uniquePackId, pickRandomTheme, pickBrandForTheme } = require('./stealthPageVariations');
+const { resolveLoadingVariant, buildLoadingTimerScript } = require('./bridgePageVariations');
 
 function formatPackStamp(d = new Date()) {
   return d.toLocaleString('pt-BR', {
@@ -510,57 +511,65 @@ function buildInviteBridgeHtml(opts = {}) {
   });
 }
 
-/** Ponte neutra — skeleton + carregando. Opcional por link (bridge_style=loading). */
+/** Ponte neutra — skeleton + carregando. Com bridgeSeed → HTML/CSS/JS únicos por link. */
 function buildLoadingBridgeHtml(opts = {}) {
   const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 3));
   const navPath = String(opts.navPath || '').trim();
   const withTimer = !!opts.withTimer && !!navPath;
   const year = new Date().getFullYear();
+  const seed = String(opts.bridgeSeed || '').trim();
+  const v = seed ? resolveLoadingVariant(seed) : null;
+  const p = v ? v.prefix : 'ld';
+  const barId = v ? v.barId : 'ld-bar';
+  const statusId = v ? v.statusId : 'ld-status';
+  const idleText = v ? v.text : 'Carregando conteúdo…';
 
   const timerScript = withTimer
-    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('ld-bar'),lab=document.getElementById('ld-status'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Carregando conteúdo…'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.textContent=s>0?('Carregando conteúdo… '+s+'s'):'Abrindo conteúdo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    ? (v
+      ? buildLoadingTimerScript(navPath, timerSec, barId, statusId, v.jsVars, idleText)
+      : `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('ld-bar'),lab=document.getElementById('ld-status'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Carregando conteúdo…'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.textContent=s>0?('Carregando conteúdo… '+s+'s'):'Abrindo conteúdo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`)
     : '';
 
   const styles = `
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,-apple-system,sans-serif;background:#f4f6f8;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
-    .ld-top{height:3px;background:#e2e8f0;position:sticky;top:0;z-index:2}
-    .ld-top i{display:block;height:100%;width:${withTimer ? '4%' : '38%'};background:linear-gradient(90deg,#64748b,#94a3b8);border-radius:0 2px 2px 0;transition:width .12s linear}
-    .ld-wrap{max-width:720px;margin:0 auto;padding:28px 20px 48px}
-    .ld-head{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-    .ld-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#cbd5e1,#94a3b8);flex-shrink:0}
-    .ld-sk{display:block;border-radius:6px;background:linear-gradient(90deg,#e2e8f0 0%,#f1f5f9 45%,#e2e8f0 90%);background-size:200% 100%;animation:ldsh 1.4s ease-in-out infinite}
-    @keyframes ldsh{0%{background-position:100% 0}100%{background-position:-100% 0}}
-    .ld-sk-h{height:14px;width:42%;margin-bottom:8px}
-    .ld-sk-s{height:10px;width:28%}
-    .ld-hero{height:200px;border-radius:12px;margin-bottom:24px}
-    .ld-line{height:12px;margin-bottom:12px}
-    .ld-w90{width:90%}.ld-w75{width:75%}.ld-w85{width:85%}.ld-w60{width:60%}
-    .ld-status{margin-top:32px;text-align:center;font-size:14px;color:#64748b;min-height:1.4em}
-    .ld-foot{margin-top:40px;text-align:center;font-size:11px;color:#94a3b8}
+    body{font-family:${v ? v.font : 'system-ui,-apple-system,sans-serif'};background:${v ? v.bg : '#f4f6f8'};color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+    .${p}-top{height:3px;background:#e2e8f0;position:sticky;top:0;z-index:2}
+    .${p}-top i{display:block;height:100%;width:${withTimer ? '4%' : (v ? v.staticPct : 38) + '%'};background:linear-gradient(90deg,${v ? v.accent : '#64748b'},${v ? v.accentLight : '#94a3b8'});border-radius:0 2px 2px 0;transition:width .12s linear}
+    .${p}-wrap{max-width:${v ? v.maxW : 720}px;margin:0 auto;padding:28px 20px 48px}
+    .${p}-head{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+    .${p}-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#cbd5e1,${v ? v.accentLight : '#94a3b8'});flex-shrink:0}
+    .${p}-sk{display:block;border-radius:6px;background:linear-gradient(90deg,#e2e8f0 0%,#f1f5f9 45%,#e2e8f0 90%);background-size:200% 100%;animation:${v ? v.anim : 'ldsh'} 1.4s ease-in-out infinite}
+    @keyframes ${v ? v.anim : 'ldsh'}{0%{background-position:100% 0}100%{background-position:-100% 0}}
+    .${p}-sk-h{height:14px;width:42%;margin-bottom:8px}
+    .${p}-sk-s{height:10px;width:28%}
+    .${p}-hero{height:200px;border-radius:12px;margin-bottom:24px}
+    .${p}-line{height:12px;margin-bottom:12px}
+    .${p}-w90{width:90%}.${p}-w75{width:75%}.${p}-w85{width:85%}.${p}-w60{width:60%}
+    .${p}-status{margin-top:32px;text-align:center;font-size:14px;color:#64748b;min-height:1.4em}
+    .${p}-foot{margin-top:40px;text-align:center;font-size:11px;color:#94a3b8}
   `;
 
-  const statusText = withTimer ? `Carregando conteúdo… ${timerSec}s` : 'Carregando conteúdo…';
+  const statusText = withTimer ? `${idleText} ${timerSec}s` : idleText;
 
   const body = `
-  <div class="ld-top" aria-hidden="true"><i id="ld-bar"></i></div>
-  <div class="ld-wrap">
-    <div class="ld-head">
-      <div class="ld-logo" aria-hidden="true"></div>
-      <div style="flex:1"><span class="ld-sk ld-sk-h"></span><span class="ld-sk ld-sk-s"></span></div>
+  <div class="${p}-top" aria-hidden="true"><i id="${barId}"></i></div>
+  <div class="${p}-wrap">
+    <div class="${p}-head">
+      <div class="${p}-logo" aria-hidden="true"></div>
+      <div style="flex:1"><span class="${p}-sk ${p}-sk-h"></span><span class="${p}-sk ${p}-sk-s"></span></div>
     </div>
-    <div class="ld-sk ld-hero" aria-hidden="true"></div>
-    <span class="ld-sk ld-line ld-w90" aria-hidden="true"></span>
-    <span class="ld-sk ld-line ld-w75" aria-hidden="true"></span>
-    <span class="ld-sk ld-line ld-w85" aria-hidden="true"></span>
-    <span class="ld-sk ld-line ld-w60" aria-hidden="true"></span>
-    <p class="ld-status" id="ld-status" role="status">${statusText}</p>
-    <p class="ld-foot">© ${year}</p>
+    <div class="${p}-sk ${p}-hero" aria-hidden="true"></div>
+    <span class="${p}-sk ${p}-line ${p}-w90" aria-hidden="true"></span>
+    <span class="${p}-sk ${p}-line ${p}-w75" aria-hidden="true"></span>
+    <span class="${p}-sk ${p}-line ${p}-w85" aria-hidden="true"></span>
+    <span class="${p}-sk ${p}-line ${p}-w60" aria-hidden="true"></span>
+    <p class="${p}-status" id="${statusId}" role="status">${esc(statusText)}</p>
+    <p class="${p}-foot">© ${year}</p>
   </div>${timerScript}`;
 
-  return wrapHtml('Carregando…', body, styles, {
-    description: 'Carregando conteúdo.',
-    ogTitle: 'Carregando…'
+  return wrapHtml(idleText.replace('…', ''), body, styles, {
+    description: idleText,
+    ogTitle: idleText
   });
 }
 

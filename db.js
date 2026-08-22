@@ -160,6 +160,7 @@ async function initPg() {
     try { await client.query('ALTER TABLE sites ADD COLUMN influencer_banner_url TEXT'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN bridge_timer_sec INTEGER DEFAULT 6'); } catch (e) {}
     try { await client.query('ALTER TABLE sites ADD COLUMN invite_page_id INTEGER'); } catch (e) {}
+    try { await client.query('ALTER TABLE sites ADD COLUMN bridge_seed TEXT'); } catch (e) {}
     await client.query(`
       CREATE TABLE IF NOT EXISTS invite_pages (
         id SERIAL PRIMARY KEY,
@@ -329,6 +330,7 @@ async function initSqlite() {
   try { db.run('ALTER TABLE sites ADD COLUMN influencer_banner_url TEXT'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN bridge_timer_sec INTEGER DEFAULT 6'); } catch (e) {}
   try { db.run('ALTER TABLE sites ADD COLUMN invite_page_id INTEGER'); } catch (e) {}
+  try { db.run('ALTER TABLE sites ADD COLUMN bridge_seed TEXT'); } catch (e) {}
   try {
     db.run(`CREATE TABLE IF NOT EXISTS invite_pages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
