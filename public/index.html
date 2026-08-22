@@ -2527,11 +2527,12 @@
           <div id="stealthFunnelBox" style="display: block; margin-top: 14px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.25);">
             <label class="form-label" style="margin-bottom: 10px;"><i class="ri-stack-line"></i> Funil protegido (mesma URL)</label>
             <div id="inviteBridgeBox" style="margin-bottom: 14px; padding: 12px 14px; background: rgba(15,23,42,0.04); border-radius: 10px; border: 1px solid var(--border);">
-              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-user-star-line"></i> Convite exclusivo (opcional)</label>
-              <label class="radio-label" style="margin-bottom:10px;">
-                <input type="checkbox" id="siteUseInvite" onchange="syncSiteInviteSelect()">
-                <span>Usar convite neste link</span>
-              </label>
+              <label class="form-label" style="margin-bottom: 8px;"><i class="ri-route-line"></i> Ponte do lead</label>
+              <select class="form-select" id="siteBridgeMode" onchange="syncSiteBridgeMode()" style="margin-bottom:10px;">
+                <option value="editorial">Desligado — lead vai direto</option>
+                <option value="invite">Convite exclusivo</option>
+                <option value="loading">Carregando (skeleton neutro)</option>
+              </select>
               <div class="form-group" id="siteInvitePageWrap" style="display:none;margin-bottom:8px;">
                 <label class="form-label">Página de convite</label>
                 <select class="form-select" id="siteInvitePageId">
@@ -2990,13 +2991,12 @@
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
         const behavior = (s.block_behavior || 'redirect');
-        const inviteOn = (s.bridge_style || '') === 'invite' || !!(s.invite_page_id);
+        const bridgeMode = (s.bridge_style || 'editorial');
+        const inviteOn = bridgeMode === 'invite';
+        const loadingOn = bridgeMode === 'loading';
         const isStealth = behavior === 'stealth';
         const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
         const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
-        const inviteSelect = isStealth
-          ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" ${inviteOn ? '' : 'style="display:none"'} onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>`
-          : '';
         return `
         <div class="site-card">
           <div class="site-card-top">
@@ -3011,7 +3011,7 @@
               <div class="site-card-meta">
                 ${isStealth ? '<span class="badge-stealth" style="margin:0;">Stealth</span>' : '<span class="site-chip site-chip-off">' + escapeHtml(behavior) + '</span>'}
                 ${!isActive ? '<span class="site-chip site-chip-off">Pausado</span>' : '<span class="site-chip site-chip-ok">Ativo</span>'}
-                ${inviteOn ? '<span class="site-chip site-chip-ok">Convite ON</span>' : (isStealth ? '<span class="site-chip site-chip-off">Convite OFF</span>' : '')}
+                ${inviteOn ? '<span class="site-chip site-chip-ok">Convite</span>' : (loadingOn ? '<span class="site-chip site-chip-ok">Carregando</span>' : (isStealth ? '<span class="site-chip site-chip-off">Sem ponte</span>' : ''))}
                 ${hasFb ? '<span class="site-chip site-chip-warn">Fallback</span>' : ''}
               </div>
               ${landingShort ? '<div class="site-landing">' + landingShort + '</div>' : ''}
@@ -3025,13 +3025,14 @@
           <div class="site-card-row">
             <div class="site-invite-box">
               ${isStealth ? `
-                <span class="site-invite-label"><i class="ri-user-star-line"></i> Convite exclusivo</span>
-                <label class="switch switch-sm" title="Ativar ou desativar o convite neste link">
-                  <input type="checkbox" ${inviteOn ? 'checked' : ''} onchange="toggleSiteInvite('${s.site_id}', this.checked)">
-                  <span class="slider"></span>
-                </label>
-                ${inviteSelect}
-              ` : '<span class="site-invite-label" style="opacity:.55">Convite só no modo Stealth</span>'}
+                <span class="site-invite-label"><i class="ri-route-line"></i> Ponte</span>
+                <select class="form-select" style="max-width:150px" onchange="changeSiteBridgeMode('${s.site_id}', this.value)">
+                  <option value="editorial" ${bridgeMode === 'editorial' ? 'selected' : ''}>Desligado</option>
+                  <option value="invite" ${bridgeMode === 'invite' ? 'selected' : ''}>Convite</option>
+                  <option value="loading" ${bridgeMode === 'loading' ? 'selected' : ''}>Carregando</option>
+                </select>
+                ${inviteOn ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>` : ''}
+              ` : '<span class="site-invite-label" style="opacity:.55">Ponte só no Stealth</span>'}
             </div>
             <div class="site-card-actions">
               <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')" title="Copiar link do Ads"><i class="ri-file-copy-line"></i> Copiar link</button>
@@ -3169,11 +3170,11 @@
       document.getElementById('siteOfferPageId').value = '';
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = true;
       if (document.getElementById('siteOfferDeliveryPage')) document.getElementById('siteOfferDeliveryPage').checked = false;
-      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = false;
+      if (document.getElementById('siteBridgeMode')) document.getElementById('siteBridgeMode').value = 'editorial';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = 'editorial';
       await loadInvitePages();
       fillInvitePageSelects('');
-      syncSiteInviteSelect();
+      syncSiteBridgeMode();
       document.getElementById('siteBlockDesktop').checked = true;
       document.getElementById('siteBlockFacebook').checked = true;
       document.getElementById('siteBlockBots').checked = true;
@@ -3249,11 +3250,12 @@
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = !offerPageMode;
       await loadInvitePages();
       fillInvitePageSelects(site.invite_page_id || '');
-      const useInvite = (site.bridge_style || '') === 'invite' || !!(site.invite_page_id);
-      if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = useInvite;
+      const bm = (site.bridge_style || 'editorial');
+      const bridgeMode = bm === 'loading' || bm === 'load' ? 'loading' : (bm === 'invite' ? 'invite' : 'editorial');
+      if (document.getElementById('siteBridgeMode')) document.getElementById('siteBridgeMode').value = bridgeMode;
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = useInvite ? 'invite' : 'editorial';
-      syncSiteInviteSelect();
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = bridgeMode;
+      syncSiteBridgeMode();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
       document.getElementById('siteBlockBots').checked = site.block_bots;
@@ -3438,8 +3440,10 @@
         gray_page_id: isStealthBehavior && !autoStealthPages ? (document.getElementById('siteGrayPageId').value || null) : null,
         offer_page_id: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? (document.getElementById('siteOfferPageId').value || null) : null,
         offer_delivery: isStealthBehavior && document.getElementById('siteOfferDeliveryPage').checked ? 'page' : 'url',
-        bridge_style: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked ? 'invite' : 'editorial',
-        invite_page_id: isStealthBehavior && document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked
+        bridge_style: isStealthBehavior && document.getElementById('siteBridgeMode')
+          ? document.getElementById('siteBridgeMode').value
+          : 'editorial',
+        invite_page_id: isStealthBehavior && document.getElementById('siteBridgeMode') && document.getElementById('siteBridgeMode').value === 'invite'
           ? (document.getElementById('siteInvitePageId') && document.getElementById('siteInvitePageId').value) || null
           : null,
         auto_stealth_pages: autoStealthPages,
@@ -3488,7 +3492,7 @@
           return;
         }
         if (data.bridge_style === 'invite' && !data.invite_page_id) {
-          alert('Convite ligado: selecione uma página de convite (menu Convite Exclusivo).');
+          alert('Convite: selecione uma página de convite (menu Convite Exclusivo).');
           return;
         }
         if (!siteId) {
@@ -3733,11 +3737,11 @@
       renderInvitePagesList();
     }
 
-    function syncSiteInviteSelect() {
-      const on = document.getElementById('siteUseInvite') && document.getElementById('siteUseInvite').checked;
+    function syncSiteBridgeMode() {
+      const mode = (document.getElementById('siteBridgeMode') && document.getElementById('siteBridgeMode').value) || 'editorial';
       const wrap = document.getElementById('siteInvitePageWrap');
-      if (wrap) wrap.style.display = on ? 'block' : 'none';
-      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = on ? 'invite' : 'editorial';
+      if (wrap) wrap.style.display = mode === 'invite' ? 'block' : 'none';
+      if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = mode;
     }
 
     function openInviteEditorForSite(siteId) {
@@ -5369,47 +5373,55 @@
       wrap.classList.toggle('open');
     }
 
-    async function toggleSiteInvite(siteId, enabled) {
+    async function changeSiteBridgeMode(siteId, mode) {
       const site = (sites || []).find(function(s) { return s.site_id === siteId; });
       if (!site) return;
-      if (enabled && !(invitePagesCache || []).length && !site.invite_page_id) {
-        alert('Crie uma página de convite em Convite Exclusivo antes de ativar.');
-        renderSitesList();
-        goToSection('invite');
-        return;
-      }
-      const sel = document.getElementById('inviteQuickSelect-' + siteId);
-      const pageId = (sel && sel.value) || site.invite_page_id || ((invitePagesCache[0] && invitePagesCache[0].id) || null);
-      try {
-        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            bridge_style: enabled ? 'invite' : 'editorial',
-            invite_page_id: enabled ? pageId : null
-          })
-        });
-        if (!res.ok) {
-          let err = 'Não foi possível alterar o convite';
-          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
-          alert(err);
+      if (mode === 'invite') {
+        if (!(invitePagesCache || []).length && !site.invite_page_id) {
+          alert('Crie uma página de convite em Convite Exclusivo antes de usar Convite.');
           renderSitesList();
           return;
         }
-        const data = await res.json();
-        if (data && data.site) {
-          site.bridge_style = data.site.bridge_style;
-          site.invite_page_id = data.site.invite_page_id;
-        } else {
-          site.bridge_style = enabled ? 'invite' : 'editorial';
-          if (enabled && pageId) site.invite_page_id = pageId;
+        const pageId = site.invite_page_id || ((invitePagesCache[0] && invitePagesCache[0].id) || null);
+        try {
+          const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ bridge_style: 'invite', invite_page_id: pageId })
+          });
+          if (!res.ok) throw new Error('Erro ao salvar');
+          const data = await res.json();
+          if (data && data.site) { site.bridge_style = data.site.bridge_style; site.invite_page_id = data.site.invite_page_id; }
+          else { site.bridge_style = 'invite'; site.invite_page_id = pageId; }
+        } catch (e) {
+          alert(e.message || 'Erro ao salvar ponte');
+          renderSitesList();
+          return;
         }
-        renderSitesList();
-      } catch (e) {
-        alert(e.message || 'Erro ao salvar convite');
-        renderSitesList();
+      } else {
+        try {
+          const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/invite', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ bridge_style: mode === 'loading' ? 'loading' : 'editorial' })
+          });
+          if (!res.ok) throw new Error('Erro ao salvar');
+          const data = await res.json();
+          if (data && data.site) { site.bridge_style = data.site.bridge_style; site.invite_page_id = data.site.invite_page_id; }
+          else { site.bridge_style = mode === 'loading' ? 'loading' : 'editorial'; if (mode === 'loading') site.invite_page_id = null; }
+        } catch (e) {
+          alert(e.message || 'Erro ao salvar ponte');
+          renderSitesList();
+          return;
+        }
       }
+      renderSitesList();
+    }
+
+    async function toggleSiteInvite(siteId, enabled) {
+      return changeSiteBridgeMode(siteId, enabled ? 'invite' : 'editorial');
     }
 
     async function changeSiteInvitePage(siteId, pageId) {
