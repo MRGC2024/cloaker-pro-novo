@@ -2542,8 +2542,8 @@
               </div>
               <div class="form-group" id="siteBridgeTimerWrap" style="display:none;margin-bottom:8px;">
                 <label class="form-label">Timer da ponte (segundos)</label>
-                <input type="number" class="form-input" id="siteBridgeTimer" min="2" max="30" value="3" style="max-width:120px;">
-                <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Carregando: 2–30s (padrão 3). Convite: usa timer da página de convite.</small>
+                <input type="number" class="form-input" id="siteBridgeTimer" min="1" max="30" value="1" style="max-width:120px;">
+                <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Carregando: 1–30s (padrão 1). Convite: usa timer da página de convite (mín. 2s).</small>
               </div>
               <input type="hidden" id="siteBridgeStyle" value="editorial">
             </div>
@@ -3257,7 +3257,7 @@
       if (document.getElementById('siteBridgeMode')) document.getElementById('siteBridgeMode').value = bridgeMode;
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = bridgeMode;
-      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec != null ? site.bridge_timer_sec : 3;
+      if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec != null ? site.bridge_timer_sec : 1;
       syncSiteBridgeMode();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
@@ -3450,7 +3450,7 @@
           ? (document.getElementById('siteInvitePageId') && document.getElementById('siteInvitePageId').value) || null
           : null,
         bridge_timer_sec: isStealthBehavior && document.getElementById('siteBridgeTimer')
-          ? parseInt(document.getElementById('siteBridgeTimer').value || '3', 10)
+          ? parseInt(document.getElementById('siteBridgeTimer').value || '1', 10)
           : null,
         auto_stealth_pages: autoStealthPages,
         stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
@@ -5415,7 +5415,7 @@
             credentials: 'include',
             body: JSON.stringify({
             bridge_style: mode === 'loading' ? 'loading' : 'editorial',
-            bridge_timer_sec: site.bridge_timer_sec || 3
+            bridge_timer_sec: site.bridge_timer_sec || 1
           })
           });
           if (!res.ok) throw new Error('Erro ao salvar');

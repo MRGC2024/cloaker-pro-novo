@@ -513,7 +513,7 @@ function buildInviteBridgeHtml(opts = {}) {
 
 /** Ponte neutra — skeleton + carregando. Com bridgeSeed → HTML/CSS/JS únicos por link. */
 function buildLoadingBridgeHtml(opts = {}) {
-  const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 3));
+  const timerSec = Math.max(1, Math.min(30, parseInt(opts.timerSeconds, 10) || 1));
   const navPath = String(opts.navPath || '').trim();
   const withTimer = !!opts.withTimer && !!navPath;
   const year = new Date().getFullYear();

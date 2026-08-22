@@ -1696,7 +1696,7 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
     let invitePageId = resolveOptionalPageId(req.body.invite_page_id);
     if (bridgeStyle === 'loading') {
       const cur = await db.get('SELECT bridge_seed FROM sites WHERE site_id = ?', [req.params.siteId]);
-      const timerSec = clampBridgeTimer(req.body.bridge_timer_sec);
+      const timerSec = clampLoadingTimer(req.body.bridge_timer_sec);
       const seedSql = (!cur || !cur.bridge_seed) ? ', bridge_seed = ?' : '';
       const seedVal = (!cur || !cur.bridge_seed) ? [generateBridgeFingerprint()] : [];
       await db.run(
@@ -2743,6 +2743,13 @@ function clampBridgeTimer(sec) {
   return Math.max(2, Math.min(30, n));
 }
 
+/** Timer da ponte Carregando — padrão 1s, mínimo 1s. */
+function clampLoadingTimer(sec) {
+  const n = parseInt(sec, 10);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(1, Math.min(30, n));
+}
+
 function normalizeBridgeStyle(v) {
   const s = String(v || '').toLowerCase().trim();
   if (s === 'loading' || s === 'load') return 'loading';
@@ -2792,7 +2799,7 @@ async function sendLoadingBridgeResponse(res, site, options = {}) {
   const prefix = options.prefix || '';
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
-  const timerSec = clampBridgeTimer(site.bridge_timer_sec) || 3;
+  const timerSec = clampLoadingTimer(site.bridge_timer_sec);
   const html = buildLoadingBridgeHtml({
     timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
