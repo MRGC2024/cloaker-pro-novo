@@ -21,6 +21,7 @@ const { createMetricsService } = require('./services/metricsService');
 const { createTelegramService } = require('./services/telegramService');
 const { createFallbackService } = require('./services/fallbackService');
 const { getStealthPagePack, getStealthWhiteGrayPack, listStealthThemes, resolveThemeKey, buildInviteBridgeHtml, buildLoadingBridgeHtml, normalizeImageUrl } = require('./services/stealthPageTemplates');
+const { generateBridgeFingerprint } = require('./services/bridgePageVariations');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1544,8 +1545,9 @@ app.post('/api/sites', async (req, res) => {
     const influencerPhoto = normalizeImageUrl(req.body.influencer_photo_url || '') || null;
     const influencerBanner = normalizeImageUrl(req.body.influencer_banner_url || '') || null;
     const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec);
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId]);
+    const bridgeSeed = behavior === 'stealth' ? generateBridgeFingerprint() : null;
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, bridge_seed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, bridgeSeed]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
@@ -2673,7 +2675,12 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
-/** Ponte stealth (carregando ou convite legado) — só se o link tiver a opção ligada. */
+function getBridgeSeed(site) {
+  const stored = String(site?.bridge_seed || '').trim();
+  if (stored) return stored;
+  return 'legacy-' + String(site?.site_id || '') + '-' + String(site?.link_code || '');
+}
+
 function getBridgeStyleKind(site) {
   const style = String(site?.bridge_style || '').toLowerCase().trim();
   if (style === 'invite') return 'invite';
@@ -2731,6 +2738,7 @@ async function sendStealthBridgeResponse(res, site, options = {}) {
   const code = options.code || '';
   const navPath = (prefix && code) ? ('/api/n/' + prefix + '/' + code) : '';
   const kind = getBridgeStyleKind(site);
+  const bridgeSeed = getBridgeSeed(site);
   // NUNCA passa destUrl (oferta) no HTML — Meta lê o fonte e rejeita o ads.
   if (kind === 'invite') {
     const cfg = await resolveInviteConfig(site);
@@ -2741,7 +2749,8 @@ async function sendStealthBridgeResponse(res, site, options = {}) {
       timerSeconds: cfg.timerSeconds,
       destUrl: '',
       navPath: options.withTimer ? navPath : '',
-      withTimer: !!options.withTimer
+      withTimer: !!options.withTimer,
+      bridgeSeed
     });
     return sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
   }
@@ -2749,7 +2758,8 @@ async function sendStealthBridgeResponse(res, site, options = {}) {
   const html = buildLoadingBridgeHtml({
     timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
-    withTimer: !!options.withTimer
+    withTimer: !!options.withTimer,
+    bridgeSeed
   });
   sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
 }
@@ -4168,7 +4178,7 @@ function getMetaLinkConfigWarnings(site) {
     } else {
       const bridgeKind = getBridgeStyleKind(site);
       warnings.push({ level: 'medium', code: 'stealth_soft_offer', message: bridgeKind === 'loading'
-        ? 'Ponte carregando ON: Meta vê skeleton estático (sem URL da oferta no HTML). Lead → timer → /api/n/ → oferta. Revisores/crawlers Meta nunca recebem a oferta.'
+        ? 'Ponte carregando ON: HTML/CSS/JS únicos por link (fingerprint próprio). Meta vê skeleton estático. Lead → timer → /api/n/ → oferta.'
         : bridgeKind === 'invite'
           ? 'Convite ON (legado): Meta vê convite estático. Prefira a ponte de carregamento — o layout de convite pode estar fingerprintado.'
           : 'Sem ponte: lead liberado → oferta; bot/crawler → white/gray. Ative a ponte de carregamento para o Meta não ver URL da oferta no código.' });
