@@ -1542,7 +1542,9 @@ app.post('/api/sites', async (req, res) => {
     const influencerName = (req.body.influencer_name || '').trim().slice(0, 80) || null;
     const influencerPhoto = normalizeImageUrl(req.body.influencer_photo_url || '') || null;
     const influencerBanner = normalizeImageUrl(req.body.influencer_banner_url || '') || null;
-    const bridgeTimer = clampBridgeTimer(req.body.bridge_timer_sec);
+    const bridgeTimer = bridgeStyle === 'loading'
+      ? clampLoadingTimer(req.body.bridge_timer_sec)
+      : clampBridgeTimer(req.body.bridge_timer_sec);
     const bridgeSeed = behavior === 'stealth' ? generateBridgeFingerprint() : null;
     await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, bridge_seed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, bridgeSeed]);
@@ -1618,7 +1620,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
     const influencerName = (data.influencer_name || '').trim().slice(0, 80) || null;
     const influencerPhoto = normalizeImageUrl(data.influencer_photo_url || '') || null;
     const influencerBanner = normalizeImageUrl(data.influencer_banner_url || '') || null;
-    const bridgeTimer = clampBridgeTimer(data.bridge_timer_sec != null ? data.bridge_timer_sec : 6);
+    const bridgeTimer = resolveBridgeTimerSec(bridgeStyle, data, existing);
     const sql = `
       UPDATE sites SET
         name = ?, domain = ?, link_code = ?, target_url = ?, redirect_url = ?, block_behavior = ?, default_link_params = ?,
@@ -1638,7 +1640,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId,
       req.params.siteId
     ]);
-    res.json({ success: true });
+    res.json({ success: true, bridge_style: bridgeStyle, bridge_timer_sec: bridgeTimer });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1725,7 +1727,7 @@ app.put('/api/sites/:siteId/invite', async (req, res) => {
         ['invite', invitePageId, req.params.siteId]
       );
     }
-    const updated = await db.get('SELECT site_id, name, bridge_style, invite_page_id, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
+    const updated = await db.get('SELECT site_id, name, bridge_style, invite_page_id, bridge_timer_sec, target_url FROM sites WHERE site_id = ?', [req.params.siteId]);
     res.json({ success: true, site: updated });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Erro ao salvar convite' });
@@ -2748,6 +2750,16 @@ function clampLoadingTimer(sec) {
   const n = parseInt(sec, 10);
   if (!Number.isFinite(n)) return 1;
   return Math.max(1, Math.min(30, n));
+}
+
+function resolveBridgeTimerSec(bridgeStyle, data, existing) {
+  const raw = data.bridge_timer_sec != null && data.bridge_timer_sec !== ''
+    ? data.bridge_timer_sec
+    : (existing && existing.bridge_timer_sec != null ? existing.bridge_timer_sec : null);
+  if (bridgeStyle === 'loading') {
+    return clampLoadingTimer(raw);
+  }
+  return clampBridgeTimer(raw != null ? raw : 6);
 }
 
 function normalizeBridgeStyle(v) {

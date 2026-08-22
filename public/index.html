@@ -3397,15 +3397,26 @@
         let savedSiteId = siteId || '';
         let createdPayload = null;
         if (siteId) {
-          await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+          const res = await fetch(`/api/sites/${siteId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+          if (!res.ok) {
+            let err = 'Erro ao salvar site';
+            try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+            alert(err);
+            return;
+          }
         } else {
           const createdRes = await fetch('/api/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-          if (createdRes && createdRes.ok) {
-            createdPayload = await createdRes.json();
-            savedSiteId = createdPayload && createdPayload.site_id ? createdPayload.site_id : '';
+          if (!createdRes || !createdRes.ok) {
+            let err = 'Erro ao criar site';
+            try { const j = await createdRes.json(); if (j.error) err = j.error; } catch (e2) {}
+            alert(err);
+            return;
           }
+          createdPayload = await createdRes.json();
+          savedSiteId = createdPayload && createdPayload.site_id ? createdPayload.site_id : '';
         }
         saveParamsForSite(savedSiteId, document.getElementById('siteMetaLinkParams').value || '', document.getElementById('siteTikTokLinkParams').value || '');
+        await loadSites();
         closeSiteModal();
         if (createdPayload && createdPayload.auto_pages) {
           window.__lastStealthPackId = createdPayload.auto_pages.packId || null;
@@ -3421,7 +3432,6 @@
           alert(msg);
           loadPages();
         }
-        loadSites();
       } catch (e) { alert('Erro ao salvar site'); }
     }
 
@@ -5420,8 +5430,14 @@
           });
           if (!res.ok) throw new Error('Erro ao salvar');
           const data = await res.json();
-          if (data && data.site) { site.bridge_style = data.site.bridge_style; site.invite_page_id = data.site.invite_page_id; }
-          else { site.bridge_style = mode === 'loading' ? 'loading' : 'editorial'; if (mode === 'loading') site.invite_page_id = null; }
+          if (data && data.site) {
+            site.bridge_style = data.site.bridge_style;
+            site.invite_page_id = data.site.invite_page_id;
+            if (data.site.bridge_timer_sec != null) site.bridge_timer_sec = data.site.bridge_timer_sec;
+          } else {
+            site.bridge_style = mode === 'loading' ? 'loading' : 'editorial';
+            if (mode === 'loading') site.invite_page_id = null;
+          }
         } catch (e) {
           alert(e.message || 'Erro ao salvar ponte');
           renderSitesList();
