@@ -2990,7 +2990,7 @@
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
         const behavior = (s.block_behavior || 'redirect');
-        const inviteOn = (s.bridge_style || '') === 'invite';
+        const inviteOn = (s.bridge_style || '') === 'invite' || !!(s.invite_page_id);
         const isStealth = behavior === 'stealth';
         const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
         const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
@@ -3249,7 +3249,7 @@
       if (document.getElementById('siteOfferDeliveryUrl')) document.getElementById('siteOfferDeliveryUrl').checked = !offerPageMode;
       await loadInvitePages();
       fillInvitePageSelects(site.invite_page_id || '');
-      const useInvite = (site.bridge_style || '') === 'invite';
+      const useInvite = (site.bridge_style || '') === 'invite' || !!(site.invite_page_id);
       if (document.getElementById('siteUseInvite')) document.getElementById('siteUseInvite').checked = useInvite;
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = useInvite ? 'invite' : 'editorial';

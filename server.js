@@ -2701,13 +2701,17 @@ function shouldSoftRedirectOffer(site) {
   return false; // substituído pela ponte unificada no modo stealth
 }
 
-/** White emocional (convite) — só se o link tiver a opção ligada. */
+/** Ponte de convite — ligada no link ou com página/influencer vinculado. */
 function usesInviteBridge(site) {
   if (!site || !wantsStealthBehavior(site)) return false;
   const style = String(site.bridge_style || '').toLowerCase().trim();
+  if (style === 'editorial' || style === 'off' || style === '0' || style === 'false') {
+    return !!(site.invite_page_id);
+  }
   if (style === 'invite' || style === '1' || style === 'true' || style === 'on') return true;
-  // Legado: convite vinculado (invite_page_id) ou bridge_style=loading da UI quebrada
+  if (style === 'loading' || style === 'load') return !!(site.invite_page_id);
   if (site.invite_page_id) return true;
+  if (site.influencer_name || site.influencer_photo_url) return true;
   return false;
 }
 
