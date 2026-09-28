@@ -354,22 +354,56 @@
 
     .page-top-bar {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
+      gap: 16px;
+      margin: -8px -8px 22px;
+      padding: 8px 8px 18px;
       border-bottom: 1px solid var(--border);
     }
+    .page-kicker {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .page-lead {
+      margin-top: 6px;
+      max-width: 640px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
     .page-top-bar h1 {
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 28px;
+      font-weight: 600;
       color: var(--text-primary);
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+    .section > .header h2 { display: none; }
+    .section > .header > p,
+    .section > .header > div > p:not(.last-update) { display: none; }
+    .section > .header { margin-bottom: 16px; align-items: center; }
+    .desk-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr); gap: 16px; align-items: start; }
+    .desk-stack { display: flex; flex-direction: column; gap: 16px; }
+    .kpi-rail { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .kpi-rail .stat-card { padding: 14px 14px 12px; border-radius: 8px; position: relative; overflow: hidden; }
+    .kpi-rail .stat-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent-primary); }
+    .kpi-rail .stat-icon { width: 28px; height: 28px; font-size: 15px; margin-bottom: 10px; border-radius: 6px; }
+    .kpi-rail .stat-value { font-size: 22px; }
+    @media (max-width: 1100px) {
+      .desk-layout { grid-template-columns: 1fr; }
+      .kpi-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .kpi-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .page-top-bar h1 { font-size: 22px; }
     }
     .page-top-bar h1 i {
       color: var(--accent-primary);
@@ -1036,20 +1070,22 @@
       </div>
     </div>
     <ul class="nav-menu">
-      <li class="nav-group-title">Principal</li>
-      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Dashboard"><i class="ri-layout-grid-line"></i><span class="nav-link-text">Dashboard</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" title="Meus Sites"><i class="ri-stack-line"></i><span class="nav-link-text">Meus Sites</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link para Ads"><i class="ri-megaphone-line"></i><span class="nav-link-text">Link para Ads</span></a></li>
-      <li class="nav-group-title">Tráfego</li>
-      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Visitantes"><i class="ri-group-line"></i><span class="nav-link-text">Visitantes</span></a></li>
+      <li class="nav-group-title">Operação</li>
+      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Mesa"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Mesa</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-list-3-line"></i><span class="nav-link-text">Relatórios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Status dos links"><i class="ri-link-m"></i><span class="nav-link-text">Status dos links</span></a></li>
-      <li class="nav-group-title">Configuração</li>
+      <li class="nav-group-title">Links</li>
+      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" title="Campanhas"><i class="ri-stack-line"></i><span class="nav-link-text">Campanhas</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link de anúncio"><i class="ri-megaphone-line"></i><span class="nav-link-text">Link de anúncio</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Contingência"><i class="ri-link-m"></i><span class="nav-link-text">Contingência</span></a></li>
+      <li class="nav-group-title">Audiência</li>
+      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Acessos"><i class="ri-group-line"></i><span class="nav-link-text">Acessos</span></a></li>
+      <li class="nav-group-title">Biblioteca</li>
       <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-article-line"></i><span class="nav-link-text">Páginas</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convite Exclusivo"><i class="ri-user-star-line"></i><span class="nav-link-text">Convite Exclusivo</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convites"><i class="ri-user-star-line"></i><span class="nav-link-text">Convites</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-earth-line"></i><span class="nav-link-text">Domínios</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
+      <li class="nav-group-title">Conta</li>
+      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Ajustes"><i class="ri-settings-3-line"></i><span class="nav-link-text">Ajustes</span></a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
       <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-heart-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-user-settings-line"></i><span class="nav-link-text">Usuários</span></a></li>
@@ -1130,7 +1166,11 @@
 
   <main class="main">
     <div class="page-top-bar" id="pageTopBar">
-      <h1><i id="pageTopBarIcon" class="ri-layout-grid-line"></i><span id="pageTopBarTitle">Dashboard</span></h1>
+      <div>
+        <p class="page-kicker" id="pageTopBarKicker">Operação</p>
+        <h1><i id="pageTopBarIcon" class="ri-dashboard-3-line"></i><span id="pageTopBarTitle">Mesa</span></h1>
+        <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
+      </div>
     </div>
     <!-- Dashboard -->
     <section id="dashboard" class="section active">
@@ -1155,43 +1195,18 @@
         </div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon"><i class="ri-eye-line"></i></div><div class="stat-value" id="statTotal">-</div><div class="stat-delta" id="statTotalDelta"></div><div class="stat-label">Total de Visitas</div></div>
-        <div class="stat-card success"><div class="stat-icon"><i class="ri-check-line"></i></div><div class="stat-value" id="statAllowed">-</div><div class="stat-sub" id="statAllowedPct">—</div><div class="stat-delta" id="statAllowedDelta"></div><div class="stat-label">Permitidos</div></div>
-        <div class="stat-card danger"><div class="stat-icon"><i class="ri-forbid-line"></i></div><div class="stat-value" id="statBlocked">-</div><div class="stat-sub" id="statBlockedPct">—</div><div class="stat-delta" id="statBlockedDelta"></div><div class="stat-label">Bloqueados</div></div>
+      <div class="kpi-rail">
+        <div class="stat-card"><div class="stat-icon"><i class="ri-eye-line"></i></div><div class="stat-value" id="statTotal">-</div><div class="stat-delta" id="statTotalDelta"></div><div class="stat-label">Visitas</div></div>
+        <div class="stat-card success"><div class="stat-icon"><i class="ri-check-line"></i></div><div class="stat-value" id="statAllowed">-</div><div class="stat-sub" id="statAllowedPct">—</div><div class="stat-delta" id="statAllowedDelta"></div><div class="stat-label">Liberadas</div></div>
+        <div class="stat-card danger"><div class="stat-icon"><i class="ri-forbid-line"></i></div><div class="stat-value" id="statBlocked">-</div><div class="stat-sub" id="statBlockedPct">—</div><div class="stat-delta" id="statBlockedDelta"></div><div class="stat-label">Bloqueadas</div></div>
         <div class="stat-card warning"><div class="stat-icon"><i class="ri-robot-line"></i></div><div class="stat-value" id="statBots">-</div><div class="stat-sub" id="statBotsPct">—</div><div class="stat-label">Bots</div></div>
         <div class="stat-card"><div class="stat-icon"><i class="ri-smartphone-line"></i></div><div class="stat-value" id="statMobile">-</div><div class="stat-sub" id="statMobilePct">—</div><div class="stat-label">Mobile</div></div>
         <div class="stat-card"><div class="stat-icon"><i class="ri-computer-line"></i></div><div class="stat-value" id="statDesktop">-</div><div class="stat-sub" id="statDesktopPct">—</div><div class="stat-label">Desktop</div></div>
       </div>
 
-      <div class="card" style="margin-bottom: 20px;">
-        <div class="card-header">
-          <h3 class="card-title"><i class="ri-megaphone-line"></i> Tráfego Meta Ads</h3>
-          <span style="color: var(--text-secondary); font-size: 12px;">fbclid, referrer Facebook e revisores</span>
-        </div>
-        <div class="card-body">
-          <div class="meta-kpi-grid">
-            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
-            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
-            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaReviewers">-</div><div class="meta-kpi-label">Revisores Meta</div></div>
-            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaTraffic">-</div><div class="meta-kpi-label">Tráfego Meta total</div></div>
-            <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaAllowedPct" style="color: var(--success);">-</div><div class="meta-kpi-label">Taxa aprovação Meta</div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="charts-grid">
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-line-chart-line"></i> <span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-pie-chart-line"></i> Por Navegador</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBrowser"></canvas></div></div></div>
-      </div>
-      <div class="charts-grid">
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-global-line"></i> Por País</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartCountry"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-prohibited-line"></i> Motivos de Bloqueio</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBlockReasons"></canvas></div></div></div>
-      </div>
-      <div class="charts-grid">
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-windows-line"></i> Por Sistema (OS)</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartOS"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-link"></i> Top Referrers</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartReferrer"></canvas></div></div></div>
-      </div>
+      <div class="desk-layout">
+      <div class="desk-stack">
+      <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-line-chart-line"></i> <span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
 
       <div class="card" id="dashboardBySiteCard" style="margin-bottom: 20px; display: none;">
         <div class="card-header"><h3 class="card-title"><i class="ri-stack-line"></i> Desempenho por Site</h3></div>
@@ -1218,6 +1233,29 @@
             </table>
           </div>
         </div>
+      </div>
+      </div>
+      <aside class="desk-stack">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ri-megaphone-line"></i> Anúncio</h3>
+          </div>
+          <div class="card-body">
+            <div class="meta-kpi-grid">
+              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
+              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
+              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaReviewers">-</div><div class="meta-kpi-label">Revisores</div></div>
+              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaTraffic">-</div><div class="meta-kpi-label">Tráfego Meta</div></div>
+              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaAllowedPct" style="color: var(--success);">-</div><div class="meta-kpi-label">Aprovação</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Navegador</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBrowser"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">País</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartCountry"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Bloqueio</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBlockReasons"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Sistema</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartOS"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Origem</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartReferrer"></canvas></div></div></div>
+      </aside>
       </div>
     </section>
 
@@ -2832,13 +2870,19 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Dashboard', sites: 'Meus Sites', fallbackstatus: 'Status dos links', visitors: 'Visitantes', reports: 'Relatórios', script: 'Link para Ads', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias Automáticas', domains: 'Domínios', pages: 'Páginas', invite: 'Convite Exclusivo', systemhealth: 'Saúde do Sistema' };
-    var sectionIcons = { dashboard: 'ri-layout-grid-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
+    var sectionTitles = { dashboard: 'Mesa', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Acessos', reports: 'Relatórios', script: 'Link de anúncio', analytics: 'Análise', settings: 'Ajustes', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
+    var sectionKickers = { dashboard: 'Operação', sites: 'Links', fallbackstatus: 'Links', visitors: 'Audiência', reports: 'Operação', script: 'Links', analytics: 'Operação', settings: 'Conta', users: 'Administração', metaips: 'Administração', autoimprove: 'Administração', domains: 'Biblioteca', pages: 'Biblioteca', invite: 'Biblioteca', systemhealth: 'Administração' };
+    var sectionLeads = { dashboard: 'Volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Cada acesso, com origem, página entregue e motivo.', reports: 'O mesmo recorte da mesa, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, integrações e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
+    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
       var titleEl = document.getElementById('pageTopBarTitle');
       var iconEl = document.getElementById('pageTopBarIcon');
+      var kickerEl = document.getElementById('pageTopBarKicker');
+      var leadEl = document.getElementById('pageTopBarLead');
       if (titleEl) titleEl.textContent = sectionTitles[sectionId] || sectionId;
+      if (kickerEl) kickerEl.textContent = sectionKickers[sectionId] || '';
+      if (leadEl) leadEl.textContent = sectionLeads[sectionId] || '';
       if (iconEl && sectionIcons[sectionId]) { iconEl.className = sectionIcons[sectionId]; }
       document.querySelectorAll('a.nav-link[data-section]').forEach(l => l.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
