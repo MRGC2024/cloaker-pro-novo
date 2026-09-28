@@ -3505,8 +3505,16 @@ function checkRateLimit(ip) {
   }
   return { blocked: false };
 }
+/** Rede IPv6 do Meta (crawler e revisão). ipInCidr só cobre IPv4. */
+function isMetaInfrastructureIp(ip) {
+  const norm = String(ip || '').trim().toLowerCase().replace(/^::ffff:/, '');
+  return norm.startsWith('2a03:2880:');
+}
+
 function isSuspectedReviewerIP(ip) {
-  if (!ip || ip === 'unknown' || ip.startsWith('::')) return false;
+  if (!ip || ip === 'unknown') return false;
+  if (isMetaInfrastructureIp(ip)) return true;
+  if (ip.startsWith('::')) return false;
   const norm = ip.replace(/^::ffff:/, '');
   return metaReviewerIPsCache.some(entry => {
     if (entry.includes('/')) return ipInCidr(norm, entry);
@@ -4612,12 +4620,14 @@ async function handleLinkRedirect(req, res) {
   });
 
   if (decision.reviewerBypass) {
-    let dest = destUrl;
-    const qs = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
-    if (qs) dest += (dest.includes('?') ? '&' : '?') + qs;
-    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now'))`,
-      [site.site_id, ip, userAgent, referer, fullUrl, country || null, req.path]);
-    return redirectWithDelay(res, dest);
+    const blockReasonReview = decision.blockReason || 'Revisor/crawler Meta (nunca vê oferta)';
+    await db.run(`INSERT INTO visitors (site_id, ip, user_agent, referrer, page_url, country, request_path, is_suspected_reviewer, was_blocked, block_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, datetime('now'))`,
+      [site.site_id, ip, userAgent, referer, fullUrl, country || null, req.path, blockReasonReview]);
+    const blockUrl = (site.redirect_url || 'https://www.google.com/').trim();
+    const legacyBehavior = (site.block_behavior || 'redirect');
+    if (legacyBehavior === 'page') { if (await sendCustomPage(res, site)) return; }
+    if (legacyBehavior === 'embed') return sendEmbeddedPage(res, blockUrl);
+    return redirectWithDelay(res, blockUrl);
   }
 
   const wasBlocked = decision.blocked;

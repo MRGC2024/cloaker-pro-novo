@@ -7,33 +7,33 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M16 7l7 4v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9v-6l7-4z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #000000;
-      --bg-secondary: #0a0a0a;
-      --bg-card: #111111;
-      --bg-hover: #1a1a1a;
-      --accent-primary: #6366f1;
-      --accent-secondary: #818cf8;
-      --accent-solid: #6366f1;
-      --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
-      --success: #22c55e;
-      --warning: #eab308;
-      --danger: #ef4444;
-      --info: #38bdf8;
-      --text-primary: #fafafa;
-      --text-secondary: #a3a3a3;
-      --text-tertiary: #737373;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(99, 102, 241, 0.45);
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-      --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.6);
+      --bg-primary: #090b10;
+      --bg-secondary: #0e1218;
+      --bg-card: #12171f;
+      --bg-hover: #1a212c;
+      --accent-primary: #c4a574;
+      --accent-secondary: #e4d2b0;
+      --accent-solid: #c4a574;
+      --accent-gradient: linear-gradient(160deg, #e4d2b0 0%, #a88858 100%);
+      --success: #3dbe8a;
+      --warning: #d4a017;
+      --danger: #e06b6b;
+      --info: #7eb6d6;
+      --text-primary: #f4f1ea;
+      --text-secondary: #b7b1a6;
+      --text-tertiary: #7d776e;
+      --border: rgba(244, 241, 234, 0.08);
+      --border-hover: rgba(196, 165, 116, 0.45);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+      --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
+      --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.4);
     }
     html { color-scheme: dark; }
 
@@ -173,7 +173,7 @@
     .badge-redirect { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); margin-left: 6px; vertical-align: middle; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
@@ -188,7 +188,7 @@
       top: 0; 
       width: 260px; 
       height: 100vh; 
-      background: #0a0a0a; 
+      background: #0c1016; 
       border-right: 1px solid var(--border); 
       padding: 16px 12px; 
       z-index: 100; 
@@ -269,7 +269,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+      box-shadow: none;
     }
     .logo-mark i { font-size: 18px; color: #fff; }
     .logo-text { min-width: 0; }
@@ -324,8 +324,8 @@
       color: var(--text-primary); 
     }
     .nav-link.active {
-      background: rgba(99, 102, 241, 0.12);
-      color: #c7d2fe;
+      background: rgba(196, 165, 116, 0.12);
+      color: #f4f1ea;
       font-weight: 600;
     }
     .nav-link.active i { color: var(--accent-primary); opacity: 1; }
@@ -1032,7 +1032,7 @@
       <div class="logo-mark"><i class="ri-shield-check-line"></i></div>
       <div class="logo-text">
         <h1>Cloaker Pro</h1>
-        <span class="logo-sub">Painel de controle</span>
+        <span class="logo-sub">Traffic desk</span>
       </div>
     </div>
     <ul class="nav-menu">
