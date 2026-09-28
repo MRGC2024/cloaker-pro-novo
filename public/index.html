@@ -5523,7 +5523,6 @@
         a.click();
         a.remove();
         setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
-        showCopyToast();
       } catch (e) {
         alert(e.message || 'Erro ao exportar');
       }
