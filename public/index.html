@@ -3039,6 +3039,7 @@
               <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')" title="Copiar link do Ads"><i class="ri-file-copy-line"></i> Copiar link</button>
               <button class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')" title="Ver links"><i class="ri-links-line"></i></button>
               <button class="btn btn-secondary btn-sm btn-icon" onclick="openReport('${s.site_id}')" title="Relatório"><i class="ri-file-chart-line"></i></button>
+              <button class="btn btn-secondary btn-sm" onclick="exportSiteDiagnostic('${s.site_id}')" title="Baixar JSON com configuração e cada visita (30 dias) para análise"><i class="ri-download-2-line"></i> Diagnóstico</button>
               <button class="btn btn-secondary btn-sm btn-icon" onclick="editSite('${s.site_id}')" title="Editar"><i class="ri-edit-line"></i></button>
               <button class="btn btn-danger btn-sm btn-icon" onclick="deleteSite('${s.site_id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
             </div>
@@ -5500,6 +5501,32 @@
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text);
       showCopyToast();
+    }
+
+    async function exportSiteDiagnostic(siteId) {
+      try {
+        const res = await fetch('/api/sites/' + encodeURIComponent(siteId) + '/diagnostic-export?days=30', { credentials: 'include' });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        if (!res.ok) {
+          let err = 'Não foi possível exportar';
+          try { const j = await res.json(); if (j.error) err = j.error; } catch (e2) {}
+          alert(err);
+          return;
+        }
+        const blob = await res.blob();
+        const site = (sites || []).find(function(s) { return s.site_id === siteId; });
+        const label = ((site && site.name) || siteId).replace(/[^\w.-]+/g, '_').slice(0, 40);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'diagnostico-' + label + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+        showCopyToast();
+      } catch (e) {
+        alert(e.message || 'Erro ao exportar');
+      }
     }
 
     function openExportModal() {

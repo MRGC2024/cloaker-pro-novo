@@ -2306,6 +2306,94 @@ app.get('/api/export', async (req, res) => {
   }
 });
 
+// Export de diagnóstico por site: config + cada visita, para analisar o que passou.
+app.get('/api/sites/:siteId/diagnostic-export', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [req.params.siteId]);
+  if (!site) return res.status(404).json({ error: 'Site não encontrado' });
+  if (site.user_id != null && Number(site.user_id) !== Number(req.session.userId)) {
+    const admin = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+    if (!admin || admin.role !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const days = Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 30));
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  const VISIT_CAP = 4000;
+  const cols = `id, ip, country, city, region, isp, user_agent, device_type, browser, os,
+    was_blocked, block_reason, is_bot, bot_reason, is_suspected_reviewer,
+    referrer, page_url, request_path, utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+    facebook_params, ref_param, has_ad_click, traffic_source, stealth_delivery, created_at`;
+  const visits = await db.all(
+    `SELECT ${cols} FROM visitors WHERE site_id = ? AND created_at >= ? ORDER BY created_at DESC LIMIT ?`,
+    [site.site_id, since, VISIT_CAP]
+  );
+  const totalRow = await db.get(
+    'SELECT COUNT(*) as count FROM visitors WHERE site_id = ? AND created_at >= ?',
+    [site.site_id, since]
+  );
+
+  const flag = (v) => v === 1 || v === true || v === '1';
+  const allowed = visits.filter(v => !flag(v.was_blocked));
+  const blocked = visits.filter(v => flag(v.was_blocked));
+  const byCountry = {};
+  const uaCount = {};
+  allowed.forEach(v => {
+    const c = (v.country || 'sem_pais').toUpperCase();
+    byCountry[c] = (byCountry[c] || 0) + 1;
+    const ua = (v.user_agent || '(vazio)').slice(0, 180);
+    uaCount[ua] = (uaCount[ua] || 0) + 1;
+  });
+  const allowedUserAgents = Object.entries(uaCount)
+    .map(([ua, count]) => ({ ua, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 40);
+
+  const payload = {
+    purpose: 'Diagnóstico de um site. Anexe este JSON na conversa para revisar visitas liberadas que podem não ser pessoas reais.',
+    exported_at: new Date().toISOString(),
+    period_days: days,
+    truncated: (totalRow?.count || 0) > visits.length,
+    total_in_period: totalRow?.count || visits.length,
+    site: {
+      site_id: site.site_id,
+      name: site.name,
+      domain: site.domain,
+      selected_domain: site.selected_domain,
+      is_active: site.is_active,
+      block_behavior: site.block_behavior,
+      bridge_style: site.bridge_style,
+      offer_delivery: site.offer_delivery,
+      allowed_countries: site.allowed_countries,
+      blocked_countries: site.blocked_countries,
+      block_bots: site.block_bots,
+      block_desktop: site.block_desktop,
+      block_vpn: site.block_vpn,
+      block_devtools: site.block_devtools,
+      block_facebook_library: site.block_facebook_library,
+      has_required_ref_token: !!(site.required_ref_token && String(site.required_ref_token).trim()),
+      target_url: site.target_url,
+      redirect_url: site.redirect_url
+    },
+    summary: {
+      exported_rows: visits.length,
+      blocked: blocked.length,
+      allowed: allowed.length,
+      allowed_marked_as_bot: allowed.filter(v => flag(v.is_bot)).length,
+      allowed_with_ad_click: allowed.filter(v => flag(v.has_ad_click)).length,
+      allowed_suspected_reviewer: allowed.filter(v => flag(v.is_suspected_reviewer)).length,
+      allowed_by_country: byCountry,
+      allowed_user_agents: allowedUserAgents
+    },
+    allowed_visits: allowed,
+    blocked_visits: blocked
+  };
+
+  const safeName = String(site.name || site.site_id).replace(/[^\w.-]+/g, '_').slice(0, 40);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="diagnostico-${safeName}.json"`);
+  res.send(JSON.stringify(payload, null, 2));
+});
+
 
 // API: IPs de revisão do Meta (admin)
 app.get('/api/meta-ips', async (req, res) => {
