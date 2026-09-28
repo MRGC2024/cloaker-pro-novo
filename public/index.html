@@ -13,23 +13,23 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #090b10;
-      --bg-secondary: #0e1218;
-      --bg-card: #12171f;
-      --bg-hover: #1a212c;
-      --accent-primary: #c4a574;
-      --accent-secondary: #e4d2b0;
-      --accent-solid: #c4a574;
-      --accent-gradient: linear-gradient(160deg, #e4d2b0 0%, #a88858 100%);
-      --success: #3dbe8a;
-      --warning: #d4a017;
-      --danger: #e06b6b;
-      --info: #7eb6d6;
-      --text-primary: #f4f1ea;
-      --text-secondary: #b7b1a6;
-      --text-tertiary: #7d776e;
-      --border: rgba(244, 241, 234, 0.08);
-      --border-hover: rgba(196, 165, 116, 0.45);
+      --bg-primary: #0b1220;
+      --bg-secondary: #111827;
+      --bg-card: #151d2e;
+      --bg-hover: #1c2740;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #93c5fd;
+      --accent-solid: #3b82f6;
+      --accent-gradient: linear-gradient(160deg, #60a5fa 0%, #2563eb 100%);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --info: #7dd3fc;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-tertiary: #94a3b8;
+      --border: rgba(148, 163, 184, 0.16);
+      --border-hover: rgba(59, 130, 246, 0.55);
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
       --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
@@ -324,8 +324,8 @@
       color: var(--text-primary); 
     }
     .nav-link.active {
-      background: rgba(196, 165, 116, 0.12);
-      color: #f4f1ea;
+      background: rgba(59, 130, 246, 0.16);
+      color: #f8fafc;
       font-weight: 600;
     }
     .nav-link.active i { color: var(--accent-primary); opacity: 1; }
@@ -550,7 +550,17 @@
 
     .filters { display: flex; gap: 8px; flex-wrap: wrap; }
     .filter-btn { padding: 8px 14px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; transition: all 0.3s; font-size: 12px; }
-    .filter-btn:hover, .filter-btn.active { background: var(--accent-solid); color: var(--bg-primary); border-color: var(--accent-solid); }
+    .filter-btn:hover, .filter-btn.active { background: var(--accent-solid); color: #fff; border-color: var(--accent-solid); }
+    .site-step { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .site-step-kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-secondary); font-weight: 600; margin-bottom: 8px; }
+    #siteModal .modal-content { max-width: 760px; }
+    @media (max-width: 768px) {
+      .header { flex-direction: column; align-items: stretch; }
+      .header-actions { width: 100%; }
+      .header-actions .form-select, .header-actions .btn { max-width: 100%; }
+      .period-selector { width: 100%; }
+      .page-top-bar { margin-left: 36px; }
+    }
 
     .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
     .modal-content { 
@@ -2583,6 +2593,15 @@
                 <input type="number" class="form-input" id="siteBridgeTimer" min="1" max="30" value="1" style="max-width:120px;">
                 <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Carregando: 1–30s (padrão 1). Convite: usa timer da página de convite (mín. 2s).</small>
               </div>
+              <div class="form-group" id="siteBridgeLangWrap" style="display:none;margin-bottom:8px;">
+                <label class="form-label">Idioma da ponte</label>
+                <select class="form-select" id="siteBridgeLang">
+                  <option value="pt">Português</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+                <small style="display:block;margin-top:6px;color:var(--text-secondary);font-size:12px;">Textos de Carregando e do convite. A oferta em si não muda.</small>
+              </div>
               <input type="hidden" id="siteBridgeStyle" value="editorial">
             </div>
             <div class="form-group" id="siteGrayManualBox" style="margin-bottom: 12px; display: none;">
@@ -2622,6 +2641,7 @@
           <label class="form-label">URL de redirecionamento (quando bloquear)</label>
           <input type="text" class="form-input" id="siteRedirectUrl" value="https://www.google.com/" placeholder="Fallback se não usar white page no bloqueio">
         </div>
+        <div class="site-step"><div class="site-step-kicker">Proteção</div>
         <div class="form-section-title">Regras de bloqueio</div>
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Padrão: <strong>apenas Brasil (BR)</strong>; bloquear desktops, Facebook, bots, VPN/proxy e DevTools.</p>
         <div class="info-grid">
@@ -2653,7 +2673,9 @@
             </div>
           </div>
         </div>
-        <h4 style="margin: 25px 0 15px;">Parâmetro de rastreamento (Meta Ads)</h4>
+        </div>
+        <div class="site-step"><div class="site-step-kicker">Anúncio</div>
+        <h4 style="margin: 8px 0 15px;">Parâmetro de rastreamento (Meta Ads)</h4>
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">Para permitir <strong>apenas</strong> quem clicar no anúncio: exija o parâmetro abaixo. No Meta Ads, em <strong>Rastreamento → Parâmetros de URL</strong>, adicione o valor. Quem acessar o link sem esse parâmetro será bloqueado.</p>
         <div class="info-grid" style="margin-bottom: 12px;">
           <div class="info-item" style="flex: 1 1 100%;">
@@ -2678,6 +2700,7 @@
           <label class="form-label">UTMs padrão (TikTok Ads)</label>
           <input type="text" class="form-input" id="siteTikTokLinkParams" placeholder="Ex: utm_source=tiktok&utm_medium=cpc&utm_campaign=campanha_tiktok">
           <p class="form-hint">Parâmetros salvos para este site no bloco TikTok Ads.</p>
+        </div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 25px;">
           <button class="btn btn-primary" onclick="saveSite()"><i class="ri-save-line"></i> Salvar</button>
@@ -3303,6 +3326,7 @@
       if (document.getElementById('siteInvitePageId')) document.getElementById('siteInvitePageId').value = site.invite_page_id || '';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = bridgeMode;
       if (document.getElementById('siteBridgeTimer')) document.getElementById('siteBridgeTimer').value = site.bridge_timer_sec != null ? site.bridge_timer_sec : 1;
+      if (document.getElementById('siteBridgeLang')) document.getElementById('siteBridgeLang').value = site.bridge_lang || 'pt';
       syncSiteBridgeMode();
       document.getElementById('siteBlockDesktop').checked = site.block_desktop;
       document.getElementById('siteBlockFacebook').checked = site.block_facebook_library;
@@ -3507,6 +3531,7 @@
         bridge_timer_sec: isStealthBehavior && document.getElementById('siteBridgeTimer')
           ? parseInt(document.getElementById('siteBridgeTimer').value || '1', 10)
           : null,
+        bridge_lang: (document.getElementById('siteBridgeLang') && document.getElementById('siteBridgeLang').value) || 'pt',
         auto_stealth_pages: autoStealthPages,
         stealth_theme: (document.getElementById('siteStealthTheme') && document.getElementById('siteStealthTheme').value) || 'auto',
         selected_domain: document.getElementById('siteSelectedDomain').value || null,
@@ -3804,6 +3829,8 @@
       const timerWrap = document.getElementById('siteBridgeTimerWrap');
       if (wrap) wrap.style.display = mode === 'invite' ? 'block' : 'none';
       if (timerWrap) timerWrap.style.display = (mode === 'invite' || mode === 'loading') ? 'block' : 'none';
+      const langWrap = document.getElementById('siteBridgeLangWrap');
+      if (langWrap) langWrap.style.display = (mode === 'invite' || mode === 'loading') ? 'block' : 'none';
       if (document.getElementById('siteBridgeStyle')) document.getElementById('siteBridgeStyle').value = mode;
     }
 

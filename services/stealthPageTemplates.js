@@ -236,8 +236,10 @@ function wrapHtml(title, body, styles, meta = {}) {
   const ogTitle = esc(meta.ogTitle || title);
   const ogDesc = desc || ogTitle;
   const ogImage = meta.ogImage ? `<meta property="og:image" content="${esc(meta.ogImage)}">` : '';
+  const htmlLang = meta.htmlLang || 'pt-BR';
+  const ogLocale = meta.ogLocale || 'pt_BR';
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -246,7 +248,7 @@ function wrapHtml(title, body, styles, meta = {}) {
   <meta property="og:type" content="article">
   <meta property="og:title" content="${ogTitle}">
   <meta property="og:description" content="${ogDesc}">
-  <meta property="og:locale" content="pt_BR">
+  <meta property="og:locale" content="${ogLocale}">
   ${ogImage}
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="${ogTitle}">
@@ -422,8 +424,16 @@ function listStealthThemes() {
  * withTimer + navPath → após timer consulta /api/n/ (lead→oferta; bot→white/gray no mesmo link).
  * NUNCA embute URL da oferta no HTML — o Meta lê o código-fonte e rejeita o anúncio.
  */
+const INVITE_COPY = {
+  pt: { sub: 'Convite exclusivo para você', badge: 'Convite pessoal', h1: 'Você foi selecionado para esta oportunidade', p1: 'selecionou você para participar de uma ação exclusiva. Poucas pessoas recebem este acesso — a participação é voluntária e você pode encerrar a qualquer momento.', p2: 'Estamos preparando o ambiente oficial da oportunidade. Em instantes você entra com o mesmo privilégio de quem foi escolhido.', timer: (s) => `Preparando seu <strong>acesso exclusivo</strong> em ${s}s…`, idle: 'Seu convite está ativo. Aguarde a confirmação da equipe.', btn: 'Preparando seu acesso…', reserved: 'Convite reservado', no: 'Não, obrigado', foot: 'Ação veiculada em conformidade com as diretrizes da plataforma parceira.', htmlLang: 'pt-BR', ogLocale: 'pt_BR', guest: 'CONVIDADO' },
+  en: { sub: 'An exclusive invite for you', badge: 'Personal invite', h1: 'You were selected for this opportunity', p1: 'selected you for an exclusive action. Few people receive this access — joining is voluntary and you can leave at any time.', p2: 'We are preparing the official environment. In a moment you enter with the same access as those who were chosen.', timer: (s) => `Preparing your <strong>exclusive access</strong> in ${s}s…`, idle: 'Your invite is active. Wait for the team to confirm.', btn: 'Preparing your access…', reserved: 'Invite reserved', no: 'No, thanks', foot: 'This action follows the partner platform guidelines.', htmlLang: 'en', ogLocale: 'en_US', guest: 'GUEST' },
+  es: { sub: 'Una invitación exclusiva para ti', badge: 'Invitación personal', h1: 'Fuiste seleccionado para esta oportunidad', p1: 'te seleccionó para una acción exclusiva. Pocas personas reciben este acceso — participar es voluntario y puedes salir cuando quieras.', p2: 'Estamos preparando el entorno oficial. En instantes entras con el mismo acceso de quien fue elegido.', timer: (s) => `Preparando tu <strong>acceso exclusivo</strong> en ${s}s…`, idle: 'Tu invitación está activa. Espera la confirmación del equipo.', btn: 'Preparando tu acceso…', reserved: 'Invitación reservada', no: 'No, gracias', foot: 'Acción publicada conforme a las directrices de la plataforma asociada.', htmlLang: 'es', ogLocale: 'es_ES', guest: 'INVITADO' }
+};
+
 function buildInviteBridgeHtml(opts = {}) {
-  const name = String(opts.influencerName || 'CONVIDADO').trim() || 'CONVIDADO';
+  const lang = ['en', 'es', 'pt'].includes(opts.lang) ? opts.lang : 'pt';
+  const copy = INVITE_COPY[lang];
+  const name = String(opts.influencerName || copy.guest).trim() || copy.guest;
   const nameEsc = esc(name);
   const photo = normalizeImageUrl(opts.photoUrl);
   const banner = normalizeImageUrl(opts.bannerUrl) || photo;
@@ -467,9 +477,7 @@ function buildInviteBridgeHtml(opts = {}) {
     .foot{text-align:center;font-size:11px;color:#94a3b8;padding:4px 22px 18px;line-height:1.45}
   `;
 
-  const staticTimerLabel = withTimer
-    ? `Preparando seu <strong>acesso exclusivo</strong> em ${timerSec}s…`
-    : 'Seu convite está ativo. Aguarde a confirmação da equipe.';
+  const staticTimerLabel = withTimer ? copy.timer(timerSec) : esc(copy.idle);
 
   const bannerImg = bannerAttr
     ? `<img class="hero-bg" src="${bannerAttr}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
@@ -487,46 +495,51 @@ function buildInviteBridgeHtml(opts = {}) {
         <div class="avatar" aria-hidden="true">${avatarInner}</div>
         <div class="hero-txt">
           <div class="hero-name">${nameEsc}</div>
-          <div class="hero-sub">Convite exclusivo para você</div>
+          <div class="hero-sub">${esc(copy.sub)}</div>
         </div>
       </div>
     </div>
     <div class="body">
-      <div class="badge">Convite pessoal</div>
-      <h1>Você foi selecionado para esta oportunidade</h1>
-      <p>O influenciador <strong>${nameEsc}</strong> selecionou você para participar de uma ação exclusiva. Poucas pessoas recebem este acesso — a participação é voluntária e você pode encerrar a qualquer momento.</p>
-      <p>Estamos preparando o ambiente oficial da oportunidade. Em instantes você entra com o mesmo privilégio de quem foi escolhido.</p>
+      <div class="badge">${esc(copy.badge)}</div>
+      <h1>${esc(copy.h1)}</h1>
+      <p><strong>${nameEsc}</strong> ${copy.p1}</p>
+      <p>${esc(copy.p2)}</p>
       <div class="progress" aria-hidden="true"><i id="inv-bar"></i></div>
       <div class="timer" id="inv-timer">${staticTimerLabel}</div>
-      <div class="btn-main" id="inv-btn">${withTimer ? 'Preparando seu acesso…' : 'Convite reservado'}</div>
-      <div class="btn-sec">Não, obrigado</div>
+      <div class="btn-main" id="inv-btn">${esc(withTimer ? copy.btn : copy.reserved)}</div>
+      <div class="btn-sec">${esc(copy.no)}</div>
     </div>
-    <div class="foot">Ação veiculada em conformidade com as diretrizes da plataforma parceira. © ${year}</div>
+    <div class="foot">${esc(copy.foot)} © ${year}</div>
   </div>${timerScript}`;
 
-  return wrapHtml(`${name} · Convite exclusivo`, body, styles, {
-    description: `${name} selecionou você para uma oportunidade exclusiva.`,
-    ogTitle: `Convite exclusivo · ${name}`,
-    ogImage: photo || banner || ''
+  return wrapHtml(`${name} · ${copy.badge}`, body, styles, {
+    description: `${name} — ${copy.sub}`,
+    ogTitle: `${copy.badge} · ${name}`,
+    ogImage: photo || banner || '',
+    htmlLang: copy.htmlLang,
+    ogLocale: copy.ogLocale
   });
 }
 
 /** Ponte neutra — skeleton + carregando. Com bridgeSeed → HTML/CSS/JS únicos por link. */
 function buildLoadingBridgeHtml(opts = {}) {
+  const lang = ['en', 'es', 'pt'].includes(opts.lang) ? opts.lang : 'pt';
   const timerSec = Math.max(1, Math.min(30, parseInt(opts.timerSeconds, 10) || 1));
   const navPath = String(opts.navPath || '').trim();
   const withTimer = !!opts.withTimer && !!navPath;
   const year = new Date().getFullYear();
   const seed = String(opts.bridgeSeed || '').trim();
-  const v = seed ? resolveLoadingVariant(seed) : null;
+  const v = seed ? resolveLoadingVariant(seed, lang) : null;
   const p = v ? v.prefix : 'ld';
   const barId = v ? v.barId : 'ld-bar';
   const statusId = v ? v.statusId : 'ld-status';
-  const idleText = v ? v.text : 'Carregando conteúdo…';
+  const fallbackIdle = lang === 'en' ? 'Loading content…' : (lang === 'es' ? 'Cargando contenido…' : 'Carregando conteúdo…');
+  const fallbackOpen = lang === 'en' ? 'Opening content…' : (lang === 'es' ? 'Abriendo contenido…' : 'Abrindo conteúdo…');
+  const idleText = v ? v.text : fallbackIdle;
 
   const timerScript = withTimer
     ? (v
-      ? buildLoadingTimerScript(navPath, timerSec, barId, statusId, v.jsVars, idleText)
+      ? buildLoadingTimerScript(navPath, timerSec, barId, statusId, v.jsVars, idleText, v.opening || fallbackOpen)
       : `<script>(function(){try{if(navigator.webdriver)return;var total=${timerSec}*1000,nav=${JSON.stringify(navPath)},start=Date.now(),bar=document.getElementById('ld-bar'),lab=document.getElementById('ld-status'),done=false,tries=0;function apply(d){if(!d||done)return;if(d.inline&&d.html){done=true;try{document.open();document.write(d.html);document.close()}catch(e){}return}if(d.next){done=true;try{location.replace(d.next)}catch(e2){location.href=d.next}}}function pull(){tries++;var q=location.search||'';fetch(nav+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)apply(d);else if(tries<3)setTimeout(pull,400);else if(lab)lab.textContent='Carregando conteúdo…'}).catch(function(){if(tries<3)setTimeout(pull,400)})}function tick(){var left=Math.max(0,total-(Date.now()-start)),s=Math.ceil(left/1000),pct=Math.min(100,((total-left)/total)*100);if(bar)bar.style.width=pct+'%';if(lab)lab.textContent=s>0?('Carregando conteúdo… '+s+'s'):'Abrindo conteúdo…';if(left<=0){pull();return}requestAnimationFrame(tick)}requestAnimationFrame(tick)}catch(e){}})();</script>`)
     : '';
 
@@ -567,9 +580,13 @@ function buildLoadingBridgeHtml(opts = {}) {
     <p class="${p}-foot">© ${year}</p>
   </div>${timerScript}`;
 
+  const htmlLang = lang === 'en' ? 'en' : (lang === 'es' ? 'es' : 'pt-BR');
+  const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
   return wrapHtml(idleText.replace('…', ''), body, styles, {
     description: idleText,
-    ogTitle: idleText
+    ogTitle: idleText,
+    htmlLang,
+    ogLocale
   });
 }
 

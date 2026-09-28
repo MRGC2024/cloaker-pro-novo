@@ -1546,8 +1546,9 @@ app.post('/api/sites', async (req, res) => {
       ? clampLoadingTimer(req.body.bridge_timer_sec)
       : clampBridgeTimer(req.body.bridge_timer_sec);
     const bridgeSeed = behavior === 'stealth' ? generateBridgeFingerprint() : null;
-    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, bridge_seed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, bridgeSeed]);
+    const bridgeLang = normalizeBridgeLang(req.body.bridge_lang);
+    await db.run(`INSERT INTO sites (site_id, link_code, user_id, name, domain, target_url, redirect_url, block_behavior, default_link_params, allowed_countries, blocked_countries, block_desktop, block_facebook_library, block_bots, block_vpn, block_devtools, required_ref_token, landing_page_id, gray_page_id, offer_page_id, offer_delivery, selected_domain, use_fallback, path_prefix, bridge_style, influencer_name, influencer_photo_url, influencer_banner_url, bridge_timer_sec, invite_page_id, bridge_seed, bridge_lang, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [siteId, linkCode, userId, name, domain, target, safeRedirect, behavior, defaultParams, countriesNorm.allowed, countriesNorm.blocked, refToken, lpId, grayId, offerPageId, offerDelivery, selDomain, useFb, pathPrefix, bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, bridgeSeed, bridgeLang]);
     const site = await db.get('SELECT * FROM sites WHERE site_id = ?', [siteId]);
     res.json({ ...site, auto_pages: autoPagesMeta });
   } catch (error) {
@@ -1627,7 +1628,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
         block_desktop = ?, block_facebook_library = ?, block_bots = ?,
         block_vpn = ?, block_devtools = ?,
         allowed_countries = ?, blocked_countries = ?, is_active = ?, required_ref_token = ?, selected_domain = ?, landing_page_id = ?, gray_page_id = ?, offer_page_id = ?, offer_delivery = ?, use_fallback = ?, path_prefix = ?,
-        bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ?, invite_page_id = ?${clearFallback}
+        bridge_style = ?, influencer_name = ?, influencer_photo_url = ?, influencer_banner_url = ?, bridge_timer_sec = ?, invite_page_id = ?, bridge_lang = ?${clearFallback}
       WHERE site_id = ?
     `;
     const countriesNorm = normalizeAllowedBlockedCountries(data.allowed_countries, data.blocked_countries);
@@ -1637,7 +1638,7 @@ app.put('/api/sites/:siteId', async (req, res) => {
       data.block_vpn ? 1 : 0, data.block_devtools ? 1 : 0,
       countriesNorm.allowed, countriesNorm.blocked, data.is_active ? 1 : 0, refToken,
       selDomain, lpId, grayId, offerPageId, offerDelivery, useFb, pathPrefix,
-      bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId,
+      bridgeStyle, influencerName, influencerPhoto, influencerBanner, bridgeTimer, invitePageId, normalizeBridgeLang(data.bridge_lang),
       req.params.siteId
     ]);
     res.json({ success: true, bridge_style: bridgeStyle, bridge_timer_sec: bridgeTimer });
@@ -2857,6 +2858,13 @@ function normalizeBridgeStyle(v) {
   return 'editorial';
 }
 
+function normalizeBridgeLang(v) {
+  const s = String(v || '').toLowerCase().trim();
+  if (s === 'en' || s.startsWith('en')) return 'en';
+  if (s === 'es' || s.startsWith('es')) return 'es';
+  return 'pt';
+}
+
 async function resolveInviteConfig(site) {
   const fallback = {
     influencerName: site.influencer_name || 'CONVIDADO',
@@ -2890,7 +2898,8 @@ async function sendInviteBridgeResponse(res, site, options = {}) {
     timerSeconds: cfg.timerSeconds,
     destUrl: '',
     navPath: options.withTimer ? navPath : '',
-    withTimer: !!options.withTimer
+    withTimer: !!options.withTimer,
+    lang: normalizeBridgeLang(site.bridge_lang)
   });
   sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
 }
@@ -2904,7 +2913,8 @@ async function sendLoadingBridgeResponse(res, site, options = {}) {
     timerSeconds: timerSec,
     navPath: options.withTimer ? navPath : '',
     withTimer: !!options.withTimer,
-    bridgeSeed: site.bridge_seed || null
+    bridgeSeed: site.bridge_seed || null,
+    lang: normalizeBridgeLang(site.bridge_lang)
   });
   sendStealthHtmlResponse(res, html, { metaSafe: !!options.metaSafe });
 }
