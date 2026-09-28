@@ -554,13 +554,6 @@
     .site-step { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
     .site-step-kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-secondary); font-weight: 600; margin-bottom: 8px; }
     #siteModal .modal-content { max-width: 760px; }
-    @media (max-width: 768px) {
-      .header { flex-direction: column; align-items: stretch; }
-      .header-actions { width: 100%; }
-      .header-actions .form-select, .header-actions .btn { max-width: 100%; }
-      .period-selector { width: 100%; }
-      .page-top-bar { margin-left: 36px; }
-    }
 
     .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
     .modal-content { 
@@ -876,18 +869,27 @@
       .main,
       body.sidebar-collapsed .main {
         margin-left: 0;
-        padding: max(58px, calc(48px + env(safe-area-inset-top, 0px))) 14px max(28px, env(safe-area-inset-bottom, 0px));
+        width: 100%;
+        max-width: 100%;
+        padding: max(64px, calc(52px + env(safe-area-inset-top, 0px))) 12px max(24px, env(safe-area-inset-bottom, 0px));
       }
+      .section, .card, .desk-layout, .desk-stack, .header, .header-actions { min-width: 0; max-width: 100%; }
 
       .page-top-bar {
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        padding-left: 48px;
-        min-height: 40px;
-        align-items: center;
+        margin: 0 0 14px;
+        padding: 0 0 12px 52px;
+        min-height: 44px;
+        align-items: flex-start;
       }
-      .page-top-bar h1 { font-size: 17px; gap: 8px; }
+      .page-kicker { margin-bottom: 2px; }
+      .page-lead { font-size: 12px; margin-top: 4px; }
+      .page-top-bar h1 { font-size: 20px; gap: 8px; line-height: 1.2; }
       .page-top-bar h1 i { font-size: 18px; }
+      .kpi-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .kpi-rail .stat-value { font-size: 20px; }
+      .kpi-rail .stat-label { font-size: 11px; }
+      .desk-layout { grid-template-columns: 1fr; }
+      .chart-container { height: 200px; }
 
       .header { margin-bottom: 16px; gap: 12px; }
       .header h2 { font-size: 16px; }
@@ -904,9 +906,11 @@
         width: 100%;
         min-width: 0;
       }
-      .header-actions .period-selector {
+      .header-actions .period-selector,
+      .period-selector {
         width: 100%;
         display: flex;
+        flex-wrap: wrap;
       }
       .period-btn {
         flex: 1;
@@ -927,12 +931,23 @@
       .site-card-top { flex-direction: column; }
       .site-card-title { font-size: 15px; line-height: 1.4; }
       .site-card-actions { width: 100%; }
-      .site-card-actions .btn {
-        flex: 1;
-        min-width: calc(20% - 6px);
-        justify-content: center;
-        min-height: 40px;
+      .site-card-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
       }
+      .site-card-actions .btn {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+        min-height: 42px;
+        font-size: 0;
+        padding: 8px;
+      }
+      .site-card-actions .btn i { font-size: 18px; }
+      .site-landing { word-break: break-all; font-size: 12px; }
+      .site-invite-box { flex-direction: column; align-items: stretch; }
+      .site-invite-box .form-select { max-width: 100% !important; width: 100%; }
       .site-card-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -1001,6 +1016,10 @@
       .nav-link { padding: 12px 14px; min-height: 44px; font-size: 14px; }
       .nav-group-title { padding-top: 16px; }
 
+      .meta-kpi-grid { grid-template-columns: 1fr 1fr; }
+      .last-update { font-size: 11px; flex-wrap: wrap; }
+      .table-container { max-width: 100%; }
+      select, .form-select, .form-input { max-width: 100%; }
       .filters { width: 100%; gap: 6px; }
       .filter-btn {
         flex: 1 1 calc(50% - 3px);
