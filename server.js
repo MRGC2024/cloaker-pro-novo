@@ -643,7 +643,7 @@ function removeCustomDomainFromRailway(domain) {
   const serviceId = process.env.RAILWAY_SERVICE_ID;
   const projectId = process.env.RAILWAY_PROJECT_ID;
   const environmentId = process.env.RAILWAY_ENVIRONMENT_ID;
-  if (!token || !serviceId || !projectId || !environmentId) return Promise.resolve({ ok: false });
+  if (!token || !serviceId || !projectId || !environmentId) return Promise.resolve({ ok: false, state: 'unconfigured', error: 'Variáveis Railway não configuradas.' });
 
   function graphql(body) {
     const buf = Buffer.from(body, 'utf8');
@@ -675,7 +675,7 @@ function removeCustomDomainFromRailway(domain) {
   return graphql(listQuery).then(json => {
     if (json.errors && json.errors.length) {
       console.error('[Railway] domains query falhou:', json.errors[0].message);
-      return { ok: false, error: json.errors[0].message };
+      return { ok: false, state: 'failed', error: json.errors[0].message };
     }
     const domainsData = json.data && json.data.domains;
     let raw = (domainsData && (domainsData.customDomains || domainsData.custom_domains)) || [];
@@ -684,7 +684,7 @@ function removeCustomDomainFromRailway(domain) {
     if (custom.length && custom[0] && custom[0].node) custom = custom.map(e => e.node || e);
     const d = domain.trim().toLowerCase();
     const found = custom.find(c => ((c.domain || c.name || '').toLowerCase()) === d);
-    if (!found || !(found.id || found.customDomainId)) return { ok: true };
+    if (!found || !(found.id || found.customDomainId)) return { ok: true, state: 'absent' };
     const idToDelete = found.id || found.customDomainId;
     const tryDelete = (mutationName, useInput) => {
       if (useInput) {
@@ -706,23 +706,23 @@ function removeCustomDomainFromRailway(domain) {
           if (rem.errors && rem.errors.length) {
             const errMsg = rem.errors[0].message || '';
             return tryDelete('customDomainRemove', true).then(rem2 => {
-              if (rem2.errors && rem2.errors.length) return { ok: false, error: rem2.errors[0].message };
-              return { ok: true };
+              if (rem2.errors && rem2.errors.length) return { ok: false, state: 'failed', error: rem2.errors[0].message };
+              return { ok: true, state: 'removed' };
             }).catch(() => ({ ok: false, error: errMsg }));
           }
-          return { ok: true };
+          return { ok: true, state: 'removed' };
         })
         .then(r => {
           if (r.ok) return r;
           return tryDelete('customDomainDelete', false).then(del => {
-            if (del.errors && del.errors.length) return { ok: false, error: del.errors[0].message };
-            return { ok: true };
+            if (del.errors && del.errors.length) return { ok: false, state: 'failed', error: del.errors[0].message };
+            return { ok: true, state: 'removed' };
           }).catch(() => r);
         });
     return runRemoval();
   }).catch(e => {
     console.error('[Railway] removeCustomDomainFromRailway:', e.message);
-    return { ok: false, error: e.message };
+    return { ok: false, state: 'failed', error: e.message };
   });
 }
 
@@ -835,18 +835,56 @@ function fetchDomainStatusFromRailway(domainId) {
 }
 
 // API: Domínios do usuário logado – listar, criar, excluir. Qualquer usuário gerencia seus domínios.
+async function refreshDomainDnsFromRailway(domainName) {
+  const result = await fetchRailwayDomainsWithRecords();
+  if (!result.ok) return { ok: false, error: result.error || 'Railway indisponível' };
+  const d = String(domainName || '').trim().toLowerCase();
+  const rd = (result.domains || []).find(x => ((x.domain || x.name || '').toLowerCase()) === d);
+  if (!rd) return { ok: false, onRailway: false, error: 'Este domínio não está no Railway.' };
+  const statusExtra = await fetchDomainStatusFromRailway(rd.id);
+  if (statusExtra && Array.isArray(statusExtra.dnsRecords)) {
+    rd.status = rd.status || {};
+    rd.status.dnsRecords = [...(rd.status.dnsRecords || []), ...statusExtra.dnsRecords];
+  }
+  const parsed = parseDnsRecordsFromRailway(rd);
+  const row = await db.get('SELECT id FROM allowed_domains WHERE LOWER(domain) = ? ORDER BY id DESC LIMIT 1', [d]);
+  if (row && (parsed.cnameVal || parsed.txtVal)) {
+    await db.run('UPDATE allowed_domains SET railway_cname_target = COALESCE(?, railway_cname_target), railway_txt_verify = COALESCE(?, railway_txt_verify) WHERE id = ?', [parsed.cnameVal, parsed.txtVal, row.id]);
+  }
+  return { ok: true, onRailway: true, cnameVal: parsed.cnameVal, txtVal: parsed.txtVal };
+}
+
 app.get('/api/domains', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
   const list = await db.all('SELECT id, domain, description, created_at, railway_cname_target, railway_txt_verify FROM allowed_domains WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC, id DESC', [userId]);
   const cnameTarget = getCnameTarget(req);
-  res.json({ domains: list, cnameTarget });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
+  let railwayConnected = false;
+  let railwayError = null;
+  const onRailway = new Set();
+  if (user && user.role === 'admin') {
+    const listed = await fetchRailwayDomainsWithRecords();
+    railwayConnected = !!listed.ok;
+    railwayError = listed.ok ? null : (listed.error || 'Railway indisponível');
+    if (listed.ok) {
+      for (const rd of listed.domains || []) {
+        const name = (rd.domain || rd.name || '').toLowerCase().trim();
+        if (name) onRailway.add(name);
+      }
+    }
+  }
+  const domains = list.map(row => ({
+    ...row,
+    on_railway: railwayConnected ? onRailway.has(String(row.domain || '').toLowerCase()) : null
+  }));
+  res.json({ domains, cnameTarget, railwayConnected, railwayError });
 });
 
 app.post('/api/domains', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
-  const { domain, description } = req.body || {};
+  const { domain, description, link_railway } = req.body || {};
   const d = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
   if (!d) return res.status(400).json({ error: 'Informe o domínio' });
   try {
@@ -855,7 +893,8 @@ app.post('/api/domains', async (req, res) => {
     const payload = row || { id: 0, domain: d, description: (description || '').trim() || null, created_at: new Date().toISOString(), railway_cname_target: null };
     const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
     const isAdmin = user && user.role === 'admin';
-    if (isAdmin) {
+    const publish = link_railway !== false && link_railway !== 0 && link_railway !== '0';
+    if (isAdmin && publish) {
       const railway = await addCustomDomainToRailway(d);
         if (railway.ok) {
         let cnameValue = null;
@@ -879,8 +918,16 @@ app.post('/api/domains', async (req, res) => {
           payload.railway_cname_target = cnameValue;
           payload.railway_txt_verify = txtVerify;
         }
-        payload.nextStep = 'Domínio cadastrado no painel e no Railway. As configurações DNS deste domínio aparecem na tabela abaixo — use o Valor CNAME na coluna do domínio no seu provedor de DNS. Você pode verificar propagação com o botão "Verificar".';
+        const refreshed = await refreshDomainDnsFromRailway(d);
+        if (refreshed.ok) {
+          if (refreshed.cnameVal) payload.railway_cname_target = refreshed.cnameVal;
+          if (refreshed.txtVal) payload.railway_txt_verify = refreshed.txtVal;
+        }
+        payload.nextStep = refreshed.txtVal
+          ? 'Cadastrado no painel e no Railway. CNAME e TXT já estão na tabela. Cole os dois no DNS. Não precisa abrir o Railway.'
+          : 'Cadastrado no painel e no Railway. O CNAME está na tabela. Se o TXT ainda não apareceu, clique em Sincronizar com Railway daqui a pouco.';
         payload.railwaySynced = true;
+        payload.on_railway = true;
       } else {
         const isMissingVars = (railway.error || '').indexOf('Variáveis Railway não configuradas') !== -1;
         if (isMissingVars) {
@@ -892,8 +939,12 @@ app.post('/api/domains', async (req, res) => {
         payload.railwayError = railway.error;
         if (railway.error) console.error('[Railway] customDomainCreate falhou:', railway.error);
       }
+    } else if (isAdmin && !publish) {
+      payload.nextStep = 'Guardado só no painel. Ele não foi para o Railway. Quando quiser o HTTPS e o DNS, use Publicar no Railway nesta linha.';
+      payload.railwaySynced = false;
+      payload.on_railway = false;
     } else {
-      payload.nextStep = 'Domínio cadastrado. Use a tabela "Configuração DNS" na seção Domínios no seu provedor de DNS. Um admin pode configurar as variáveis Railway para que novos domínios sejam adicionados automaticamente no Railway.';
+      payload.nextStep = 'Domínio cadastrado no painel. A publicação no Railway fica com um admin.';
     }
     res.json(payload);
   } catch (e) {
@@ -1002,6 +1053,28 @@ app.patch('/api/domains/:id', async (req, res) => {
   res.json({ success: true, domain: row });
 });
 
+app.post('/api/domains/:id/railway', async (req, res) => {
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
+  const user = await db.get('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Só admin publica no Railway' });
+  const row = await db.get('SELECT id, domain FROM allowed_domains WHERE id = ?', [req.params.id]);
+  if (!row) return res.status(404).json({ error: 'Domínio não encontrado' });
+  const railway = await addCustomDomainToRailway(row.domain);
+  if (!railway.ok && !/already|exists|duplicate/i.test(railway.error || '')) {
+    return res.status(400).json({ error: railway.error || 'Não foi possível publicar no Railway' });
+  }
+  const refreshed = await refreshDomainDnsFromRailway(row.domain);
+  res.json({
+    success: true,
+    on_railway: true,
+    railway_cname_target: refreshed.cnameVal || null,
+    railway_txt_verify: refreshed.txtVal || null,
+    message: refreshed.txtVal
+      ? 'Publicado no Railway. CNAME e TXT estão na tabela.'
+      : 'Publicado no Railway. Sincronize de novo se o TXT ainda não aparecer.'
+  });
+});
+
 app.delete('/api/domains/:id', async (req, res) => {
   if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Não autorizado' });
   const userId = req.session.userId;
@@ -1009,18 +1082,25 @@ app.delete('/api/domains/:id', async (req, res) => {
   const canDelete = user && (user.role === 'admin' || (await db.get('SELECT 1 FROM allowed_domains WHERE id = ? AND user_id = ?', [req.params.id, userId])));
   if (!canDelete) return res.status(403).json({ error: 'Acesso negado' });
   const row = await db.get('SELECT domain FROM allowed_domains WHERE id = ?', [req.params.id]);
-  let railwayRemoved = false;
+  let railwayState = 'panel_only';
   let railwayError = null;
   if (user.role === 'admin' && row && row.domain) {
     const out = await removeCustomDomainFromRailway(row.domain);
-    railwayRemoved = out && out.ok === true;
-    if (!railwayRemoved && out && out.error) {
-      railwayError = out.error;
-      console.error('[Domains] Railway delete:', row.domain, out.error);
+    railwayState = (out && out.state) || (out && out.ok ? 'removed' : 'failed');
+    railwayError = out && out.error ? out.error : null;
+    if (railwayState === 'failed') {
+      console.error('[Domains] Railway delete:', row.domain, railwayError);
+      return res.status(409).json({
+        success: false,
+        railwayState,
+        railwayError,
+        message: 'Não apaguei no painel. O domínio continua aqui e no Railway: ' + (railwayError || 'erro ao remover.')
+      });
     }
   }
   await db.run('DELETE FROM allowed_domains WHERE id = ?', [req.params.id]);
-  res.json({ success: true, railwayRemoved, railwayError });
+  const railwayRemoved = railwayState === 'removed';
+  res.json({ success: true, railwayRemoved, railwayState, railwayError });
 });
 
 // API: Backup do banco (admin) – exporta dados para não perder

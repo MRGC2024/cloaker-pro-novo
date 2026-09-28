@@ -2162,7 +2162,7 @@
       <div class="card" style="border-left: 4px solid var(--primary);">
         <div class="card-body">
           <h4 style="margin-bottom: 10px;"><i class="ri-dns-line"></i> Configuração DNS</h4>
-          <p style="color: var(--text-secondary); margin-bottom: 14px;">O Railway exige <strong>dois registros</strong> para cada domínio: <strong>CNAME</strong> e <strong>TXT</strong> (verificação). Na tabela abaixo aparecem ambos. Configure os dois no seu provedor de DNS (Cloudflare, Registro.br, etc.). Clique em <strong>Sincronizar com Railway</strong> para puxar os valores atualizados do painel.</p>
+          <p style="color: var(--text-secondary); margin-bottom: 14px;">Cada linha mostra se o domínio está no Railway. CNAME e TXT vêm daqui. Cole os dois no DNS. Use <strong>Só no painel</strong> no cadastro quando ainda não quiser publicar.</p>
           <p style="color: var(--text-secondary); font-size: 12px;">CNAME: Nome <code>@</code>, Valor: o que aparece na coluna. TXT: Nome <code>_railway-verify</code>, Valor: o token da coluna. <button type="button" class="btn btn-sm btn-primary" onclick="syncRailwayDomains()" style="margin-left:6px"><i class="ri-refresh-line"></i> Sincronizar com Railway</button> <span id="syncRailwayMsg" style="font-size: 12px; margin-left: 8px;"></span></p>
           <p style="color: var(--text-secondary); font-size: 11px; margin-top: 10px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">Se o TXT não aparecer na sincronização, use <strong>Colar TXT</strong> na linha do domínio e cole o valor do painel Railway. Ao excluir, o erro do Railway (se houver) aparece no alerta. <button type="button" class="btn btn-sm btn-secondary" onclick="window.open('/api/domains/railway-raw','_blank')"><i class="ri-external-link-line"></i> Ver resposta bruta</button> <button type="button" class="btn btn-sm btn-secondary" onclick="copyRailwayRaw()"><i class="ri-file-copy-line"></i> Copiar resposta</button>.</p>
         </div>
@@ -2172,8 +2172,8 @@
           <p style="color: var(--text-secondary); margin-bottom: 15px;">Lista de domínios. Configure <strong>CNAME</strong> e <strong>TXT</strong> no seu provedor de DNS.</p>
           <div class="table-container">
             <table>
-              <thead><tr><th>Descrição</th><th>Domínio</th><th>CNAME (Valor)</th><th>TXT Verificação</th><th>Cadastrado em</th><th>Propagação</th><th>Ações</th></tr></thead>
-              <tbody id="domainsTable"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
+              <thead><tr><th>Descrição</th><th>Domínio</th><th>Railway</th><th>CNAME (Valor)</th><th>TXT Verificação</th><th>Cadastrado em</th><th>Propagação</th><th>Ações</th></tr></thead>
+              <tbody id="domainsTable"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
             </table>
           </div>
           <p id="domainsEmpty" style="display:none; color: var(--text-secondary); padding: 20px 0;">Nenhum domínio cadastrado. Clique em "Cadastrar domínio" para adicionar.</p>
@@ -2406,6 +2406,10 @@
           <label class="form-label">Domínio (ex: cloaker.seudominio.com)</label>
           <input type="text" class="form-input" id="newDomainName" placeholder="cloaker.seudominio.com">
         </div>
+        <label class="radio-label" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px;">
+          <input type="checkbox" id="newDomainLinkRailway" checked>
+          <span>Publicar no Railway agora. Desmarque para guardar só no painel e publicar depois.</span>
+        </label>
         <button class="btn btn-primary" onclick="addDomain()"><i class="ri-save-line"></i> Cadastrar</button>
         <span id="domainMsg" style="margin-left: 10px; font-size: 13px;"></span>
       </div>
@@ -6589,13 +6593,18 @@
         var cnameJs = (d.railway_cname_target || target || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         var copyCnameBtn = (d.railway_cname_target || target) ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainCname(' + d.id + ')" title="Copiar CNAME"><i class="ri-file-copy-line"></i></button>' : '';
         var copyTxtBtn = d.railway_txt_verify ? '<button type="button" class="btn btn-sm btn-secondary" onclick="copyDomainTxt(' + d.id + ')" title="Copiar TXT"><i class="ri-file-copy-line"></i></button>' : '';
-        var colarTxtBtn = '<button type="button" class="btn btn-sm btn-secondary" onclick="colarTxtDomain(' + d.id + ')" title="Colar TXT do Railway (se a sincronização não trouxer)"><i class="ri-clipboard-line"></i> Colar TXT</button>';
+        var railwayCell = d.on_railway === true
+          ? '<span style="color:var(--success);font-size:12px;font-weight:600;">No Railway</span>'
+          : (d.on_railway === false
+            ? '<span style="color:var(--warning);font-size:12px;font-weight:600;">Só no painel</span> <button type="button" class="btn btn-sm btn-secondary" onclick="publishDomainRailway(' + d.id + ')">Publicar</button>'
+            : '<span style="color:var(--text-tertiary);font-size:12px;">Não conferido</span>');
+        var colarTxtBtn = '<button type="button" class="btn btn-sm btn-secondary" onclick="colarTxtDomain(' + d.id + ')" title="Colar TXT"><i class="ri-clipboard-line"></i></button>';
         var descEsc = (d.description || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         var createdAt = d.created_at ? (function () { try { var t = new Date(d.created_at); return isNaN(t.getTime()) ? '-' : t.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '-'; } })() : '-';
-        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + ' ' + colarTxtBtn + '</td><td style="white-space:nowrap;font-size:12px">' + createdAt + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
+        return '<tr><td>' + descEsc + '</td><td><code>' + (d.domain || '') + '</code></td><td>' + railwayCell + '</td><td><code id="cnameVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + cnameEsc + '</code> ' + copyCnameBtn + '</td><td><code id="txtVal-' + d.id + '" style="font-size:11px;word-break:break-all">' + txtEsc + '</code> ' + copyTxtBtn + ' ' + colarTxtBtn + '</td><td style="white-space:nowrap;font-size:12px">' + createdAt + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="checkDomainDns(\'' + (d.domain || '').replace(/'/g, "\\'") + '\', ' + d.id + ', \'' + cnameJs + '\')" title="Verificar"><i class="ri-search-line"></i> Verificar</button><span id="dnsResult-' + d.id + '" style="margin-left:6px;font-size:12px"></span></td><td><button type="button" class="btn btn-sm btn-danger" onclick="deleteDomain(' + d.id + ')"><i class="ri-delete-bin-line"></i></button></td></tr>';
       }).join('');
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8">Erro ao carregar</td></tr>';
       }
     }
 
@@ -6606,7 +6615,8 @@
       if (!name) { if (msg) msg.textContent = 'Informe o domínio'; return; }
       if (msg) msg.textContent = '';
       try {
-        const res = await fetch('/api/domains', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ domain: name, description: desc }) });
+        const linkRailway = !document.getElementById('newDomainLinkRailway') || document.getElementById('newDomainLinkRailway').checked;
+        const res = await fetch('/api/domains', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ domain: name, description: desc, link_railway: linkRailway }) });
         if (res.status === 401) { window.location.href = '/login'; return; }
         const data = await res.json();
         if (!res.ok) { if (msg) msg.textContent = data.error || 'Erro'; return; }
@@ -6706,14 +6716,32 @@
       }
     }
 
+    async function publishDomainRailway(id) {
+      if (!confirm('Publicar este domínio no Railway agora?')) return;
+      try {
+        const res = await fetch('/api/domains/' + id + '/railway', { method: 'POST', credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Não publicou no Railway.'); return; }
+        alert(data.message || 'Publicado no Railway.');
+        loadDomains();
+      } catch (e) { alert('Erro de conexão'); }
+    }
     async function deleteDomain(id) {
-      if (!confirm('Remover este domínio da lista? (Se for admin, também tenta remover no Railway.)')) return;
+      if (!confirm('Remover este domínio do painel? Se ele estiver no Railway, também sai de lá.')) return;
       try {
         const res = await fetch('/api/domains/' + id, { method: 'DELETE', credentials: 'include' });
         if (res.status === 401) { window.location.href = '/login'; return; }
         const data = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          alert(data.message || 'Continua no painel e no Railway.');
+          return;
+        }
         loadDomains();
-        if (res.ok && data.railwayRemoved === false) alert('Domínio removido do painel. Não foi possível remover no Railway.\n\nErro Railway: ' + (data.railwayError || 'verifique variáveis ou use "Copiar resposta Railway" para debug.'));
+        if (!res.ok) { alert(data.error || 'Erro ao remover'); return; }
+        if (data.railwayState === 'removed') alert('Removido do painel e do Railway.');
+        else if (data.railwayState === 'absent') alert('Removido do painel. Ele não estava no Railway.');
+        else if (data.railwayState === 'unconfigured') alert('Removido do painel. O Railway não foi consultado (variáveis ausentes).');
+        else alert('Removido do painel.');
       } catch (e) {}
     }
 
