@@ -1088,8 +1088,10 @@
 
     .glass-card { /* alias — mesmo visual do card padrão */ }
   </style>
+  <link rel="stylesheet" href="/app.css">
 </head>
-<body>
+<body class="panel">
+  <div id="appBusy" class="app-busy" aria-hidden="true"></div>
   <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu"><i class="ri-menu-line"></i></button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar" id="sidebar">
@@ -2894,10 +2896,26 @@
       return false;
     }
 
+    let appBusyCount = 0;
+    function setAppBusy(on) {
+      appBusyCount += on ? 1 : -1;
+      if (appBusyCount < 0) appBusyCount = 0;
+      var bar = document.getElementById('appBusy');
+      if (bar) bar.classList.toggle('is-on', appBusyCount > 0);
+    }
     async function apiGet(url) {
-      const res = await fetch(url, { credentials: 'include' });
-      if (checkAuth(res)) return null;
-      return res;
+      setAppBusy(true);
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (checkAuth(res)) return null;
+        if (res && res.status >= 500) console.error('Falha na API', url, res.status);
+        return res;
+      } catch (err) {
+        console.error('Falha de rede', url, err);
+        throw err;
+      } finally {
+        setAppBusy(false);
+      }
     }
 
     // Horário de Brasília (America/Sao_Paulo) – datas da API são tratadas como UTC
