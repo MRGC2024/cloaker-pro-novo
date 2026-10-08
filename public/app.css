@@ -255,7 +255,8 @@ tr:hover { background: rgba(255, 255, 255, 0.03); }
     max-width: 100%;
     padding: 72px 14px 32px;
   }
-  .page-top-bar { padding-left: 52px; }
+  .page-top-bar,
+  .section > .header { padding-left: 52px; }
   .page-top-bar h1 { font-size: 22px; }
   .kpi-rail { grid-template-columns: 1fr 1fr; }
   .kpi-rail .stat-card { border-bottom: 1px solid var(--border); }
