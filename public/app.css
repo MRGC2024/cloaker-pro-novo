@@ -418,39 +418,72 @@ body.panel #menuToggle {
   border-radius: 8px;
   font-size: 13px !important;
 }
-body.panel .sidebar,
-body.panel #sidebar.more-drawer {
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: auto !important;
-  width: min(320px, 92vw) !important;
-  height: 100vh !important;
-  min-height: 0 !important;
-  flex-direction: column !important;
-  transform: translateX(110%) !important;
-  z-index: 160;
-  border-left: 1px solid var(--border);
-  border-bottom: 0;
-  padding: 20px 16px !important;
+body.panel .app-frame {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  min-height: 100vh;
 }
-body.panel #sidebar.more-drawer.open { transform: translateX(0) !important; }
-body.panel .nav-menu { display: flex; flex-direction: column; align-items: stretch; }
+body.panel #sidebar.app-nav {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 216px !important;
+  height: 100vh !important;
+  transform: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  border-left: 0;
+  padding: 18px 12px !important;
+  background: #0c0c0e;
+  z-index: 30;
+}
+body.panel #sidebar .nav-menu { display: flex; flex-direction: column; gap: 2px; align-items: stretch; }
+body.panel #sidebar .btn-logout { margin-top: auto; }
+body.panel .app-stage { min-width: 0; }
 body.panel .main,
 body.panel.sidebar-collapsed .main {
   margin-left: 0 !important;
-  padding: 16px 22px 48px !important;
+  padding: 8px 24px 48px !important;
+}
+.mast { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 8px; border: 0; position: static; background: transparent; }
+.mast-exit { background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 13px; }
+@media (max-width: 800px) {
+  body.panel .app-frame { display: block; }
+  body.panel #sidebar.app-nav {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    align-items: stretch;
+    overflow-x: auto;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    padding: 4px 8px calc(6px + env(safe-area-inset-bottom)) !important;
+    z-index: 80;
+  }
+  body.panel #sidebar .mast-name,
+  body.panel #sidebar .btn-logout,
+  body.panel #sidebar .nav-group-title { display: none !important; }
+  body.panel #sidebar .nav-menu { flex-direction: row; align-items: center; width: max-content; }
+  body.panel #sidebar .nav-link { white-space: nowrap; padding: 10px 12px; }
+  body.panel .main { padding: 8px 14px 88px !important; }
 }
 .mast {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 16px 0;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: var(--bg-primary);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0 8px;
+  border: 0;
+  position: static;
+  background: transparent;
 }
 .mast-top {
   display: grid;
@@ -510,9 +543,7 @@ body.panel.sidebar-collapsed .main {
 .mast-tabs .nav-link { white-space: nowrap; }
 @media (max-width: 900px) {
   .metric-grid { grid-template-columns: 1fr 1fr; }
-  .mast { flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 12px; }
-  .mast-here .page-kicker { display: none; }
-  .mast-tabs { order: 5; width: 100%; margin-left: 0; }
+  .mast { padding: 12px 0 4px; }
   .chart-strip { grid-template-columns: 1fr; }
   .campaign-table thead { display: none; }
   .campaign-table, .campaign-table tbody, .campaign-table tr, .campaign-table td { display: block; width: 100%; }

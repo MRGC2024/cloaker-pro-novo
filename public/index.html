@@ -1093,34 +1093,18 @@
 <body class="panel">
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
   <div id="appBusy" class="app-busy" aria-hidden="true"></div>
-  <header class="mast">
-    <div class="mast-top">
-      <p class="mast-name">Cloaker</p>
-      <h1 class="mast-title"><span id="pageTopBarTitle">Mesa</span></h1>
-      <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
-    </div>
-    <p class="page-kicker" id="pageTopBarKicker" hidden>Operação</p>
-    <i id="pageTopBarIcon" class="ri-dashboard-3-line" hidden></i>
-    <nav class="mast-tabs" aria-label="Seções">
-      <a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a>
-      <a class="nav-link" href="#sites" data-section="sites">Campanhas</a>
-      <a class="nav-link" href="#visitors" data-section="visitors">Acessos</a>
-      <a class="nav-link" href="#reports" data-section="reports">Relatórios</a>
-      <a class="nav-link" href="#domains" data-section="domains">Domínios</a>
-      <a class="nav-link" href="#script" data-section="script">Link</a>
-      <a class="nav-link" href="#pages" data-section="pages">Páginas</a>
-      <a class="nav-link" href="#settings" data-section="settings">Ajustes</a>
-    </nav>
-    <button class="menu-toggle mast-more" id="menuToggle" type="button" hidden aria-expanded="false" aria-controls="sidebar">Mais</button>
-  </header>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-  <aside class="sidebar more-drawer" id="sidebar" aria-label="Outras seções">
-    <p class="drawer-label">Fora do dia a dia</p>
+  <div class="app-frame">
+  <nav class="sidebar app-nav" id="sidebar" aria-label="Navegação">
+    <p class="mast-name">Cloaker</p>
     <ul class="nav-menu">
+      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a></li>
+      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites">Campanhas</a></li>
+      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors">Acessos</a></li>
       <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports">Relatórios</a></li>
-      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics">Análise</a></li>
-      <li class="nav-item"><a class="nav-link" href="#script" data-section="script">Link de anúncio</a></li>
+      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains">Domínios</a></li>
+      <li class="nav-item"><a class="nav-link" href="#script" data-section="script">Link</a></li>
       <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus">Contingência</a></li>
+      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics">Análise</a></li>
       <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages">Páginas</a></li>
       <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite">Convites</a></li>
       <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings">Ajustes</a></li>
@@ -1130,7 +1114,16 @@
       <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-sparkling-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
-  </aside>
+    <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
+  </nav>
+  <div class="app-stage">
+  <header class="mast">
+    <p class="page-kicker" id="pageTopBarKicker" hidden>Operação</p>
+    <i id="pageTopBarIcon" class="ri-dashboard-3-line" hidden></i>
+    <h1 class="mast-title"><span id="pageTopBarTitle">Mesa</span></h1>
+    <button type="button" class="mast-exit" onclick="logout()">Sair</button>
+    <button class="menu-toggle" id="menuToggle" type="button" hidden>Mais</button>
+  </header>
   <script>
     (function() {
       var sidebar = document.getElementById('sidebar');
@@ -1144,15 +1137,13 @@
         sidebar.classList.add('open');
         overlay.classList.add('active');
         document.body.classList.add('menu-open');
-        toggle.setAttribute('aria-expanded', 'true');
-        toggle.textContent = 'Fechar';
+        if (toggle) { toggle.setAttribute('aria-expanded', 'true'); toggle.textContent = 'Fechar'; }
       }
       function closeMenu() {
         sidebar.classList.remove('open');
         overlay.classList.remove('active');
         document.body.classList.remove('menu-open');
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.textContent = 'Mais seções';
+        if (toggle) { toggle.setAttribute('aria-expanded', 'false'); toggle.textContent = 'Mais'; }
       }
       function updateCollapseIcon() {
         if (!collapseIcon) return;
@@ -1181,8 +1172,8 @@
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(applySidebarLayout, 150);
       });
-      toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
-      overlay.addEventListener('click', closeMenu);
+      if (toggle) toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
+      if (overlay) overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('a.nav-link[data-section]').forEach(function(link) {
         link.addEventListener('click', function() { closeMenu(); });
       });
