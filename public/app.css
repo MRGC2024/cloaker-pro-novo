@@ -442,6 +442,26 @@ body.panel #sidebar.app-nav {
 }
 body.panel #sidebar .nav-menu { display: flex; flex-direction: column; gap: 2px; align-items: stretch; }
 body.panel #sidebar .btn-logout { margin-top: auto; }
+.nav-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+.nav-logo {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: #fafafa; color: #111; font-weight: 700; font-size: 14px;
+}
+.nav-brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.nav-brand-text strong { font-size: 14px; }
+.nav-brand-text small { font-size: 11px; color: var(--text-tertiary); }
+body.panel #sidebar .nav-group-title {
+  display: block;
+  padding: 14px 10px 4px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+@media (min-width: 801px) {
+  .mast-exit { display: none !important; }
+}
 body.panel .app-stage { min-width: 0; }
 body.panel .main,
 body.panel.sidebar-collapsed .main {
@@ -468,9 +488,10 @@ body.panel.sidebar-collapsed .main {
     padding: 4px 8px calc(6px + env(safe-area-inset-bottom)) !important;
     z-index: 80;
   }
-  body.panel #sidebar .mast-name,
+  body.panel #sidebar .nav-brand,
   body.panel #sidebar .btn-logout,
   body.panel #sidebar .nav-group-title { display: none !important; }
+  .mast-exit { display: inline !important; }
   body.panel #sidebar .nav-menu { flex-direction: row; align-items: center; width: max-content; }
   body.panel #sidebar .nav-link { white-space: nowrap; padding: 10px 12px; }
   body.panel .main { padding: 8px 14px 88px !important; }
