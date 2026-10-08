@@ -1091,10 +1091,11 @@
   <link rel="stylesheet" href="/app.css">
 </head>
 <body class="panel">
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
   <div id="appBusy" class="app-busy" aria-hidden="true"></div>
   <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu"><i class="ri-menu-line"></i></button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" aria-label="Navegação do painel">
     <div class="logo">
       <div class="logo-mark"><i class="ri-shield-check-line"></i></div>
       <div class="logo-text">
@@ -1104,7 +1105,7 @@
     </div>
     <ul class="nav-menu">
       <li class="nav-group-title">Operação</li>
-      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Mesa"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Mesa</span></a></li>
+      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Mesa" aria-current="page"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Mesa</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-list-3-line"></i><span class="nav-link-text">Relatórios</span></a></li>
       <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
       <li class="nav-group-title">Links</li>
@@ -1197,7 +1198,7 @@
     })();
   </script>
 
-  <main class="main">
+  <main class="main" id="conteudo">
     <div class="page-top-bar" id="pageTopBar">
       <div>
         <p class="page-kicker" id="pageTopBarKicker">Operação</p>
@@ -2950,10 +2951,16 @@
       if (kickerEl) kickerEl.textContent = sectionKickers[sectionId] || '';
       if (leadEl) leadEl.textContent = sectionLeads[sectionId] || '';
       if (iconEl && sectionIcons[sectionId]) { iconEl.className = sectionIcons[sectionId]; }
-      document.querySelectorAll('a.nav-link[data-section]').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('a.nav-link[data-section]').forEach(function(l) {
+        l.classList.remove('active');
+        l.removeAttribute('aria-current');
+      });
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       const link = document.querySelector('a.nav-link[data-section="' + sectionId + '"]');
-      if (link) link.classList.add('active');
+      if (link) {
+        link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
+      }
       document.getElementById(sectionId).classList.add('active');
       if (location.hash !== '#' + sectionId) location.hash = sectionId;
       if (sectionId === 'dashboard') refreshStats();
