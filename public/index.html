@@ -1096,25 +1096,25 @@
   <div class="app-frame">
   <nav class="sidebar app-nav" id="sidebar" aria-label="Navegação">
     <div class="nav-brand">
-      <span class="nav-logo" aria-hidden="true">C</span>
+      <span class="nav-logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18"><path d="M16 4l10 5v8c0 6-4.2 10-10 12C10.2 27 6 23 6 17V9l10-5z" fill="none" stroke="#041016" stroke-width="2"/></svg></span>
       <span class="nav-brand-text"><strong>Cloaker</strong><small>Pro</small></span>
     </div>
     <ul class="nav-menu">
       <li class="nav-group-title">Operação</li>
-      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a></li>
-      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites">Campanhas</a></li>
-      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors">Acessos</a></li>
-      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports">Relatórios</a></li>
+      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page"><i class="ri-dashboard-3-line"></i>Mesa</a></li>
+      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites"><i class="ri-stack-line"></i>Campanhas</a></li>
+      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors"><i class="ri-live-line"></i>Ao vivo</a></li>
+      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports"><i class="ri-file-chart-line"></i>Relatórios</a></li>
       <li class="nav-group-title">Links</li>
-      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains">Domínios</a></li>
-      <li class="nav-item"><a class="nav-link" href="#script" data-section="script">Link de anúncio</a></li>
-      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus">Contingência</a></li>
+      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains"><i class="ri-global-line"></i>Domínios</a></li>
+      <li class="nav-item"><a class="nav-link" href="#script" data-section="script"><i class="ri-link"></i>Link de anúncio</a></li>
+      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus"><i class="ri-shield-flash-line"></i>Contingência</a></li>
       <li class="nav-group-title">Conteúdo</li>
-      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages">Páginas</a></li>
-      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite">Convites</a></li>
-      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics">Análise</a></li>
+      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages"><i class="ri-article-line"></i>Páginas</a></li>
+      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite"><i class="ri-user-star-line"></i>Convites</a></li>
+      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics"><i class="ri-line-chart-line"></i>Análise</a></li>
       <li class="nav-group-title">Conta</li>
-      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings">Ajustes</a></li>
+      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings"><i class="ri-settings-3-line"></i>Configurações</a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
       <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-heart-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-user-settings-line"></i><span class="nav-link-text">Usuários</span></a></li>
@@ -2916,7 +2916,7 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Mesa', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Acessos', reports: 'Relatórios', script: 'Link de anúncio', analytics: 'Análise', settings: 'Ajustes', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
+    var sectionTitles = { dashboard: 'Mesa', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Ao vivo', reports: 'Relatórios', script: 'Link de anúncio', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
     var sectionKickers = { dashboard: 'Operação', sites: 'Links', fallbackstatus: 'Links', visitors: 'Audiência', reports: 'Operação', script: 'Links', analytics: 'Operação', settings: 'Conta', users: 'Administração', metaips: 'Administração', autoimprove: 'Administração', domains: 'Biblioteca', pages: 'Biblioteca', invite: 'Biblioteca', systemhealth: 'Administração' };
     var sectionLeads = { dashboard: 'Volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Cada acesso, com origem, página entregue e motivo.', reports: 'O mesmo recorte da mesa, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, integrações e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
     var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
