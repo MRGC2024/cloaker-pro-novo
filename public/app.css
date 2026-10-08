@@ -474,6 +474,9 @@ body.panel.sidebar-collapsed .main {
   body.panel #sidebar .nav-menu { flex-direction: row; align-items: center; width: max-content; }
   body.panel #sidebar .nav-link { white-space: nowrap; padding: 10px 12px; }
   body.panel .main { padding: 8px 14px 88px !important; }
+  .desk-control-row { flex-direction: column; align-items: stretch; }
+  .desk-controls .period-selector { width: 100%; }
+  .desk-controls .period-btn { flex: 1 1 0; text-align: center; padding: 8px 2px; font-size: 12px; }
 }
 .mast {
   display: flex;
