@@ -527,11 +527,24 @@ body.panel.sidebar-collapsed .main {
 .campaign-table th, .campaign-table td { vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--border); }
 .campaign-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .drawer-label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 10px; }
+.pulse {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 0;
+  margin: 8px 0 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pulse > div { padding: 14px 16px 12px; }
+.pulse > div + div { border-left: 1px solid var(--border); }
+.pulse strong { font-size: 34px; letter-spacing: -0.045em; line-height: 1; }
+.fold-meta { margin: 0 0 8px; border: 0; padding: 0; }
+.fold-meta summary { font-size: 13px; color: var(--text-secondary); padding: 6px 0 10px; }
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  margin: 14px 0 18px;
+  margin: 0 0 16px;
 }
 .metric-grid > div {
   min-width: 0;
@@ -545,6 +558,8 @@ body.panel.sidebar-collapsed .main {
 .mast-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
 .mast-tabs .nav-link { white-space: nowrap; }
 @media (max-width: 900px) {
+  .pulse { grid-template-columns: 1fr 1fr 1fr; }
+  .pulse strong { font-size: 26px; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .mast { padding: 12px 0 4px; }
   .chart-strip { grid-template-columns: 1fr; }

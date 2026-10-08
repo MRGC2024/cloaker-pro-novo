@@ -1208,19 +1208,24 @@
         <p class="last-update" id="dashboardLastUpdate">Última atualização: —</p>
       </div>
 
-      <div class="metric-grid" aria-label="Resumo do período">
+      <div class="pulse" aria-label="Resumo do período">
         <div><span class="metric-label">Visitas <span class="stat-delta" id="statTotalDelta"></span></span><strong id="statTotal">-</strong></div>
         <div><span class="metric-label">Liberadas <span id="statAllowedPct">—</span></span><strong id="statAllowed">-</strong><span class="stat-delta" id="statAllowedDelta"></span></div>
         <div><span class="metric-label">Bloqueadas <span id="statBlockedPct">—</span></span><strong id="statBlocked">-</strong><span class="stat-delta" id="statBlockedDelta"></span></div>
-        <div><span class="metric-label">Bots <span id="statBotsPct">—</span></span><strong id="statBots">-</strong></div>
-        <div><span class="metric-label">Mobile <span id="statMobilePct">—</span></span><strong id="statMobile">-</strong></div>
-        <div><span class="metric-label">Desktop <span id="statDesktopPct">—</span></span><strong id="statDesktop">-</strong></div>
-        <div><span class="metric-label">fbclid</span><strong id="metaFbclid">-</strong></div>
-        <div><span class="metric-label">Referrer</span><strong id="metaFbReferrer">-</strong></div>
-        <div><span class="metric-label">Revisores</span><strong id="metaReviewers">-</strong></div>
-        <div><span class="metric-label">Tráfego Meta</span><strong id="metaTraffic">-</strong></div>
-        <div><span class="metric-label">Aprovação</span><strong id="metaAllowedPct">-</strong></div>
       </div>
+      <details class="fold fold-meta">
+        <summary>Detalhe do tráfego</summary>
+        <div class="metric-grid metric-grid-rest">
+          <div><span class="metric-label">Bots <span id="statBotsPct">—</span></span><strong id="statBots">-</strong></div>
+          <div><span class="metric-label">Mobile <span id="statMobilePct">—</span></span><strong id="statMobile">-</strong></div>
+          <div><span class="metric-label">Desktop <span id="statDesktopPct">—</span></span><strong id="statDesktop">-</strong></div>
+          <div><span class="metric-label">fbclid</span><strong id="metaFbclid">-</strong></div>
+          <div><span class="metric-label">Referrer</span><strong id="metaFbReferrer">-</strong></div>
+          <div><span class="metric-label">Revisores</span><strong id="metaReviewers">-</strong></div>
+          <div><span class="metric-label">Tráfego Meta</span><strong id="metaTraffic">-</strong></div>
+          <div><span class="metric-label">Aprovação</span><strong id="metaAllowedPct">-</strong></div>
+        </div>
+      </details>
       <div class="ledger-sheet">
         <div class="ledger-sheet-bar">
           <h2>Acessos deste período</h2>
