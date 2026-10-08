@@ -288,8 +288,9 @@ tr:hover { background: rgba(255, 255, 255, 0.03); }
 
 @media (min-width: 769px) {
   body.panel .sidebar {
-    position: sticky !important;
-    top: 0;
+    position: fixed !important;
+    top: 0 !important;
+    z-index: 120;
     left: 0;
     width: 100% !important;
     height: auto !important;
@@ -324,7 +325,7 @@ tr:hover { background: rgba(255, 255, 255, 0.03); }
   body.panel .sidebar-toggle { display: none; }
   body.panel .logo { padding: 0 18px 0 4px; margin: 0; }
   body.panel .main,
-  body.panel.sidebar-collapsed .main { margin-left: 0; }
+  body.panel.sidebar-collapsed .main { margin-left: 0; padding-top: 118px; }
 }
 
 .board {
