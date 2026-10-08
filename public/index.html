@@ -1161,18 +1161,9 @@
         collapseBtn.setAttribute('title', sidebar.classList.contains('collapsed') ? 'Expandir menu' : 'Recolher menu');
       }
       function applySidebarLayout() {
-        if (isMobile()) {
-          sidebar.classList.remove('collapsed');
-          document.body.classList.remove('sidebar-collapsed');
-          closeMenu();
-        } else {
-          try {
-            if (localStorage.getItem('sidebarCollapsed') === '1') {
-              sidebar.classList.add('collapsed');
-              document.body.classList.add('sidebar-collapsed');
-            }
-          } catch (e) {}
-        }
+        sidebar.classList.remove('collapsed');
+        document.body.classList.remove('sidebar-collapsed');
+        if (isMobile()) closeMenu();
         updateCollapseIcon();
       }
       if (collapseBtn && sidebar) {
@@ -1229,20 +1220,23 @@
         </div>
       </div>
 
-      <div class="kpi-rail">
-        <div class="stat-card"><div class="stat-icon"><i class="ri-eye-line"></i></div><div class="stat-value" id="statTotal">-</div><div class="stat-delta" id="statTotalDelta"></div><div class="stat-label">Visitas</div></div>
-        <div class="stat-card success"><div class="stat-icon"><i class="ri-check-line"></i></div><div class="stat-value" id="statAllowed">-</div><div class="stat-sub" id="statAllowedPct">—</div><div class="stat-delta" id="statAllowedDelta"></div><div class="stat-label">Liberadas</div></div>
-        <div class="stat-card danger"><div class="stat-icon"><i class="ri-forbid-line"></i></div><div class="stat-value" id="statBlocked">-</div><div class="stat-sub" id="statBlockedPct">—</div><div class="stat-delta" id="statBlockedDelta"></div><div class="stat-label">Bloqueadas</div></div>
-        <div class="stat-card warning"><div class="stat-icon"><i class="ri-robot-line"></i></div><div class="stat-value" id="statBots">-</div><div class="stat-sub" id="statBotsPct">—</div><div class="stat-label">Bots</div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="ri-smartphone-line"></i></div><div class="stat-value" id="statMobile">-</div><div class="stat-sub" id="statMobilePct">—</div><div class="stat-label">Mobile</div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="ri-computer-line"></i></div><div class="stat-value" id="statDesktop">-</div><div class="stat-sub" id="statDesktopPct">—</div><div class="stat-label">Desktop</div></div>
-      </div>
-
-      <div class="desk-layout">
-      <div class="desk-stack">
-      <div class="card"><div class="card-header"><h3 class="card-title"><i class="ri-line-chart-line"></i> <span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
-
-      <div class="card" id="dashboardBySiteCard" style="margin-bottom: 20px; display: none;">
+      <div class="board">
+        <section class="board-ledger" aria-label="Livro de acessos">
+          <div class="card ledger-card">
+            <div class="card-header">
+              <h3 class="card-title">Últimos acessos</h3>
+              <a href="#" class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-section=visitors]').click(); return false;">Abrir livro</a>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Data/Hora (BRT)</th><th>IP</th><th>Site</th><th>Status</th><th>País</th><th>Dispositivo</th><th>Motivo</th><th>Ações</th></tr></thead>
+                  <tbody id="lastVisitsTable"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="card" id="dashboardBySiteCard" style="display: none;">
         <div class="card-header"><h3 class="card-title"><i class="ri-stack-line"></i> Desempenho por Site</h3></div>
         <div class="card-body">
           <div class="table-container">
@@ -1254,42 +1248,41 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title"><i class="ri-time-line"></i> Últimos acessos (horário Brasília)</h3>
-          <a href="#" class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-section=visitors]').click(); return false;">Ver todos</a>
-        </div>
-        <div class="card-body">
-          <div class="table-container">
-            <table>
-              <thead><tr><th>Data/Hora (BRT)</th><th>IP</th><th>Site</th><th>Status</th><th>País</th><th>Dispositivo</th><th>Motivo</th><th>Ações</th></tr></thead>
-              <tbody id="lastVisitsTable"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
-            </table>
+        </section>
+        <aside class="board-side" aria-label="Leitura do período">
+          <div class="verdict">
+            <p class="verdict-kicker">No período</p>
+            <p class="verdict-total"><span id="statTotal">-</span> <small>visitas</small></p>
+            <p class="stat-delta" id="statTotalDelta"></p>
+            <dl class="verdict-split">
+              <div><dt>Liberadas</dt><dd id="statAllowed">-</dd><dd class="verdict-sub" id="statAllowedPct">—</dd><dd class="stat-delta" id="statAllowedDelta"></dd></div>
+              <div><dt>Bloqueadas</dt><dd id="statBlocked">-</dd><dd class="verdict-sub" id="statBlockedPct">—</dd><dd class="stat-delta" id="statBlockedDelta"></dd></div>
+            </dl>
+            <ul class="verdict-rest">
+              <li><span>Bots</span><strong id="statBots">-</strong><em id="statBotsPct">—</em></li>
+              <li><span>Mobile</span><strong id="statMobile">-</strong><em id="statMobilePct">—</em></li>
+              <li><span>Desktop</span><strong id="statDesktop">-</strong><em id="statDesktopPct">—</em></li>
+            </ul>
           </div>
-        </div>
+          <dl class="ad-read">
+            <div><dt>fbclid</dt><dd id="metaFbclid">-</dd></div>
+            <div><dt>Referrer</dt><dd id="metaFbReferrer">-</dd></div>
+            <div><dt>Revisores</dt><dd id="metaReviewers">-</dd></div>
+            <div><dt>Tráfego Meta</dt><dd id="metaTraffic">-</dd></div>
+            <div><dt>Aprovação</dt><dd id="metaAllowedPct">-</dd></div>
+          </dl>
+          <div class="card bare-chart">
+            <div class="card-header"><h3 class="card-title"><span id="chartTrendTitle">Visitas por Hora</span></h3></div>
+            <div class="card-body"><div class="chart-container chart-short"><canvas id="chartHourly"></canvas></div></div>
+          </div>
+        </aside>
       </div>
-      </div>
-      <aside class="desk-stack">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title"><i class="ri-megaphone-line"></i> Anúncio</h3>
-          </div>
-          <div class="card-body">
-            <div class="meta-kpi-grid">
-              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbclid">-</div><div class="meta-kpi-label">Com fbclid</div></div>
-              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaFbReferrer">-</div><div class="meta-kpi-label">Referrer Facebook</div></div>
-              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaReviewers">-</div><div class="meta-kpi-label">Revisores</div></div>
-              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaTraffic">-</div><div class="meta-kpi-label">Tráfego Meta</div></div>
-              <div class="meta-kpi-item"><div class="meta-kpi-value" id="metaAllowedPct" style="color: var(--success);">-</div><div class="meta-kpi-label">Aprovação</div></div>
-            </div>
-          </div>
-        </div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Navegador</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBrowser"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">País</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartCountry"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Bloqueio</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartBlockReasons"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Sistema</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartOS"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Origem</h3></div><div class="card-body"><div class="chart-container"><canvas id="chartReferrer"></canvas></div></div></div>
-      </aside>
+      <div class="chart-strip" aria-label="Recortes">
+        <div class="card"><div class="card-header"><h3 class="card-title">Navegador</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBrowser"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">País</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartCountry"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Bloqueio</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBlockReasons"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Sistema</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartOS"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Origem</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartReferrer"></canvas></div></div></div>
       </div>
     </section>
 
@@ -3116,7 +3109,7 @@
         const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
         const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
         return `
-        <div class="site-card">
+        <div class="site-card campaign-line">
           <div class="site-card-top">
             <div style="min-width:0;flex:1;">
               <div class="site-card-title">
