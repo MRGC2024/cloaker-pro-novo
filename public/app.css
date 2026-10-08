@@ -406,7 +406,7 @@ tr:hover { background: rgba(255, 255, 255, 0.03); }
 body.panel .menu-toggle,
 body.panel #menuToggle {
   position: static !important;
-  display: inline-flex !important;
+  display: none !important;
   width: auto !important;
   height: auto !important;
   min-height: 36px;
@@ -479,11 +479,34 @@ body.panel.sidebar-collapsed .main {
 .campaign-table th, .campaign-table td { vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--border); }
 .campaign-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .drawer-label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 10px; }
-@media (max-width: 768px) {
-  .mast { flex-wrap: wrap; padding-left: 14px; }
-  .mast-tabs { margin-left: 0; width: 100%; order: 5; }
-  .status-line strong { font-size: 18px; }
-  body.panel .main { padding-left: 14px !important; padding-right: 14px !important; }
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+.metric-grid > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.metric-label { display: block; font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+.metric-grid strong { display: block; font-size: 22px; letter-spacing: -0.04em; line-height: 1.1; }
+.mast-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+.mast-tabs .nav-link { white-space: nowrap; }
+@media (max-width: 900px) {
+  .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mast { flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 12px; }
+  .mast-here .page-kicker { display: none; }
+  .mast-tabs { order: 5; width: 100%; margin-left: 0; }
+  .chart-strip { grid-template-columns: 1fr; }
+  .campaign-table thead { display: none; }
+  .campaign-table, .campaign-table tbody, .campaign-table tr, .campaign-table td { display: block; width: 100%; }
+  .campaign-table tr { padding: 8px 0 12px; border-bottom: 1px solid var(--border); }
+  .campaign-actions .btn { width: auto; }
+  body.panel .main { padding: 12px !important; }
 }
 
 @media (max-width: 768px) {

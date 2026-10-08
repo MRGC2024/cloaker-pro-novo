@@ -1099,13 +1099,17 @@
       <p class="page-kicker" id="pageTopBarKicker">Operação</p>
       <h1><i id="pageTopBarIcon" class="ri-dashboard-3-line"></i><span id="pageTopBarTitle">Mesa</span></h1>
     </div>
-    <nav class="mast-tabs" aria-label="Seções principais">
+    <nav class="mast-tabs" aria-label="Seções">
       <a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a>
       <a class="nav-link" href="#sites" data-section="sites">Campanhas</a>
       <a class="nav-link" href="#visitors" data-section="visitors">Acessos</a>
+      <a class="nav-link" href="#reports" data-section="reports">Relatórios</a>
       <a class="nav-link" href="#domains" data-section="domains">Domínios</a>
+      <a class="nav-link" href="#script" data-section="script">Link</a>
+      <a class="nav-link" href="#pages" data-section="pages">Páginas</a>
+      <a class="nav-link" href="#settings" data-section="settings">Ajustes</a>
     </nav>
-    <button class="menu-toggle mast-more" id="menuToggle" type="button" aria-expanded="false" aria-controls="sidebar">Mais seções</button>
+    <button class="menu-toggle mast-more" id="menuToggle" type="button" hidden aria-expanded="false" aria-controls="sidebar">Mais</button>
     <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
   </header>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1216,29 +1220,19 @@
         </div>
       </div>
 
-      <p class="status-line" aria-label="Resumo do período">
-        <strong id="statTotal">-</strong> visitas
-        <span class="stat-delta" id="statTotalDelta"></span>
-        <span class="status-sep">·</span>
-        <strong id="statAllowed">-</strong> liberadas <span id="statAllowedPct">—</span>
-        <span class="stat-delta" id="statAllowedDelta"></span>
-        <span class="status-sep">·</span>
-        <strong id="statBlocked">-</strong> bloqueadas <span id="statBlockedPct">—</span>
-        <span class="stat-delta" id="statBlockedDelta"></span>
-        <span class="status-sep">·</span>
-        <strong id="statBots">-</strong> bots <span id="statBotsPct">—</span>
-        <span class="status-sep">·</span>
-        <strong id="statMobile">-</strong> mobile <span id="statMobilePct">—</span>
-        <span class="status-sep">·</span>
-        <strong id="statDesktop">-</strong> desktop <span id="statDesktopPct">—</span>
-      </p>
-      <p class="status-line status-line-ad">
-        fbclid <strong id="metaFbclid">-</strong>
-        <span class="status-sep">·</span> referrer <strong id="metaFbReferrer">-</strong>
-        <span class="status-sep">·</span> revisores <strong id="metaReviewers">-</strong>
-        <span class="status-sep">·</span> tráfego Meta <strong id="metaTraffic">-</strong>
-        <span class="status-sep">·</span> aprovação <strong id="metaAllowedPct">-</strong>
-      </p>
+      <div class="metric-grid" aria-label="Resumo do período">
+        <div><span class="metric-label">Visitas <span class="stat-delta" id="statTotalDelta"></span></span><strong id="statTotal">-</strong></div>
+        <div><span class="metric-label">Liberadas <span id="statAllowedPct">—</span></span><strong id="statAllowed">-</strong><span class="stat-delta" id="statAllowedDelta"></span></div>
+        <div><span class="metric-label">Bloqueadas <span id="statBlockedPct">—</span></span><strong id="statBlocked">-</strong><span class="stat-delta" id="statBlockedDelta"></span></div>
+        <div><span class="metric-label">Bots <span id="statBotsPct">—</span></span><strong id="statBots">-</strong></div>
+        <div><span class="metric-label">Mobile <span id="statMobilePct">—</span></span><strong id="statMobile">-</strong></div>
+        <div><span class="metric-label">Desktop <span id="statDesktopPct">—</span></span><strong id="statDesktop">-</strong></div>
+        <div><span class="metric-label">fbclid</span><strong id="metaFbclid">-</strong></div>
+        <div><span class="metric-label">Referrer</span><strong id="metaFbReferrer">-</strong></div>
+        <div><span class="metric-label">Revisores</span><strong id="metaReviewers">-</strong></div>
+        <div><span class="metric-label">Tráfego Meta</span><strong id="metaTraffic">-</strong></div>
+        <div><span class="metric-label">Aprovação</span><strong id="metaAllowedPct">-</strong></div>
+      </div>
       <div class="ledger-sheet">
         <div class="ledger-sheet-bar">
           <h2>Acessos deste período</h2>
@@ -1263,7 +1257,7 @@
         </div>
       </div>
 
-      <details class="fold">
+      <details class="fold" open>
         <summary>Gráficos deste período</summary>
         <div class="fold-body">
           <div class="card"><div class="card-header"><h3 class="card-title"><span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
