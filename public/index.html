@@ -1093,43 +1093,38 @@
 <body class="panel">
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
   <div id="appBusy" class="app-busy" aria-hidden="true"></div>
-  <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu"><i class="ri-menu-line"></i></button>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-  <aside class="sidebar" id="sidebar" aria-label="Navegação do painel">
-    <div class="logo">
-      <div class="logo-mark"><i class="ri-shield-check-line"></i></div>
-      <div class="logo-text">
-        <h1>Cloaker Pro</h1>
-        <span class="logo-sub">Traffic desk</span>
-      </div>
+  <header class="mast">
+    <p class="mast-name">Cloaker</p>
+    <div class="mast-here">
+      <p class="page-kicker" id="pageTopBarKicker">Operação</p>
+      <h1><i id="pageTopBarIcon" class="ri-dashboard-3-line"></i><span id="pageTopBarTitle">Mesa</span></h1>
     </div>
+    <nav class="mast-tabs" aria-label="Seções principais">
+      <a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a>
+      <a class="nav-link" href="#sites" data-section="sites">Campanhas</a>
+      <a class="nav-link" href="#visitors" data-section="visitors">Acessos</a>
+      <a class="nav-link" href="#domains" data-section="domains">Domínios</a>
+    </nav>
+    <button class="menu-toggle mast-more" id="menuToggle" type="button" aria-expanded="false" aria-controls="sidebar">Mais seções</button>
+    <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
+  </header>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar more-drawer" id="sidebar" aria-label="Outras seções">
+    <p class="drawer-label">Fora do dia a dia</p>
     <ul class="nav-menu">
-      <li class="nav-group-title">Operação</li>
-      <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" title="Mesa" aria-current="page"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Mesa</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-list-3-line"></i><span class="nav-link-text">Relatórios</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
-      <li class="nav-group-title">Links</li>
-      <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" title="Campanhas"><i class="ri-stack-line"></i><span class="nav-link-text">Campanhas</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link de anúncio"><i class="ri-megaphone-line"></i><span class="nav-link-text">Link de anúncio</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Contingência"><i class="ri-link-m"></i><span class="nav-link-text">Contingência</span></a></li>
-      <li class="nav-group-title">Audiência</li>
-      <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Acessos"><i class="ri-group-line"></i><span class="nav-link-text">Acessos</span></a></li>
-      <li class="nav-group-title">Biblioteca</li>
-      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-article-line"></i><span class="nav-link-text">Páginas</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convites"><i class="ri-user-star-line"></i><span class="nav-link-text">Convites</span></a></li>
-      <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-earth-line"></i><span class="nav-link-text">Domínios</span></a></li>
-      <li class="nav-group-title">Conta</li>
-      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Ajustes"><i class="ri-settings-3-line"></i><span class="nav-link-text">Ajustes</span></a></li>
+      <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports">Relatórios</a></li>
+      <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics">Análise</a></li>
+      <li class="nav-item"><a class="nav-link" href="#script" data-section="script">Link de anúncio</a></li>
+      <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus">Contingência</a></li>
+      <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages">Páginas</a></li>
+      <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite">Convites</a></li>
+      <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings">Ajustes</a></li>
       <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
       <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-heart-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
       <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-user-settings-line"></i><span class="nav-link-text">Usuários</span></a></li>
       <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-sparkling-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
-    <div class="sidebar-footer">
-      <button type="button" class="sidebar-toggle" id="sidebarCollapseBtn" aria-label="Recolher menu" title="Recolher menu"><i class="ri-menu-fold-line" id="sidebarCollapseIcon"></i></button>
-      <button type="button" class="nav-link btn-logout" onclick="logout()" title="Sair"><i class="ri-logout-box-r-line"></i><span class="nav-link-text">Sair</span></button>
-    </div>
   </aside>
   <script>
     (function() {
@@ -1144,15 +1139,15 @@
         sidebar.classList.add('open');
         overlay.classList.add('active');
         document.body.classList.add('menu-open');
-        toggle.setAttribute('aria-label', 'Fechar menu');
-        toggle.innerHTML = '<i class="ri-close-line"></i>';
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.textContent = 'Fechar';
       }
       function closeMenu() {
         sidebar.classList.remove('open');
         overlay.classList.remove('active');
         document.body.classList.remove('menu-open');
-        toggle.setAttribute('aria-label', 'Abrir menu');
-        toggle.innerHTML = '<i class="ri-menu-line"></i>';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = 'Mais seções';
       }
       function updateCollapseIcon() {
         if (!collapseIcon) return;
@@ -1184,19 +1179,20 @@
       toggle.addEventListener('click', function() { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
       overlay.addEventListener('click', closeMenu);
       document.querySelectorAll('a.nav-link[data-section]').forEach(function(link) {
-        link.addEventListener('click', function() { if (isMobile()) closeMenu(); });
+        link.addEventListener('click', function() { closeMenu(); });
+      });
+      document.addEventListener('DOMContentLoaded', function() {
+        var fold = document.querySelector('#dashboard .fold');
+        if (!fold) return;
+        fold.addEventListener('toggle', function() {
+          if (fold.open) window.dispatchEvent(new Event('resize'));
+        });
       });
     })();
   </script>
 
   <main class="main" id="conteudo">
-    <div class="page-top-bar" id="pageTopBar">
-      <div>
-        <p class="page-kicker" id="pageTopBarKicker">Operação</p>
-        <h1><i id="pageTopBarIcon" class="ri-dashboard-3-line"></i><span id="pageTopBarTitle">Mesa</span></h1>
-        <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
-      </div>
-    </div>
+    <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
     <!-- Dashboard -->
     <section id="dashboard" class="section active">
       <div class="header">
@@ -1220,23 +1216,42 @@
         </div>
       </div>
 
-      <div class="board">
-        <section class="board-ledger" aria-label="Livro de acessos">
-          <div class="card ledger-card">
-            <div class="card-header">
-              <h3 class="card-title">Últimos acessos</h3>
-              <a href="#" class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-section=visitors]').click(); return false;">Abrir livro</a>
-            </div>
-            <div class="card-body">
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Data/Hora (BRT)</th><th>IP</th><th>Site</th><th>Status</th><th>País</th><th>Dispositivo</th><th>Motivo</th><th>Ações</th></tr></thead>
-                  <tbody id="lastVisitsTable"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div class="card" id="dashboardBySiteCard" style="display: none;">
+      <p class="status-line" aria-label="Resumo do período">
+        <strong id="statTotal">-</strong> visitas
+        <span class="stat-delta" id="statTotalDelta"></span>
+        <span class="status-sep">·</span>
+        <strong id="statAllowed">-</strong> liberadas <span id="statAllowedPct">—</span>
+        <span class="stat-delta" id="statAllowedDelta"></span>
+        <span class="status-sep">·</span>
+        <strong id="statBlocked">-</strong> bloqueadas <span id="statBlockedPct">—</span>
+        <span class="stat-delta" id="statBlockedDelta"></span>
+        <span class="status-sep">·</span>
+        <strong id="statBots">-</strong> bots <span id="statBotsPct">—</span>
+        <span class="status-sep">·</span>
+        <strong id="statMobile">-</strong> mobile <span id="statMobilePct">—</span>
+        <span class="status-sep">·</span>
+        <strong id="statDesktop">-</strong> desktop <span id="statDesktopPct">—</span>
+      </p>
+      <p class="status-line status-line-ad">
+        fbclid <strong id="metaFbclid">-</strong>
+        <span class="status-sep">·</span> referrer <strong id="metaFbReferrer">-</strong>
+        <span class="status-sep">·</span> revisores <strong id="metaReviewers">-</strong>
+        <span class="status-sep">·</span> tráfego Meta <strong id="metaTraffic">-</strong>
+        <span class="status-sep">·</span> aprovação <strong id="metaAllowedPct">-</strong>
+      </p>
+      <div class="ledger-sheet">
+        <div class="ledger-sheet-bar">
+          <h2>Acessos deste período</h2>
+          <a href="#" onclick="document.querySelector('[data-section=visitors]').click(); return false;">Lista completa</a>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Data/Hora (BRT)</th><th>IP</th><th>Site</th><th>Status</th><th>País</th><th>Dispositivo</th><th>Motivo</th><th>Ações</th></tr></thead>
+            <tbody id="lastVisitsTable"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="dashboardBySiteCard" style="display: none;">
         <div class="card-header"><h3 class="card-title"><i class="ri-stack-line"></i> Desempenho por Site</h3></div>
         <div class="card-body">
           <div class="table-container">
@@ -1248,42 +1263,19 @@
         </div>
       </div>
 
-        </section>
-        <aside class="board-side" aria-label="Leitura do período">
-          <div class="verdict">
-            <p class="verdict-kicker">No período</p>
-            <p class="verdict-total"><span id="statTotal">-</span> <small>visitas</small></p>
-            <p class="stat-delta" id="statTotalDelta"></p>
-            <dl class="verdict-split">
-              <div><dt>Liberadas</dt><dd id="statAllowed">-</dd><dd class="verdict-sub" id="statAllowedPct">—</dd><dd class="stat-delta" id="statAllowedDelta"></dd></div>
-              <div><dt>Bloqueadas</dt><dd id="statBlocked">-</dd><dd class="verdict-sub" id="statBlockedPct">—</dd><dd class="stat-delta" id="statBlockedDelta"></dd></div>
-            </dl>
-            <ul class="verdict-rest">
-              <li><span>Bots</span><strong id="statBots">-</strong><em id="statBotsPct">—</em></li>
-              <li><span>Mobile</span><strong id="statMobile">-</strong><em id="statMobilePct">—</em></li>
-              <li><span>Desktop</span><strong id="statDesktop">-</strong><em id="statDesktopPct">—</em></li>
-            </ul>
+      <details class="fold">
+        <summary>Gráficos deste período</summary>
+        <div class="fold-body">
+          <div class="card"><div class="card-header"><h3 class="card-title"><span id="chartTrendTitle">Visitas por Hora</span></h3></div><div class="card-body"><div class="chart-container"><canvas id="chartHourly"></canvas></div></div></div>
+          <div class="chart-strip">
+            <div class="card"><div class="card-header"><h3 class="card-title">Navegador</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBrowser"></canvas></div></div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title">País</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartCountry"></canvas></div></div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title">Bloqueio</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBlockReasons"></canvas></div></div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title">Sistema</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartOS"></canvas></div></div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title">Origem</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartReferrer"></canvas></div></div></div>
           </div>
-          <dl class="ad-read">
-            <div><dt>fbclid</dt><dd id="metaFbclid">-</dd></div>
-            <div><dt>Referrer</dt><dd id="metaFbReferrer">-</dd></div>
-            <div><dt>Revisores</dt><dd id="metaReviewers">-</dd></div>
-            <div><dt>Tráfego Meta</dt><dd id="metaTraffic">-</dd></div>
-            <div><dt>Aprovação</dt><dd id="metaAllowedPct">-</dd></div>
-          </dl>
-          <div class="card bare-chart">
-            <div class="card-header"><h3 class="card-title"><span id="chartTrendTitle">Visitas por Hora</span></h3></div>
-            <div class="card-body"><div class="chart-container chart-short"><canvas id="chartHourly"></canvas></div></div>
-          </div>
-        </aside>
-      </div>
-      <div class="chart-strip" aria-label="Recortes">
-        <div class="card"><div class="card-header"><h3 class="card-title">Navegador</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBrowser"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">País</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartCountry"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Bloqueio</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartBlockReasons"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Sistema</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartOS"></canvas></div></div></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">Origem</h3></div><div class="card-body"><div class="chart-container chart-short"><canvas id="chartReferrer"></canvas></div></div></div>
-      </div>
+        </div>
+      </details>
     </section>
 
     <!-- Sites -->
@@ -3097,7 +3089,7 @@
         updateSitesSelectedCountUI();
         return;
       }
-      container.innerHTML = filtered.map(s => {
+      container.innerHTML = '<table class="campaign-table"><thead><tr><th></th><th>Campanha</th><th>Visitas</th><th>Bloq.</th><th>Leads</th><th>Ponte</th><th>Ações</th></tr></thead><tbody>' + filtered.map(s => {
         const primUrl = ((s.target_url || '') + '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const isActive = s.is_active !== 0 && s.is_active !== false;
         const hasFb = !!(s.fallback_override_url || '').trim();
@@ -3109,51 +3101,42 @@
         const allowed = (s.total_visits || 0) - (s.blocked_visits || 0);
         const landingShort = primUrl ? (primUrl.length > 64 ? primUrl.slice(0, 64) + '…' : primUrl) : '';
         return `
-        <div class="site-card campaign-line">
-          <div class="site-card-top">
-            <div style="min-width:0;flex:1;">
-              <div class="site-card-title">
-                <label class="radio-label" style="display:inline-flex;margin:0;">
-                  <input type="checkbox" class="site-select-cb" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)">
-                </label>
-                <span>${escapeHtml(s.name || s.site_id)}</span>
-              </div>
-              <div class="site-card-domain">${escapeHtml(s.domain || s.selected_domain || 'Sem domínio')}</div>
-              <div class="site-card-meta">
-                ${isStealth ? '<span class="badge-stealth" style="margin:0;">Stealth</span>' : '<span class="site-chip site-chip-off">' + escapeHtml(behavior) + '</span>'}
-                ${!isActive ? '<span class="site-chip site-chip-off">Pausado</span>' : '<span class="site-chip site-chip-ok">Ativo</span>'}
-                ${inviteOn ? '<span class="site-chip site-chip-ok">Convite</span>' : (loadingOn ? '<span class="site-chip site-chip-ok">Carregando</span>' : (isStealth ? '<span class="site-chip site-chip-off">Sem ponte</span>' : ''))}
-                ${hasFb ? '<span class="site-chip site-chip-warn">Fallback</span>' : ''}
-              </div>
-              ${landingShort ? '<div class="site-landing">' + landingShort + '</div>' : ''}
+        <tr>
+          <td><input type="checkbox" class="site-select-cb" data-site-id="${s.site_id}" ${selectedSiteIds.has(s.site_id) ? 'checked' : ''} onchange="toggleSiteSelection('${s.site_id}', this.checked)" aria-label="Selecionar ${escapeHtml(s.name || s.site_id)}"></td>
+          <td>
+            <strong>${escapeHtml(s.name || s.site_id)}</strong>
+            <div class="site-card-domain">${escapeHtml(s.domain || s.selected_domain || 'Sem domínio')}</div>
+            <div class="site-card-meta">
+              ${isStealth ? '<span class="badge-stealth" style="margin:0;">Stealth</span>' : '<span class="site-chip site-chip-off">' + escapeHtml(behavior) + '</span>'}
+              ${!isActive ? '<span class="site-chip site-chip-off">Pausado</span>' : '<span class="site-chip site-chip-ok">Ativo</span>'}
+              ${inviteOn ? '<span class="site-chip site-chip-ok">Convite</span>' : (loadingOn ? '<span class="site-chip site-chip-ok">Carregando</span>' : (isStealth ? '<span class="site-chip site-chip-off">Sem ponte</span>' : ''))}
+              ${hasFb ? '<span class="site-chip site-chip-warn">Fallback</span>' : ''}
             </div>
-            <div class="site-card-stats">
-              <div class="site-card-stat"><div class="site-card-stat-value">${s.total_visits || 0}</div><div class="site-card-stat-label">Visitas</div></div>
-              <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--danger)">${s.blocked_visits || 0}</div><div class="site-card-stat-label">Bloq.</div></div>
-              <div class="site-card-stat"><div class="site-card-stat-value" style="color: var(--success)">${allowed}</div><div class="site-card-stat-label">Leads</div></div>
-            </div>
-          </div>
-          <div class="site-card-row">
-            <div class="site-invite-box">
-              ${isStealth ? `
-                <span class="site-invite-label"><i class="ri-route-line"></i> Ponte</span>
-                <select class="form-select" style="max-width:150px" onchange="changeSiteBridgeMode('${s.site_id}', this.value)">
-                  <option value="editorial" ${bridgeMode === 'editorial' ? 'selected' : ''}>Desligado</option>
-                  <option value="invite" ${bridgeMode === 'invite' ? 'selected' : ''}>Convite</option>
-                  <option value="loading" ${bridgeMode === 'loading' ? 'selected' : ''}>Carregando</option>
-                </select>
-                ${inviteOn ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>` : ''}
-              ` : '<span class="site-invite-label" style="opacity:.55">Ponte só no Stealth</span>'}
-            </div>
-            <div class="site-card-actions">
-              <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')" title="Copiar link do Ads"><i class="ri-file-copy-line"></i> Copiar link</button>
-              <button class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')" title="Ver links"><i class="ri-links-line"></i></button>
-              <button class="btn btn-secondary btn-sm btn-icon" onclick="openReport('${s.site_id}')" title="Relatório"><i class="ri-file-chart-line"></i></button>
-              <button class="btn btn-secondary btn-sm" onclick="exportSiteDiagnostic('${s.site_id}')" title="Baixar JSON com configuração e cada visita (30 dias) para análise"><i class="ri-download-2-line"></i> Diagnóstico</button>
-              <button class="btn btn-secondary btn-sm btn-icon" onclick="editSite('${s.site_id}')" title="Editar"><i class="ri-edit-line"></i></button>
-              <button class="btn btn-danger btn-sm btn-icon" onclick="deleteSite('${s.site_id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
-            </div>
-          </div>
+            ${landingShort ? '<div class="site-landing">' + landingShort + '</div>' : ''}
+          </td>
+          <td>${s.total_visits || 0}</td>
+          <td>${s.blocked_visits || 0}</td>
+          <td>${allowed}</td>
+          <td>
+            ${isStealth ? `
+              <select class="form-select" onchange="changeSiteBridgeMode('${s.site_id}', this.value)">
+                <option value="editorial" ${bridgeMode === 'editorial' ? 'selected' : ''}>Desligado</option>
+                <option value="invite" ${bridgeMode === 'invite' ? 'selected' : ''}>Convite</option>
+                <option value="loading" ${bridgeMode === 'loading' ? 'selected' : ''}>Carregando</option>
+              </select>
+              ${inviteOn ? `<select class="form-select" id="inviteQuickSelect-${s.site_id}" onchange="changeSiteInvitePage('${s.site_id}', this.value)">${invitePageOptionsHtml(s.invite_page_id)}</select>` : ''}
+            ` : '—'}
+          </td>
+          <td class="campaign-actions">
+            <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')">Copiar link</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')">Links</button>
+            <button class="btn btn-secondary btn-sm" onclick="openReport('${s.site_id}')">Relatório</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportSiteDiagnostic('${s.site_id}')">Diagnóstico</button>
+            <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')">Excluir</button>
+          </td>
+        </tr>
+        <tr><td colspan="7">
           <div class="site-links-panel" id="siteFullLinksWrap-${s.site_id}">
             <div style="margin-bottom: 8px;">
               <label class="form-label" style="margin-bottom: 4px; font-size: 12px;">Domínio do link</label>
@@ -3188,9 +3171,9 @@
               <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
             </div>
           </div>
-        </div>
+        </td></tr>
       `;
-      }).join('');
+      }).join('') + '</tbody></table>';
       updateSitesSelectedCountUI();
     }
 
