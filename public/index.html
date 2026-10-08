@@ -1094,11 +1094,13 @@
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
   <div id="appBusy" class="app-busy" aria-hidden="true"></div>
   <header class="mast">
-    <p class="mast-name">Cloaker</p>
-    <div class="mast-here">
-      <p class="page-kicker" id="pageTopBarKicker">Operação</p>
-      <h1><i id="pageTopBarIcon" class="ri-dashboard-3-line"></i><span id="pageTopBarTitle">Mesa</span></h1>
+    <div class="mast-top">
+      <p class="mast-name">Cloaker</p>
+      <h1 class="mast-title"><span id="pageTopBarTitle">Mesa</span></h1>
+      <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
     </div>
+    <p class="page-kicker" id="pageTopBarKicker" hidden>Operação</p>
+    <i id="pageTopBarIcon" class="ri-dashboard-3-line" hidden></i>
     <nav class="mast-tabs" aria-label="Seções">
       <a class="nav-link active" href="#dashboard" data-section="dashboard" aria-current="page">Mesa</a>
       <a class="nav-link" href="#sites" data-section="sites">Campanhas</a>
@@ -1110,7 +1112,6 @@
       <a class="nav-link" href="#settings" data-section="settings">Ajustes</a>
     </nav>
     <button class="menu-toggle mast-more" id="menuToggle" type="button" hidden aria-expanded="false" aria-controls="sidebar">Mais</button>
-    <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
   </header>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar more-drawer" id="sidebar" aria-label="Outras seções">
@@ -1196,19 +1197,14 @@
   </script>
 
   <main class="main" id="conteudo">
-    <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
+    <p class="page-lead" id="pageTopBarLead" hidden>Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
     <!-- Dashboard -->
     <section id="dashboard" class="section active">
-      <div class="header">
-        <div>
-          <h2>Dashboard</h2>
-          <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Horário de Brasília (BRT) · Atualização automática a cada 30s</p>
-          <p class="last-update" id="dashboardLastUpdate">Última atualização: —</p>
-        </div>
-        <div class="header-actions">
-          <select class="form-select site-selector" id="dashboardSiteFilter" onchange="refreshStats()" style="width:auto; min-width:180px;">
-            <option value="all">Todos os Sites</option>
-          </select>
+      <div class="desk-controls">
+        <select class="form-select site-selector" id="dashboardSiteFilter" onchange="refreshStats()">
+          <option value="all">Todos os Sites</option>
+        </select>
+        <div class="desk-control-row">
           <div class="period-selector">
             <button class="period-btn active" data-period="today">Hoje</button>
             <button class="period-btn" data-period="yesterday">Ontem</button>
@@ -1216,8 +1212,9 @@
             <button class="period-btn" data-period="15d">15 dias</button>
             <button class="period-btn" data-period="30d">30 dias</button>
           </div>
-          <button class="btn btn-primary" onclick="refreshStats(); loadLastVisits();"><i class="ri-refresh-line"></i> Atualizar</button>
+          <button class="btn btn-secondary desk-refresh" type="button" onclick="refreshStats(); loadLastVisits();">Atualizar</button>
         </div>
+        <p class="last-update" id="dashboardLastUpdate">Última atualização: —</p>
       </div>
 
       <div class="metric-grid" aria-label="Resumo do período">
