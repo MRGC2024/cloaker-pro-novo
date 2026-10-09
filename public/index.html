@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Cloaker — Precision OS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111110'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23d4a574'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0a0a'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23f5f5f5'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
@@ -13,23 +13,23 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #0b1220;
-      --bg-secondary: #111827;
-      --bg-card: #151d2e;
-      --bg-hover: #1c2740;
-      --accent-primary: #3b82f6;
-      --accent-secondary: #93c5fd;
-      --accent-solid: #3b82f6;
-      --accent-gradient: linear-gradient(160deg, #60a5fa 0%, #2563eb 100%);
-      --success: #34d399;
-      --warning: #fbbf24;
-      --danger: #f87171;
-      --info: #7dd3fc;
-      --text-primary: #f8fafc;
-      --text-secondary: #cbd5e1;
-      --text-tertiary: #94a3b8;
-      --border: rgba(148, 163, 184, 0.16);
-      --border-hover: rgba(59, 130, 246, 0.55);
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-card: #161616;
+      --bg-hover: #1f1f1f;
+      --accent-primary: #f5f5f5;
+      --accent-secondary: #d4d4d4;
+      --accent-solid: #f5f5f5;
+      --accent-gradient: none;
+      --success: #e5e5e5;
+      --warning: #a3a3a3;
+      --danger: #737373;
+      --info: #a3a3a3;
+      --text-primary: #f5f5f5;
+      --text-secondary: #a3a3a3;
+      --text-tertiary: #737373;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.22);
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
       --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
@@ -4628,8 +4628,8 @@
     function updateCharts(stats, period) {
       if (!stats || typeof stats !== 'object') return;
       period = period || currentPeriod || 'today';
-      const colors = { line: ['#7dba8a', '#e07a6a'], pie: ['#d4a574', '#7dba8a', '#e07a6a', '#8aa4c4', '#d4b45a', '#c4b8a4', '#9b9a93', '#e8c9a4'] };
-      const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9b9a93' } } } };
+      const colors = { line: ['#f5f5f5', '#737373'], pie: ['#f5f5f5', '#d4d4d4', '#a3a3a3', '#737373', '#525252', '#404040', '#262626', '#e5e5e5'] };
+      const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a3a3a3' } } } };
       const arr = (x) => Array.isArray(x) ? x : [];
       const daily = useDailyChart(period);
       const trendTitle = document.getElementById('chartTrendTitle');
@@ -4644,11 +4644,11 @@
         data: {
           labels: trendLabels,
           datasets: [
-            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(125,186,138,0.65)' : 'rgba(125,186,138,0.12)', fill: !daily, tension: 0.4 },
-            { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(224,122,106,0.65)' : 'rgba(224,122,106,0.12)', fill: !daily, tension: 0.4 }
+            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(245,245,245,0.7)' : 'rgba(245,245,245,0.12)', fill: !daily, tension: 0.4 },
+            { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(115,115,115,0.7)' : 'rgba(115,115,115,0.16)', fill: !daily, tension: 0.4 }
           ]
         },
-        options: { ...chartOpts, scales: { x: { ticks: { color: '#a0a0b0', maxRotation: daily ? 0 : 45 }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
+        options: { ...chartOpts, scales: { x: { ticks: { color: '#a3a3a3', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
       });
 
       // Browser
@@ -4656,7 +4656,7 @@
       charts.browser = new Chart(document.getElementById('chartBrowser'), {
         type: 'doughnut',
         data: { labels: arr(stats.byBrowser).map(b => b.browser || 'N/A'), datasets: [{ data: arr(stats.byBrowser).map(b => b.count), backgroundColor: colors.pie }] },
-        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a0a0b0' } } } }
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a3a3a3' } } } }
       });
 
       // OS
@@ -4666,7 +4666,7 @@
         charts.os = new Chart(osEl, {
           type: 'doughnut',
           data: { labels: arr(stats.byOS).map(o => o.os || 'N/A'), datasets: [{ data: arr(stats.byOS).map(o => o.count), backgroundColor: colors.pie }] },
-          options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a0a0b0' } } } }
+          options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a3a3a3' } } } }
         });
       }
 
@@ -4682,9 +4682,9 @@
               const u = (r.referrer || 'Direto').replace(/^https?:\/\//, '').slice(0, 28);
               return u.length >= 28 ? u + '…' : u;
             }),
-            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#6366f1' }]
+            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#d4d4d4' }]
           },
-          options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0', font: { size: 10 } }, grid: { color: '#2a2a4a' } } } }
+          options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#a3a3a3', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
         });
       }
 
@@ -4692,8 +4692,8 @@
       if (charts.country) charts.country.destroy();
       charts.country = new Chart(document.getElementById('chartCountry'), {
         type: 'bar',
-        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#e94560' }] },
-        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
+        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#a3a3a3' }] },
+        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
       });
 
       // Block Reasons
@@ -4701,7 +4701,7 @@
       charts.blockReasons = new Chart(document.getElementById('chartBlockReasons'), {
         type: 'pie',
         data: { labels: arr(stats.blockReasons).map(r => r.block_reason || 'Outro'), datasets: [{ data: arr(stats.blockReasons).map(r => r.count), backgroundColor: colors.pie }] },
-        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a0a0b0' } } } }
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#a3a3a3' } } } }
       });
     }
 
@@ -4860,7 +4860,7 @@
           if (reportsChart) reportsChart.destroy();
           const ctx = document.getElementById('reportChartHourly');
           if (ctx) {
-            const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a0a0b0' } } } };
+            const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#a3a3a3' } } } };
             reportsChart = new Chart(ctx, {
               type: daily ? 'bar' : 'line',
               data: {
@@ -4870,7 +4870,7 @@
                   { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: 'rgb(248, 81, 73)', backgroundColor: daily ? 'rgba(248, 81, 73, 0.65)' : 'rgba(248, 81, 73, 0.1)', fill: !daily, tension: 0.3 }
                 ]
               },
-              options: { ...opts, scales: { x: { ticks: { color: '#a0a0b0', maxRotation: daily ? 0 : 45 }, grid: { color: '#2a2a4a' } }, y: { ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } } } }
+              options: { ...opts, scales: { x: { ticks: { color: '#a3a3a3', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } } } }
             });
           }
 
@@ -5778,10 +5778,10 @@
               responsive: true,
               maintainAspectRatio: false,
               interaction: { mode: 'index', intersect: false },
-              plugins: { legend: { labels: { color: '#a0a0b0' } } },
+              plugins: { legend: { labels: { color: '#a3a3a3' } } },
               scales: {
-                x: { ticks: { color: '#a0a0b0', maxRotation: d.timelineGranularity === 'day' ? 0 : 45 }, grid: { color: '#2a2a4a' } },
-                y: { position: 'left', ticks: { color: '#a0a0b0' }, grid: { color: '#2a2a4a' } },
+                x: { ticks: { color: '#a3a3a3', maxRotation: d.timelineGranularity === 'day' ? 0 : 45 }, grid: { color: 'rgba(255,255,255,0.06)' } },
+                y: { position: 'left', ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.06)' } },
                 y1: { position: 'right', ticks: { color: '#fbbf24', stepSize: 1 }, grid: { drawOnChartArea: false } }
               }
             }

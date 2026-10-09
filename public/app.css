@@ -1,22 +1,22 @@
 /* Precision OS — composição do painel. Carrega depois do CSS embutido. */
 :root {
-  --bg-primary: #101114;
-  --bg-secondary: #16171c;
-  --bg-card: #1a1b21;
-  --bg-hover: #22232b;
-  --accent-primary: #d4a574;
-  --accent-secondary: #e8c9a4;
-  --accent-solid: #d4a574;
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-card: #161616;
+  --bg-hover: #1f1f1f;
+  --accent-primary: #f5f5f5;
+  --accent-secondary: #d4d4d4;
+  --accent-solid: #f5f5f5;
   --accent-gradient: none;
-  --success: #7dba8a;
-  --warning: #d4b45a;
-  --danger: #e07a6a;
-  --info: #8aa4c4;
-  --text-primary: #f3f1ea;
-  --text-secondary: #9b9a93;
-  --text-tertiary: #6d6c66;
-  --border: rgba(243, 241, 234, 0.08);
-  --border-hover: rgba(212, 165, 116, 0.45);
+  --success: #e5e5e5;
+  --warning: #a3a3a3;
+  --danger: #737373;
+  --info: #a3a3a3;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #737373;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.22);
   --shadow-sm: none;
   --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.4);
@@ -64,7 +64,7 @@ body.precision-os .os-command {
   gap: 16px;
   height: var(--os-command);
   padding: 0 16px 0 12px;
-  background: #0c0d10;
+  background: #0a0a0a;
   border-bottom: 1px solid var(--border);
 }
 
@@ -102,7 +102,7 @@ body.precision-os .nav-logo {
   display: grid;
   place-items: center;
   background: var(--accent-primary);
-  color: #16120c;
+  color: #0a0a0a;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -233,7 +233,7 @@ body.precision-os #sidebar.app-nav {
   gap: 4px;
   padding: 10px 8px 12px !important;
   margin: 0;
-  background: #0c0d10;
+  background: #0a0a0a;
   border-right: 1px solid var(--border);
   border-bottom: 0;
   overflow: auto;
@@ -320,9 +320,9 @@ body.precision-os #sidebar .nav-link i {
 }
 
 body.precision-os #sidebar .nav-link.active {
-  background: rgba(212, 165, 116, 0.12);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--accent-primary);
-  box-shadow: inset 0 0 0 1px rgba(212, 165, 116, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 body.precision-os #sidebar .nav-link.active i { color: var(--accent-primary); }
@@ -359,7 +359,7 @@ body.precision-os .ops-toolbar {
   flex-wrap: wrap;
   padding: 10px 20px;
   border-bottom: 1px solid var(--border);
-  background: #13141a;
+  background: #111111;
   position: sticky;
   top: var(--os-command);
   z-index: 20;
@@ -404,7 +404,7 @@ body.precision-os .period-selector {
   padding: 3px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: #0c0d10;
+  background: #0a0a0a;
 }
 
 body.precision-os .period-btn {
@@ -421,7 +421,7 @@ body.precision-os .period-btn {
 
 body.precision-os .period-btn.active {
   background: var(--accent-primary);
-  color: #16120c;
+  color: #0a0a0a;
 }
 
 body.precision-os .ops-workspace {
@@ -627,7 +627,7 @@ body.precision-os .ops-table th {
   color: var(--text-tertiary);
   font-weight: 600;
   padding: 10px 12px;
-  background: #13141a;
+  background: #111111;
   border-bottom: 1px solid var(--border);
 }
 body.precision-os .ops-table td {
@@ -710,7 +710,7 @@ body.precision-os .btn {
 
 body.precision-os .btn-primary {
   background: var(--accent-primary);
-  color: #16120c;
+  color: #0a0a0a;
   border: 1px solid var(--accent-primary);
 }
 
@@ -726,7 +726,7 @@ body.precision-os .btn-secondary:hover { background: var(--bg-hover); }
 
 body.precision-os .form-input,
 body.precision-os .form-select {
-  background: #0c0d10;
+  background: #0a0a0a;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
@@ -735,7 +735,7 @@ body.precision-os .form-select {
 body.precision-os .form-input:focus,
 body.precision-os .form-select:focus {
   outline: none;
-  border-color: rgba(212, 165, 116, 0.7);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 body.precision-os .card,
@@ -755,7 +755,7 @@ body.precision-os .skip-link {
   z-index: 3000;
   padding: 8px 12px;
   background: var(--accent-primary);
-  color: #16120c;
+  color: #0a0a0a;
   border-radius: 8px;
   text-decoration: none;
   transform: translateY(-140%);
@@ -794,8 +794,20 @@ body.precision-os .app-busy.is-on::after {
 }
 
 body.precision-os .kpi-delta { font-size: 12px; color: var(--text-tertiary); }
-body.precision-os .kpi-delta.up { color: var(--success); }
-body.precision-os .kpi-delta.down { color: var(--danger); }
+body.precision-os .kpi-delta.up { color: var(--text-primary); }
+body.precision-os .kpi-delta.down { color: var(--text-tertiary); }
+
+body.precision-os .badge-success,
+body.precision-os .badge-info {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+body.precision-os .badge-danger,
+body.precision-os .badge-warning {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -904,7 +916,7 @@ body.precision-os .kpi-delta.down { color: var(--danger); }
     border-top: 1px solid var(--border);
     padding: 6px 8px calc(8px + env(safe-area-inset-bottom)) !important;
     z-index: 80;
-    background: #0c0d10;
+    background: #0a0a0a;
   }
 
   body.precision-os #sidebar .nav-menu {
