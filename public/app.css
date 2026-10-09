@@ -619,3 +619,70 @@ body.panel.sidebar-collapsed .main {
   .chart-strip { grid-template-columns: 1fr; }
   .verdict-total { font-size: 40px; }
 }
+
+@media (max-width: 800px) {
+  .mast { width: 100%; box-sizing: border-box; padding: 10px 4px 6px; }
+  .mast-title { font-size: 22px; flex: 1; min-width: 0; }
+  .mast-exit { flex-shrink: 0; padding: 8px; }
+  .pulse { grid-template-columns: 1fr; }
+  .pulse > div { padding: 10px 4px; }
+  .pulse > div + div { border-left: 0; border-top: 1px solid var(--border); }
+  .pulse strong { font-size: 28px; }
+  .pulse .stat-delta { display: block; margin-top: 2px; }
+  .desk-control-row { flex-direction: row; align-items: center; }
+  .desk-controls .period-selector { width: auto; flex: 1; }
+  .desk-refresh { width: auto !important; }
+  #reports .header { flex-direction: column; align-items: stretch; }
+  #reports .header-actions,
+  #sites .header-actions,
+  #visitors .header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 8px;
+  }
+  #reports .header-actions .btn,
+  #sites .header-actions .btn,
+  #visitors .header-actions .btn {
+    width: 100% !important;
+    min-height: 40px;
+  }
+  #reports .stats-row { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  #reports .stat-card { padding: 12px !important; }
+  #reports .stat-value { font-size: 22px !important; }
+  #sites > .header { margin-bottom: 8px; }
+  #sites > .card { margin-bottom: 10px; }
+  #sites > .card > .card-body { padding: 12px; }
+  #sites .sites-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: end;
+  }
+  #sites .sites-toolbar .form-group { margin: 0; min-width: 0; width: auto; flex: none; }
+  #sites .sites-toolbar .form-group:first-child { grid-column: 1 / -1; }
+  #sites .bulk-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    gap: 8px;
+  }
+  #sites .bulk-bar .btn,
+  #sites .bulk-bar .radio-label {
+    width: auto;
+    min-height: 36px;
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .ledger-sheet th:nth-child(2),
+  .ledger-sheet td:nth-child(2),
+  .ledger-sheet th:nth-child(3),
+  .ledger-sheet td:nth-child(3),
+  .ledger-sheet th:nth-child(6),
+  .ledger-sheet td:nth-child(6),
+  .ledger-sheet th:nth-child(8),
+  .ledger-sheet td:nth-child(8) { display: none; }
+  .section > .header > p { display: none; }
+}
