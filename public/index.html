@@ -1593,15 +1593,15 @@
               <div class="os-code-grid">
                 <div>
                   <div class="form-label">Referência + UTMs (Meta Ads)</div>
-                  <div class="code-block">
-                    <button class="copy-btn" onclick="copyGeneratedMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <div class="os-copy-field">
+                    <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyGeneratedMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button></div>
                     <pre id="generatedMetaRefOnlyText"></pre>
                   </div>
                 </div>
                 <div>
                   <div class="form-label">Referência + UTMs (TikTok Ads)</div>
-                  <div class="code-block">
-                    <button class="copy-btn" onclick="copyGeneratedTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button>
+                  <div class="os-copy-field">
+                    <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyGeneratedTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar</button></div>
                     <pre id="generatedTikTokRefOnlyText"></pre>
                   </div>
                 </div>
@@ -1610,15 +1610,15 @@
                 <div class="os-code-grid">
                   <div>
                     <div class="form-label">Meta Ads</div>
-                    <div class="code-block">
-                      <button class="copy-btn" onclick="copyGeneratedMetaLink()"><i class="ri-file-copy-line"></i> Copiar</button>
+                    <div class="os-copy-field">
+                      <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyGeneratedMetaLink()"><i class="ri-file-copy-line"></i> Copiar</button></div>
                       <pre id="generatedMetaLinkText"></pre>
                     </div>
                   </div>
                   <div>
                     <div class="form-label">TikTok Ads</div>
-                    <div class="code-block">
-                      <button class="copy-btn" onclick="copyGeneratedTikTokLink()"><i class="ri-file-copy-line"></i> Copiar</button>
+                    <div class="os-copy-field">
+                      <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyGeneratedTikTokLink()"><i class="ri-file-copy-line"></i> Copiar</button></div>
                       <pre id="generatedTikTokLinkText"></pre>
                     </div>
                   </div>
@@ -1650,19 +1650,19 @@
             </select>
             <button type="button" class="btn btn-secondary btn-sm" onclick="toggleScriptFullLinks()"><i class="ri-eye-line"></i> Links completos</button>
           </div>
-          <div class="code-block" id="scriptCodeBlock" style="display: none;">
+          <div id="scriptCodeBlock" style="display: none;">
             <div class="os-code-grid">
               <div>
                 <div class="form-label">Referência + UTMs (Meta Ads)</div>
-                <div class="code-block" style="margin: 0;">
-                  <button class="copy-btn" onclick="copyScriptMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar Meta</button>
+                <div class="os-copy-field">
+                  <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyScriptMetaRefOnly()"><i class="ri-file-copy-line"></i> Copiar Meta</button></div>
                   <pre id="scriptMetaRefOnlyCode"></pre>
                 </div>
               </div>
               <div>
                 <div class="form-label">Referência + UTMs (TikTok Ads)</div>
-                <div class="code-block" style="margin: 0;">
-                  <button class="copy-btn" onclick="copyScriptTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
+                <div class="os-copy-field">
+                  <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyScriptTikTokRefOnly()"><i class="ri-file-copy-line"></i> Copiar TikTok</button></div>
                   <pre id="scriptTikTokRefOnlyCode"></pre>
                 </div>
               </div>
@@ -1671,15 +1671,15 @@
               <div class="os-code-grid">
                 <div>
                   <div class="form-label">Link completo para Meta Ads</div>
-                  <div class="code-block" style="margin: 0;">
-                    <button class="copy-btn" onclick="copyScriptMetaLink()"><i class="ri-file-copy-line"></i> Copiar Meta</button>
+                  <div class="os-copy-field">
+                    <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyScriptMetaLink()"><i class="ri-file-copy-line"></i> Copiar Meta</button></div>
                     <pre id="scriptMetaCode"></pre>
                   </div>
                 </div>
                 <div>
                   <div class="form-label">Link completo para TikTok Ads</div>
-                  <div class="code-block" style="margin: 0;">
-                    <button class="copy-btn" onclick="copyScriptTikTokLink()"><i class="ri-file-copy-line"></i> Copiar TikTok</button>
+                  <div class="os-copy-field">
+                    <div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="copyScriptTikTokLink()"><i class="ri-file-copy-line"></i> Copiar TikTok</button></div>
                     <pre id="scriptTikTokCode"></pre>
                   </div>
                 </div>
@@ -3084,6 +3084,14 @@
       }).join('');
     }
 
+    function osCopyFieldHtml(id, text, onClick) {
+      const safe = String(text == null ? '—' : text);
+      return '<div class="os-copy-field">' +
+        '<div class="os-copy-field-bar"><button type="button" class="copy-btn" onclick="' + onClick + '"><i class="ri-file-copy-line"></i> Copiar</button></div>' +
+        '<code id="' + id + '">' + safe + '</code>' +
+      '</div>';
+    }
+
     function renderSitesList() {
       const container = document.getElementById('sitesList');
       const filtered = getFilteredSitesList();
@@ -3138,15 +3146,15 @@
             ` : '—'}
           </td>
           <td class="campaign-actions">
-            <button class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')">Copiar link</button>
-            <button class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')">Links</button>
-            <button class="btn btn-secondary btn-sm" onclick="openReport('${s.site_id}')">Relatório</button>
-            <button class="btn btn-secondary btn-sm" onclick="exportSiteDiagnostic('${s.site_id}')">Diagnóstico</button>
-            <button class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')">Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')">Excluir</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="copySiteAdsLinkQuick('${s.site_id}')"><i class="ri-file-copy-line"></i> Copiar link</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleSiteFullLinks('${s.site_id}')"><i class="ri-links-line"></i> Links</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openReport('${s.site_id}')"><i class="ri-file-chart-line"></i> Relatório</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="exportSiteDiagnostic('${s.site_id}')"><i class="ri-stethoscope-line"></i> Diagnóstico</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="editSite('${s.site_id}')"><i class="ri-edit-line"></i> Editar</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteSite('${s.site_id}')"><i class="ri-delete-bin-line"></i> Excluir</button>
           </td>
         </tr>
-        <tr><td colspan="7">
+        <tr class="campaign-links-row"><td colspan="7">
           <div class="site-links-panel" id="siteFullLinksWrap-${s.site_id}">
             <div style="margin-bottom: 8px;">
               <label class="form-label" style="margin-bottom: 4px; font-size: 12px;">Domínio do link</label>
@@ -3156,30 +3164,15 @@
               </select>
             </div>
             <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;">Link gerado</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySiteLinkBase('${s.site_id}', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkBase-${s.site_id}">${s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—'}</span>
-            </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Referência + UTMs (Meta Ads)</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkMetaRefOnly-${s.site_id}">${s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta')) : '—'}</span>
-            </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-fill"></i> Referência + UTMs (TikTok Ads)</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformRefOnly('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkTikTokRefOnly-${s.site_id}">${s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok')) : '—'}</span>
-            </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-fill"></i> Link completo (Meta Ads)</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'meta', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkMetaFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta') : '—'}</span>
-            </div>
-            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-fill"></i> Link completo (TikTok Ads)</div>
-            <div class="code-block" style="font-size: 12px; padding: 10px;">
-              <button class="copy-btn" style="padding: 4px 8px; font-size: 10px;" onclick="copySitePlatformLink('${s.site_id}', 'tiktok', event)"><i class="ri-file-copy-line"></i> Copiar</button>
-              <span id="linkTikTokFull-${s.site_id}">${s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—'}</span>
-            </div>
+            ${osCopyFieldHtml('linkBase-' + s.site_id, s.link_code ? buildLinkBase(s, s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()) : '—', "copySiteLinkBase('" + s.site_id + "', event)")}
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-line"></i> Referência + UTMs (Meta Ads)</div>
+            ${osCopyFieldHtml('linkMetaRefOnly-' + s.site_id, s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta')) : '—', "copySitePlatformRefOnly('" + s.site_id + "', 'meta', event)")}
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-line"></i> Referência + UTMs (TikTok Ads)</div>
+            ${osCopyFieldHtml('linkTikTokRefOnly-' + s.site_id, s.link_code ? extractQueryFromUrl(buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok')) : '—', "copySitePlatformRefOnly('" + s.site_id + "', 'tiktok', event)")}
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-facebook-circle-line"></i> Link completo (Meta Ads)</div>
+            ${osCopyFieldHtml('linkMetaFull-' + s.site_id, s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'meta') : '—', "copySitePlatformLink('" + s.site_id + "', 'meta', event)")}
+            <div class="form-label" style="margin: 10px 0 4px; font-size: 12px;"><i class="ri-tiktok-line"></i> Link completo (TikTok Ads)</div>
+            ${osCopyFieldHtml('linkTikTokFull-' + s.site_id, s.link_code ? buildSitePlatformLink(s, (s.selected_domain ? getLinkBaseUrl(s.selected_domain) : getBaseUrl()), 'tiktok') : '—', "copySitePlatformLink('" + s.site_id + "', 'tiktok', event)")}
           </div>
         </td></tr>
       `;
@@ -4045,7 +4038,7 @@
             return '<tr>' +
               '<td><input type="checkbox" data-site-id="' + sidAttr + '"' + checked + ' onchange="toggleFallbackStatusSelectionFromEl(this)"></td>' +
               '<td><strong>' + (s.name || s.site_id || '').replace(/</g, '&lt;') + '</strong></td>' +
-              '<td><span class="badge ' + (useFb ? 'badge-primary' : '') + '" style="' + (useFb ? '' : 'background:var(--text-secondary);') + '" title="' + fallbackTitle + '">' + fallbackLabel + '</span></td>' +
+              '<td><span class="badge ' + (useFb ? 'badge-primary' : 'badge-muted') + '" title="' + fallbackTitle + '">' + fallbackLabel + '</span></td>' +
               '<td><span class="badge badge-' + statusClass + '">' + statusLabel + '</span></td>' +
               '<td style="word-break:break-all;font-size:12px;"><code>' + (primary || '—').replace(/</g, '&lt;') + '</code></td>' +
               '<td style="word-break:break-all;font-size:12px;"><code>' + (urlEmUso || '—').replace(/</g, '&lt;') + '</code></td>' +
