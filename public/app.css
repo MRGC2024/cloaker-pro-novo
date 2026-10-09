@@ -1489,3 +1489,99 @@ body.precision-os .campaign-table {
     padding-right: 14px;
   }
 }
+
+/* ——— Tema geral: modais, chips, stealth, controles ——— */
+body.precision-os .modal {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: none;
+}
+body.precision-os .modal-content {
+  background: #111111 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5) !important;
+}
+body.precision-os .modal-header {
+  padding: 14px 20px;
+  background: #0a0a0a;
+  border-bottom: 1px solid var(--border);
+}
+body.precision-os .modal-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+body.precision-os .modal-header h3 i { color: var(--text-tertiary); }
+body.precision-os .modal-body { padding: 20px; }
+body.precision-os .os-inset {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+body.precision-os .copy-btn {
+  background: var(--accent-primary);
+  color: #0a0a0a;
+}
+body.precision-os .copy-btn.copied { background: #e5e5e5; color: #0a0a0a; }
+body.precision-os .btn-danger {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+body.precision-os .btn-danger:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+body.precision-os input:checked + .slider {
+  background: #f5f5f5;
+  border-color: #f5f5f5;
+}
+body.precision-os input:checked + .slider:before { background: #0a0a0a; }
+body.precision-os .site-chip-ok,
+body.precision-os .badge-stealth,
+body.precision-os .badge-recommended {
+  background: #f5f5f5;
+  color: #0a0a0a;
+}
+body.precision-os .site-chip-off,
+body.precision-os .site-chip-warn,
+body.precision-os .badge-danger,
+body.precision-os .badge-warning {
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+body.precision-os .behavior-card {
+  border-radius: 8px;
+  background: #0a0a0a;
+}
+body.precision-os .behavior-card.selected,
+body.precision-os .behavior-card.recommended {
+  background: #161616;
+  border-color: var(--border-hover);
+  box-shadow: none;
+}
+body.precision-os .stealth-guide-panel,
+body.precision-os .legacy-notice,
+body.precision-os .stealth-sim-panel {
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+body.precision-os .stealth-warning-banner {
+  color: var(--text-primary);
+  background: transparent;
+  border-color: var(--border);
+}
+body.precision-os .period-btn.active,
+body.precision-os .filter-btn.active,
+body.precision-os .page-btn.active {
+  background: #f5f5f5;
+  color: #0a0a0a;
+  border-color: #f5f5f5;
+}
+body.precision-os .os-logout:hover { color: var(--text-primary); }
+body.precision-os .empty-state i { color: var(--text-tertiary); }
