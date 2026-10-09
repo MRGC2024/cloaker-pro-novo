@@ -637,16 +637,20 @@ body.panel.sidebar-collapsed .main {
   #sites .header-actions,
   #visitors .header-actions {
     display: grid !important;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
     width: 100%;
     gap: 8px;
   }
+  #reports .header-actions .site-selector,
+  #visitors .header-actions .site-selector { grid-column: 1 / -1; }
   #reports .header-actions .btn,
   #sites .header-actions .btn,
   #visitors .header-actions .btn {
-    width: 100% !important;
+    width: auto !important;
     min-height: 40px;
+    justify-self: end;
   }
+  #sites .header-actions .btn { grid-column: 1 / -1; justify-self: stretch; width: 100% !important; }
   #reports .stats-row { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   #reports .stat-card { padding: 12px !important; }
   #reports .stat-value { font-size: 22px !important; }
