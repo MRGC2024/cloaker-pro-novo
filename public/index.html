@@ -425,13 +425,15 @@
     }
     .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s, background 0.15s, border-color 0.15s; font-family: inherit; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: inherit; background-image: none; box-shadow: none; }
+    i[class^="ri-"], i[class*=" ri-"] { font-weight: 400 !important; font-style: normal; -webkit-text-stroke: 0; text-shadow: none; }
+    .btn i, .copy-btn i { font-weight: 400; color: inherit; -webkit-text-stroke: 0; text-shadow: none; }
     .btn-primary { 
       background: var(--accent-solid); 
       color: #0a0a0a; 
       border: 1px solid var(--accent-solid);
     }
-    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:hover { background: #e5e5e5; border-color: #e5e5e5; }
     .btn-secondary { 
       background: transparent; 
       color: var(--text-primary); 
@@ -624,22 +626,23 @@
 
     .code-block { background: var(--bg-primary); border-radius: 10px; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; overflow-x: auto; border: 1px solid var(--border); position: relative; }
     .copy-btn { 
-      position: absolute; 
-      top: 10px; 
-      right: 10px; 
+      position: static; 
+      align-self: flex-end;
+      margin: 0 0 8px;
       padding: 8px 14px; 
       background: var(--accent-solid); 
       color: #0a0a0a; 
-      border: none; 
+      border: 1px solid var(--accent-solid); 
       border-radius: 8px; 
       cursor: pointer; 
       font-size: 11px; 
-      font-weight: 600; 
+      font-weight: 500; 
       font-family: inherit;
-      transition: opacity 0.15s; 
+      box-shadow: none;
     }
-    .copy-btn:hover { opacity: 0.9; }
-    .copy-btn.copied { background: var(--success); }
+    .copy-btn:hover { background: #e5e5e5; border-color: #e5e5e5; }
+    .copy-btn.copied { background: var(--success); color: #0a0a0a; }
+    .code-block:has(.copy-btn) { display: flex; flex-direction: column; align-items: stretch; }
     #toastCopy { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 9999; opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; display: flex; align-items: center; gap: 8px; }
     #toastCopy.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
@@ -1032,7 +1035,7 @@
       }
 
       .code-block {
-        padding: 40px 12px 12px;
+        padding: 12px;
         font-size: 11px;
         word-break: break-all;
       }
@@ -6099,7 +6102,7 @@
             if (!isSelf) {
               actions += '<button class="btn btn-secondary btn-sm" onclick="openChangePasswordModal(' + u.id + ', \'' + (u.username || '').replace(/'/g, "\\'") + '\')" title="Alterar senha"><i class="ri-key-line"></i></button> ';
               if (status === 'active') {
-                actions += '<button class="btn btn-sm" style="background:var(--warning);color:#000" onclick="pauseUser(' + u.id + ')" title="Pausar"><i class="ri-pause-line"></i></button> ';
+                actions += '<button class="btn btn-sm btn-pause" onclick="pauseUser(' + u.id + ')" title="Pausar"><i class="ri-pause-line"></i></button> ';
                 actions += '<button class="btn btn-danger btn-sm" onclick="banUser(' + u.id + ')" title="Banir"><i class="ri-forbid-line"></i></button> ';
               } else {
                 actions += '<button class="btn btn-primary btn-sm" onclick="activateUser(' + u.id + ')" title="Ativar"><i class="ri-play-line"></i></button> ';

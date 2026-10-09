@@ -322,7 +322,7 @@ body.precision-os #sidebar .nav-link i {
 body.precision-os #sidebar .nav-link.active {
   background: rgba(255, 255, 255, 0.08);
   color: var(--accent-primary);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  box-shadow: none;
 }
 
 body.precision-os #sidebar .nav-link.active i { color: var(--accent-primary); }
@@ -724,22 +724,34 @@ body.precision-os .chart-short { height: 220px; }
 /* ——— Componentes globais ——— */
 body.precision-os .btn {
   border-radius: 8px;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.01em;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
 }
 
 body.precision-os .btn-primary {
-  background: var(--accent-primary);
+  background: #f5f5f5;
+  background-image: none;
   color: #0a0a0a;
-  border: 1px solid var(--accent-primary);
+  border: 1px solid #f5f5f5;
+  box-shadow: none;
 }
 
-body.precision-os .btn-primary:hover { opacity: 0.9; }
+body.precision-os .btn-primary:hover {
+  opacity: 1;
+  background: #e5e5e5;
+  border-color: #e5e5e5;
+}
 
 body.precision-os .btn-secondary {
   background: transparent;
+  background-image: none;
   border: 1px solid var(--border);
   color: var(--text-primary);
+  box-shadow: none;
 }
 
 body.precision-os .btn-secondary:hover { background: var(--bg-hover); }
@@ -1522,14 +1534,30 @@ body.precision-os .os-inset {
   border-radius: 8px;
 }
 body.precision-os .copy-btn {
-  background: var(--accent-primary);
+  position: static;
+  align-self: flex-end;
+  margin: 0 0 8px;
+  background: #f5f5f5;
+  background-image: none;
   color: #0a0a0a;
+  border: 1px solid #f5f5f5;
+  box-shadow: none;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  font-weight: 500;
 }
-body.precision-os .copy-btn.copied { background: #e5e5e5; color: #0a0a0a; }
+body.precision-os .copy-btn.copied { background: #e5e5e5; color: #0a0a0a; border-color: #e5e5e5; }
+body.precision-os .code-block:has(.copy-btn) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
 body.precision-os .btn-danger {
   background: transparent;
+  background-image: none;
   color: var(--text-secondary);
   border: 1px solid var(--border);
+  box-shadow: none;
 }
 body.precision-os .btn-danger:hover {
   background: var(--bg-hover);
@@ -1580,8 +1608,61 @@ body.precision-os .period-btn.active,
 body.precision-os .filter-btn.active,
 body.precision-os .page-btn.active {
   background: #f5f5f5;
+  background-image: none;
   color: #0a0a0a;
-  border-color: #f5f5f5;
+  border: 0;
+  box-shadow: none;
 }
 body.precision-os .os-logout:hover { color: var(--text-primary); }
 body.precision-os .empty-state i { color: var(--text-tertiary); }
+
+/* Remix Icon herda font-weight do botão e desenha o glifo duas vezes (cores sobrepostas). */
+body.precision-os i[class^="ri-"],
+body.precision-os i[class*=" ri-"] {
+  font-weight: 400 !important;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+body.precision-os .btn i,
+body.precision-os .copy-btn i,
+body.precision-os .period-btn i,
+body.precision-os .filter-btn i,
+body.precision-os .page-btn i,
+body.precision-os .os-icon-btn i,
+body.precision-os .menu-toggle i {
+  color: inherit;
+  opacity: 1;
+}
+body.precision-os .btn-primary i,
+body.precision-os .copy-btn i {
+  color: #0a0a0a;
+}
+body.precision-os .btn::before,
+body.precision-os .btn::after,
+body.precision-os .copy-btn::before,
+body.precision-os .copy-btn::after,
+body.precision-os .period-btn::before,
+body.precision-os .filter-btn::before,
+body.precision-os .page-btn::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+body.precision-os .campaign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.precision-os .btn-pause {
+  background: #e5e5e5;
+  background-image: none;
+  color: #0a0a0a;
+  border: 1px solid #e5e5e5;
+  box-shadow: none;
+}
