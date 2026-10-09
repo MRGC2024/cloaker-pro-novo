@@ -3001,7 +3001,10 @@
         link.setAttribute('aria-current', 'page');
       }
       document.getElementById(sectionId).classList.add('active');
-      if (location.hash !== '#' + sectionId) location.hash = sectionId;
+      if (location.hash !== '#' + sectionId) {
+        if (history.replaceState) history.replaceState(null, '', '#' + sectionId);
+        else location.hash = sectionId;
+      }
       if (sectionId === 'dashboard') refreshStats();
       if (sectionId === 'sites') { loadSites(); loadPages(); }
       if (sectionId === 'fallbackstatus') loadFallbackStatus();
