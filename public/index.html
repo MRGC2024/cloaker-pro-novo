@@ -1121,14 +1121,14 @@
       <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
       <li class="nav-item" id="navAutoImprove" style="display:none"><a class="nav-link" href="#autoimprove" data-section="autoimprove" title="Melhorias Automáticas"><i class="ri-sparkling-line"></i><span class="nav-link-text">Melhorias Automáticas</span></a></li>
     </ul>
-    <button type="button" class="nav-link btn-logout" onclick="logout()">Sair</button>
+    <button type="button" class="nav-link btn-logout" onclick="logout()"><i class="ri-logout-box-r-line"></i> Sair</button>
   </nav>
   <div class="app-stage">
   <header class="mast">
     <p class="page-kicker" id="pageTopBarKicker" hidden>Operação</p>
     <i id="pageTopBarIcon" class="ri-dashboard-3-line" hidden></i>
     <h1 class="mast-title"><span id="pageTopBarTitle">Mesa</span></h1>
-    <button type="button" class="mast-exit" onclick="logout()">Sair</button>
+    <button type="button" class="mast-exit" onclick="logout()"><i class="ri-logout-box-r-line"></i> Sair</button>
     <button class="menu-toggle" id="menuToggle" type="button" hidden>Mais</button>
   </header>
   <script>
@@ -1210,18 +1210,18 @@
             <button class="period-btn" data-period="15d">15 dias</button>
             <button class="period-btn" data-period="30d">30 dias</button>
           </div>
-          <button class="btn btn-secondary desk-refresh" type="button" onclick="refreshStats(); loadLastVisits();">Atualizar</button>
+          <button class="btn btn-secondary desk-refresh" type="button" onclick="refreshStats(); loadLastVisits();"><i class="ri-refresh-line"></i> Atualizar</button>
         </div>
         <p class="last-update" id="dashboardLastUpdate">Última atualização: —</p>
       </div>
 
       <div class="pulse" aria-label="Resumo do período">
-        <div><span class="metric-label">Visitas</span><strong id="statTotal">-</strong><span class="stat-delta" id="statTotalDelta"></span></div>
-        <div><span class="metric-label">Liberadas <span id="statAllowedPct">—</span></span><strong id="statAllowed">-</strong><span class="stat-delta" id="statAllowedDelta"></span></div>
-        <div><span class="metric-label">Bloqueadas <span id="statBlockedPct">—</span></span><strong id="statBlocked">-</strong><span class="stat-delta" id="statBlockedDelta"></span></div>
+        <div><span class="metric-label"><i class="ri-eye-line"></i> Visitas</span><strong id="statTotal">-</strong><span class="stat-delta" id="statTotalDelta"></span></div>
+        <div><span class="metric-label"><i class="ri-check-line"></i> Liberadas <span id="statAllowedPct">—</span></span><strong id="statAllowed">-</strong><span class="stat-delta" id="statAllowedDelta"></span></div>
+        <div><span class="metric-label"><i class="ri-close-line"></i> Bloqueadas <span id="statBlockedPct">—</span></span><strong id="statBlocked">-</strong><span class="stat-delta" id="statBlockedDelta"></span></div>
       </div>
       <details class="fold fold-meta">
-        <summary>Detalhe do tráfego</summary>
+        <summary><i class="ri-radar-line"></i> Detalhe do tráfego</summary>
         <div class="metric-grid metric-grid-rest">
           <div><span class="metric-label">Bots <span id="statBotsPct">—</span></span><strong id="statBots">-</strong></div>
           <div><span class="metric-label">Mobile <span id="statMobilePct">—</span></span><strong id="statMobile">-</strong></div>
@@ -1235,7 +1235,7 @@
       </details>
       <div class="ledger-sheet">
         <div class="ledger-sheet-bar">
-          <h2>Acessos deste período</h2>
+          <h2><i class="ri-pulse-line"></i> Acessos deste período</h2>
           <a href="#" onclick="document.querySelector('[data-section=visitors]').click(); return false;">Lista completa</a>
         </div>
         <div class="table-container">

@@ -446,30 +446,41 @@ body.panel #sidebar .btn-logout { margin-top: auto; }
 .nav-logo {
   width: 32px; height: 32px; border-radius: 9px;
   display: grid; place-items: center;
-  background: linear-gradient(160deg, #67e8f9, #22d3ee);
-  box-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
+  background: #f4f4f5;
+  box-shadow: none;
 }
 body.panel {
-  --accent-primary: #22d3ee;
-  --accent-solid: #22d3ee;
-  --border-hover: rgba(34, 211, 238, 0.45);
+  --accent-primary: #e4e4e7;
+  --accent-solid: #f4f4f5;
+  --success: #d4d4d8;
+  --danger: #a1a1aa;
+  --warning: #d4d4d8;
+  --info: #e4e4e7;
+  --border-hover: rgba(255, 255, 255, 0.28);
 }
 body.panel #sidebar .nav-link {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-body.panel #sidebar .nav-link i { font-size: 18px; color: #67e8f9; width: 18px; }
+body.panel #sidebar .nav-link i { font-size: 18px; color: #d4d4d8; width: 18px; }
 body.panel #sidebar .nav-link.active {
-  background: rgba(34, 211, 238, 0.14);
-  color: #ecfeff;
-  box-shadow: inset 2px 0 0 #22d3ee;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+  box-shadow: inset 2px 0 0 #fafafa;
 }
-.pulse > div:first-child strong { color: #e7feff; }
-.pulse > div:nth-child(2) strong { color: #4ade80; }
-.pulse > div:nth-child(3) strong { color: #fb7185; }
-.btn-primary { background: #22d3ee; color: #041016; border-color: #22d3ee; }
-.period-btn.active { background: #22d3ee; color: #041016; }
+.pulse strong,
+.pulse > div:first-child strong,
+.pulse > div:nth-child(2) strong,
+.pulse > div:nth-child(3) strong { color: #fafafa; }
+.metric-label i { margin-right: 4px; color: #a1a1aa; }
+.btn-primary { background: #f4f4f5; color: #09090b; border-color: #f4f4f5; }
+.period-btn.active { background: #f4f4f5; color: #09090b; }
+body.panel .stat-value,
+body.panel .stat-sub,
+body.panel .stat-delta,
+body.panel .kpi-delta { color: #e4e4e7 !important; }
+body.panel .stat-card { border-color: rgba(255,255,255,0.1) !important; }
 .nav-brand-text { display: flex; flex-direction: column; line-height: 1.1; }
 .nav-brand-text strong { font-size: 14px; }
 .nav-brand-text small { font-size: 11px; color: var(--text-tertiary); }
