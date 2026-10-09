@@ -1737,3 +1737,40 @@ body.precision-os .btn-pause {
   border: 1px solid #e5e5e5;
   box-shadow: none;
 }
+
+@media (max-width: 900px) {
+  html, body.panel { overflow-x: hidden; }
+  body.panel .main {
+    padding: 4px 16px 104px !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  body.panel .mast {
+    padding: 12px 16px 8px !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  body.panel .mast-title { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.panel .mast-exit { flex: 0 0 auto; margin-left: 12px; }
+  body.panel .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  body.panel .card-header > span,
+  body.panel .card-title { max-width: 100%; }
+  body.panel #reports .header-actions {
+    grid-template-columns: 1fr !important;
+  }
+  body.panel #reports .header-actions .btn {
+    width: 100% !important;
+    justify-self: stretch;
+  }
+  body.panel #reports .stat-card { min-width: 0; overflow: hidden; }
+  body.panel #reports .stat-delta,
+  body.panel #reports .stat-sub,
+  body.panel #reports .stat-label { overflow-wrap: anywhere; }
+  body.panel .meta-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  body.panel .charts-grid { grid-template-columns: 1fr !important; }
+}
