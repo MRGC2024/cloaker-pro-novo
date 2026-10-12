@@ -1878,9 +1878,6 @@ body.precision-os #sidebar .nav-link[data-section="systemhealth"] { color: var(-
 body.precision-os #sidebar .nav-link[data-section="users"] { color: var(--violet); }
 body.precision-os #sidebar .nav-link[data-section="metaips"] { color: var(--sky); }
 body.precision-os #sidebar .nav-link[data-section="autoimprove"] { color: var(--warning); }
-body.precision-os #sidebar .nav-link.active {
-  color: inherit;
-}
 body.precision-os #sidebar .nav-link[data-section="dashboard"].active { background: var(--accent-soft); }
 body.precision-os #sidebar .nav-link[data-section="sites"].active { background: var(--violet-soft); }
 body.precision-os #sidebar .nav-link[data-section="visitors"].active { background: var(--success-soft); }
