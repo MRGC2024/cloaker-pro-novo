@@ -1,32 +1,41 @@
 /* Precision OS — composição do painel. Carrega depois do CSS embutido. */
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-card: #161616;
-  --bg-hover: #1f1f1f;
+  --bg-primary: #071411;
+  --bg-secondary: #0c1c19;
+  --bg-card: #12241f;
+  --bg-hover: #1a332c;
+  --bg-elevated: #16302a;
   --accent-primary: #2ee6c5;
   --accent-secondary: #5eead4;
   --accent-solid: #12c4a8;
   --accent-ink: #042f2e;
-  --accent-soft: rgba(18, 196, 168, 0.18);
+  --accent-soft: rgba(18, 196, 168, 0.22);
   --accent-gradient: none;
   --success: #34d399;
   --success-ink: #052e1f;
-  --success-soft: rgba(52, 211, 153, 0.16);
+  --success-soft: rgba(52, 211, 153, 0.18);
   --warning: #fbbf24;
   --warning-ink: #422006;
-  --warning-soft: rgba(251, 191, 36, 0.16);
+  --warning-soft: rgba(251, 191, 36, 0.18);
   --danger: #f87171;
   --danger-ink: #450a0a;
-  --danger-soft: rgba(248, 113, 113, 0.16);
+  --danger-soft: rgba(248, 113, 113, 0.18);
   --info: #60a5fa;
   --info-ink: #0b1f3a;
-  --info-soft: rgba(96, 165, 250, 0.16);
-  --text-primary: #f5f5f5;
-  --text-secondary: #a3a3a3;
-  --text-tertiary: #737373;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(46, 230, 197, 0.35);
+  --info-soft: rgba(96, 165, 250, 0.18);
+  --violet: #c4b5fd;
+  --violet-soft: rgba(167, 139, 250, 0.18);
+  --pink: #f9a8d4;
+  --pink-soft: rgba(244, 114, 182, 0.16);
+  --orange: #fb923c;
+  --orange-soft: rgba(251, 146, 60, 0.16);
+  --sky: #38bdf8;
+  --sky-soft: rgba(56, 189, 248, 0.16);
+  --text-primary: #f3faf7;
+  --text-secondary: #9dbeb6;
+  --text-tertiary: #6e9088;
+  --border: rgba(46, 230, 197, 0.16);
+  --border-hover: rgba(46, 230, 197, 0.42);
   --shadow-sm: none;
   --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.4);
@@ -74,8 +83,9 @@ body.precision-os .os-command {
   gap: 16px;
   height: var(--os-command);
   padding: 0 16px 0 12px;
-  background: #0a0a0a;
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0f2622 0%, var(--bg-primary) 100%);
+  border-bottom: 1px solid rgba(46, 230, 197, 0.28);
+  box-shadow: 0 1px 0 rgba(46, 230, 197, 0.08);
 }
 
 body.precision-os .os-icon-btn,
@@ -171,7 +181,7 @@ body.precision-os .mast-title {
 }
 
 body.precision-os .os-title i {
-  color: var(--text-tertiary);
+  color: var(--accent-primary);
   font-size: 16px;
 }
 
@@ -220,7 +230,10 @@ body.precision-os .os-body {
 
 body.precision-os .os-stage {
   min-width: 0;
-  background: var(--bg-primary);
+  background:
+    radial-gradient(1100px 420px at 12% -8%, rgba(18, 196, 168, 0.16), transparent 55%),
+    radial-gradient(900px 360px at 100% 0%, rgba(96, 165, 250, 0.08), transparent 52%),
+    var(--bg-primary);
 }
 
 body.precision-os .os-overlay {
@@ -243,7 +256,7 @@ body.precision-os #sidebar.app-nav {
   gap: 4px;
   padding: 10px 8px 12px !important;
   margin: 0;
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border-right: 1px solid var(--border);
   border-bottom: 0;
   overflow: auto;
@@ -305,7 +318,7 @@ body.precision-os #sidebar .nav-link .nav-link-text {
   left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  background: #1c1d24;
+  background: var(--bg-elevated);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -373,7 +386,7 @@ body.precision-os .ops-toolbar {
   flex-wrap: wrap;
   padding: 10px 20px;
   border-bottom: 1px solid var(--border);
-  background: #111111;
+  background: var(--bg-secondary);
   position: sticky;
   top: var(--os-command);
   z-index: 20;
@@ -410,7 +423,17 @@ body.precision-os .last-update {
   color: var(--text-tertiary);
 }
 
-body.precision-os .last-update::before { display: none; }
+body.precision-os .last-update::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 99px;
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
+  vertical-align: middle;
+}
 
 body.precision-os .period-selector {
   display: inline-flex;
@@ -418,7 +441,7 @@ body.precision-os .period-selector {
   padding: 3px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: #0a0a0a;
+  background: var(--bg-primary);
 }
 
 body.precision-os .period-btn {
@@ -523,7 +546,8 @@ body.precision-os .ops-hero-metric strong {
   font-weight: 500;
   line-height: 0.9;
   letter-spacing: -0.04em;
-  color: var(--text-primary);
+  color: #e9fff8;
+  text-shadow: 0 0 48px rgba(18, 196, 168, 0.28);
 }
 
 body.precision-os .ops-hero-metric .stat-delta { display: block; margin-top: 8px; }
@@ -551,6 +575,19 @@ body.precision-os .ops-split strong {
   line-height: 1;
 }
 
+body.precision-os .ops-split-ok,
+body.precision-os .ops-split-block {
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+body.precision-os .ops-split-ok {
+  background: var(--success-soft);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+}
+body.precision-os .ops-split-block {
+  background: var(--danger-soft);
+  border: 1px solid rgba(248, 113, 113, 0.32);
+}
 body.precision-os .ops-split-ok strong { color: var(--success); }
 body.precision-os .ops-split-block strong { color: var(--danger); }
 
@@ -654,10 +691,10 @@ body.precision-os .ops-table th {
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--accent-secondary);
   font-weight: 600;
   padding: 10px 12px;
-  background: #111111;
+  background: rgba(18, 196, 168, 0.08);
   border-bottom: 1px solid var(--border);
 }
 body.precision-os .ops-table td {
@@ -667,7 +704,7 @@ body.precision-os .ops-table td {
   vertical-align: middle;
 }
 body.precision-os .ops-table tr:last-child td { border-bottom: 0; }
-body.precision-os .ops-table tr:hover { background: rgba(255, 255, 255, 0.025); }
+body.precision-os .ops-table tr:hover { background: rgba(18, 196, 168, 0.06); }
 
 body.precision-os .ops-trend,
 body.precision-os .ops-dist {
@@ -768,7 +805,7 @@ body.precision-os .btn-secondary:hover { background: var(--bg-hover); }
 
 body.precision-os .form-input,
 body.precision-os .form-select {
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
@@ -975,7 +1012,7 @@ body.precision-os .badge-warning {
     border-top: 1px solid var(--border);
     padding: 6px 8px calc(8px + env(safe-area-inset-bottom)) !important;
     z-index: 80;
-    background: #0a0a0a;
+    background: var(--bg-primary);
   }
 
   body.precision-os #sidebar .nav-menu {
@@ -1170,7 +1207,7 @@ body.precision-os .section .header {
   padding: 10px 20px;
   margin: 0;
   border-bottom: 1px solid var(--border);
-  background: #111111;
+  background: var(--bg-secondary);
   position: sticky;
   top: var(--os-command);
   z-index: 19;
@@ -1223,7 +1260,7 @@ body.precision-os .filters {
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0a0a0a;
+  background: var(--bg-primary);
   flex-wrap: wrap;
 }
 body.precision-os .filter-btn {
@@ -1323,7 +1360,7 @@ body.precision-os table th {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-tertiary);
-  background: #111111;
+  background: var(--bg-secondary);
 }
 body.precision-os #sitesList {
   border-radius: 0;
@@ -1417,7 +1454,7 @@ body.precision-os #scriptRefParamValue,
 body.precision-os #generatedRefParamValue {
   display: inline-block;
   padding: 8px 12px;
-  background: #111111;
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
   font-family: var(--font-mono);
@@ -1490,7 +1527,7 @@ body.precision-os .stealth-pack-group {
   background: transparent;
 }
 body.precision-os .stealth-pack-header {
-  background: #111111;
+  background: var(--bg-secondary);
 }
 body.precision-os .stealth-pack-new-tag {
   color: var(--text-primary);
@@ -1544,14 +1581,14 @@ body.precision-os .modal {
   backdrop-filter: none;
 }
 body.precision-os .modal-content {
-  background: #111111 !important;
-  border: 1px solid var(--border) !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid rgba(46, 230, 197, 0.22) !important;
   border-radius: 8px !important;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5) !important;
 }
 body.precision-os .modal-header {
   padding: 14px 20px;
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
 }
 body.precision-os .modal-header h3 {
@@ -1559,13 +1596,13 @@ body.precision-os .modal-header h3 {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-body.precision-os .modal-header h3 i { color: var(--text-tertiary); }
+body.precision-os .modal-header h3 i { color: var(--accent-primary); }
 body.precision-os .modal-body { padding: 20px; }
 body.precision-os .os-inset {
   display: block;
   margin-top: 14px;
   padding: 14px 16px;
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -1651,7 +1688,7 @@ body.precision-os .stealth-pack-new-tag {
 }
 body.precision-os .behavior-card {
   border-radius: 8px;
-  background: #0a0a0a;
+  background: var(--bg-primary);
 }
 body.precision-os .behavior-card.selected,
 body.precision-os .behavior-card.recommended {
@@ -1662,7 +1699,7 @@ body.precision-os .behavior-card.recommended {
 body.precision-os .stealth-guide-panel,
 body.precision-os .legacy-notice,
 body.precision-os .stealth-sim-panel {
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -1743,7 +1780,7 @@ body.precision-os .os-copy-field {
   align-items: stretch;
   gap: 8px;
   padding: 12px;
-  background: #0a0a0a;
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -1787,4 +1824,151 @@ body.precision-os .btn-pause {
   color: var(--warning);
   border: 1px solid rgba(251, 191, 36, 0.45);
   box-shadow: none;
+}
+
+/* ——— Paleta viva: chrome, nav, sinais e superfícies ——— */
+body.precision-os {
+  background:
+    radial-gradient(900px 380px at 8% -12%, rgba(18, 196, 168, 0.18), transparent 50%),
+    var(--bg-primary);
+}
+body.precision-os .btn-secondary {
+  border-color: rgba(46, 230, 197, 0.28);
+  color: var(--accent-secondary);
+}
+body.precision-os .btn-secondary:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-solid);
+  color: var(--accent-primary);
+}
+body.precision-os .btn-pause {
+  background: var(--warning-soft);
+  background-image: none;
+  color: var(--warning);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+body.precision-os .btn-activate {
+  background: var(--success-soft);
+  background-image: none;
+  color: var(--success);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+body.precision-os .btn-activate:hover {
+  background: rgba(52, 211, 153, 0.28);
+  color: var(--success);
+}
+body.precision-os #sidebar.os-rail.app-nav,
+body.precision-os #sidebar.app-nav {
+  background: #081816;
+  border-right-color: rgba(46, 230, 197, 0.18);
+}
+body.precision-os #sidebar .nav-link i { color: inherit; }
+body.precision-os #sidebar .nav-link[data-section="dashboard"] { color: var(--accent-primary); }
+body.precision-os #sidebar .nav-link[data-section="sites"] { color: var(--violet); }
+body.precision-os #sidebar .nav-link[data-section="visitors"] { color: var(--success); }
+body.precision-os #sidebar .nav-link[data-section="reports"] { color: var(--info); }
+body.precision-os #sidebar .nav-link[data-section="domains"] { color: var(--sky); }
+body.precision-os #sidebar .nav-link[data-section="script"] { color: var(--warning); }
+body.precision-os #sidebar .nav-link[data-section="fallbackstatus"] { color: var(--orange); }
+body.precision-os #sidebar .nav-link[data-section="pages"] { color: var(--accent-secondary); }
+body.precision-os #sidebar .nav-link[data-section="invite"] { color: var(--pink); }
+body.precision-os #sidebar .nav-link[data-section="analytics"] { color: var(--info); }
+body.precision-os #sidebar .nav-link[data-section="settings"] { color: var(--sky); }
+body.precision-os #sidebar .nav-link[data-section="systemhealth"] { color: var(--danger); }
+body.precision-os #sidebar .nav-link[data-section="users"] { color: var(--violet); }
+body.precision-os #sidebar .nav-link[data-section="metaips"] { color: var(--sky); }
+body.precision-os #sidebar .nav-link[data-section="autoimprove"] { color: var(--warning); }
+body.precision-os #sidebar .nav-link.active {
+  color: inherit;
+}
+body.precision-os #sidebar .nav-link[data-section="dashboard"].active { background: var(--accent-soft); }
+body.precision-os #sidebar .nav-link[data-section="sites"].active { background: var(--violet-soft); }
+body.precision-os #sidebar .nav-link[data-section="visitors"].active { background: var(--success-soft); }
+body.precision-os #sidebar .nav-link[data-section="reports"].active { background: var(--info-soft); }
+body.precision-os #sidebar .nav-link[data-section="domains"].active { background: var(--sky-soft); }
+body.precision-os #sidebar .nav-link[data-section="script"].active { background: var(--warning-soft); }
+body.precision-os #sidebar .nav-link[data-section="fallbackstatus"].active { background: var(--orange-soft); }
+body.precision-os #sidebar .nav-link[data-section="pages"].active { background: var(--accent-soft); }
+body.precision-os #sidebar .nav-link[data-section="invite"].active { background: var(--pink-soft); }
+body.precision-os #sidebar .nav-link[data-section="analytics"].active { background: var(--info-soft); }
+body.precision-os #sidebar .nav-link[data-section="settings"].active { background: var(--sky-soft); }
+body.precision-os #sidebar .nav-link[data-section="systemhealth"].active { background: var(--danger-soft); }
+body.precision-os #sidebar .nav-link[data-section="users"].active { background: var(--violet-soft); }
+body.precision-os #sidebar .nav-link[data-section="metaips"].active { background: var(--sky-soft); }
+body.precision-os #sidebar .nav-link[data-section="autoimprove"].active { background: var(--warning-soft); }
+body.precision-os #sidebar .nav-link.active i { color: inherit; }
+body.precision-os .ops-signals h2 { color: var(--accent-secondary); }
+body.precision-os .ops-signal-bots strong { color: var(--warning); }
+body.precision-os .ops-signal-mobile strong { color: var(--info); }
+body.precision-os .ops-signal-desktop strong { color: var(--violet); }
+body.precision-os .ops-signal-meta li:nth-child(1) strong { color: var(--accent-primary); }
+body.precision-os .ops-signal-meta li:nth-child(2) strong { color: var(--sky); }
+body.precision-os .ops-signal-meta li:nth-child(3) strong { color: var(--warning); }
+body.precision-os .ops-signal-meta li:nth-child(4) strong { color: var(--success); }
+body.precision-os .ops-signal-meta li:nth-child(5) strong { color: var(--info); }
+body.precision-os .ops-dist-tab.is-on {
+  color: var(--accent-primary);
+}
+body.precision-os .os-block-head h2,
+body.precision-os .os-block-head h3,
+body.precision-os .os-block-head h4,
+body.precision-os .ops-ledger-bar h2,
+body.precision-os .ops-inspect-head h2 {
+  color: #e9fff8;
+}
+body.precision-os .os-copy-field {
+  background: var(--bg-elevated);
+  border-color: rgba(46, 230, 197, 0.22);
+}
+body.precision-os .os-result code,
+body.precision-os #scriptRefParamValue,
+body.precision-os #generatedRefParamValue {
+  background: var(--bg-elevated);
+  border-color: rgba(46, 230, 197, 0.22);
+  color: var(--accent-primary);
+}
+body.precision-os .form-input,
+body.precision-os .form-select {
+  background: var(--bg-elevated);
+  border-color: rgba(46, 230, 197, 0.2);
+}
+body.precision-os .filters,
+body.precision-os .period-selector {
+  background: var(--bg-elevated);
+  border-color: rgba(46, 230, 197, 0.22);
+}
+body.precision-os .empty-state i { color: var(--accent-primary); }
+body.precision-os .os-swatch-total { background: var(--accent-solid); }
+body.precision-os .campaign-table th {
+  color: var(--accent-secondary);
+}
+body.precision-os .site-chip-ok,
+body.precision-os .badge-success {
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28);
+}
+body.precision-os .site-chip-warn,
+body.precision-os .badge-warning {
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.28);
+}
+body.precision-os .badge-danger {
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.28);
+}
+body.precision-os .badge-info {
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.28);
+}
+body.precision-os .ops-command-strip {
+  background: rgba(18, 196, 168, 0.05);
+}
+body.precision-os .stealth-guide-panel,
+body.precision-os .legacy-notice,
+body.precision-os .stealth-sim-panel,
+body.precision-os .behavior-card {
+  background: var(--bg-elevated);
+}
+@media (max-width: 900px) {
+  body.precision-os #sidebar.os-rail.app-nav,
+  body.precision-os #sidebar.app-nav {
+    background: #081816;
+    border-top: 1px solid rgba(46, 230, 197, 0.22);
+  }
 }
