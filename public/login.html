@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Entrar — Cloaker Precision OS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23042f2e'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%232ee6c5'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1408'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23e0c48a'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap" rel="stylesheet">
@@ -12,18 +12,18 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #071411;
-      --panel: #0c1c19;
-      --line: rgba(46, 230, 197, 0.16);
-      --text: #f3faf7;
-      --muted: #9dbeb6;
-      --dim: #6e9088;
-      --accent: #12c4a8;
-      --accent-bright: #2ee6c5;
-      --accent-ink: #042f2e;
-      --danger: #f87171;
-      --success: #34d399;
-      --info: #60a5fa;
+      --bg: #0c0b0a;
+      --panel: #141311;
+      --line: rgba(224, 196, 138, 0.14);
+      --text: #f3eee6;
+      --muted: #b1a89c;
+      --dim: #7d766c;
+      --accent: #c8a46a;
+      --accent-bright: #e0c48a;
+      --accent-ink: #1a1408;
+      --danger: #c98980;
+      --success: #8fbfa5;
+      --info: #8fa3b8;
     }
     html { color-scheme: dark; }
     i[class^="ri-"], i[class*=" ri-"] {
@@ -52,9 +52,9 @@
       padding: 40px 48px;
       border-right: 1px solid var(--line);
       background:
-        radial-gradient(720px 480px at 0% 0%, rgba(18, 196, 168, 0.32), transparent 58%),
-        radial-gradient(520px 360px at 90% 110%, rgba(96, 165, 250, 0.16), transparent 50%),
-        #071411;
+        radial-gradient(720px 480px at 0% 0%, rgba(200, 164, 106, 0.22), transparent 58%),
+        radial-gradient(520px 360px at 90% 110%, rgba(143, 163, 184, 0.08), transparent 50%),
+        #0c0b0a;
     }
     .os-mark {
       width: 36px;
@@ -101,7 +101,7 @@
       justify-content: center;
       padding: 40px 28px;
       background:
-        radial-gradient(640px 320px at 100% 0%, rgba(18, 196, 168, 0.1), transparent 55%),
+        radial-gradient(640px 320px at 100% 0%, rgba(200, 164, 106, 0.08), transparent 55%),
         var(--panel);
     }
     .os-form {
@@ -132,7 +132,7 @@
       padding: 13px 14px;
       border-radius: 8px;
       border: 1px solid var(--line);
-      background: #0a1a17;
+      background: #1f1d1a;
       color: var(--text);
       font-size: 16px;
       font-family: inherit;
@@ -141,7 +141,7 @@
     .form-input:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(18, 196, 168, 0.18);
+      box-shadow: 0 0 0 3px rgba(200, 164, 106, 0.18);
     }
     .btn-login {
       width: 100%;
@@ -170,7 +170,7 @@
       -webkit-text-stroke: 0;
       text-shadow: none;
     }
-    .btn-login:hover { background: #0ea894; border-color: #0ea894; }
+    .btn-login:hover { background: #b08d52; border-color: #b08d52; }
     .btn-login:disabled { opacity: 0.55; cursor: not-allowed; }
     .msg {
       margin-top: 16px;
@@ -207,8 +207,8 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--accent-bright);
-      background: rgba(18, 196, 168, 0.16);
-      border: 1px solid rgba(18, 196, 168, 0.35);
+      background: rgba(200, 164, 106, 0.16);
+      border: 1px solid rgba(200, 164, 106, 0.35);
       padding: 5px 10px;
       border-radius: 8px;
       margin-bottom: 12px;
@@ -243,9 +243,9 @@
     <aside class="os-gate-brand">
       <div>
         <span class="os-mark" aria-hidden="true">C</span>
-        <p class="os-kicker">Precision OS</p>
+        <p class="os-kicker">Precision OS · Premium</p>
         <h1>Operação de tráfego</h1>
-        <p>Mesa, campanhas e bloqueio no mesmo chrome. Horário de Brasília.</p>
+        <p>Dashboard, campanhas, links e sites no mesmo painel. Horário de Brasília.</p>
       </div>
       <p class="os-gate-foot">Cloaker · acesso restrito</p>
     </aside>

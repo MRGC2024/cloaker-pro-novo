@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Cloaker — Precision OS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23042f2e'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%232ee6c5'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1408'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23e0c48a'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
@@ -13,42 +13,34 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #071411;
-      --bg-secondary: #0c1c19;
-      --bg-card: #12241f;
-      --bg-hover: #1a332c;
-      --bg-elevated: #16302a;
-      --accent-primary: #2ee6c5;
-      --accent-secondary: #5eead4;
-      --accent-solid: #12c4a8;
-      --accent-ink: #042f2e;
-      --accent-soft: rgba(18, 196, 168, 0.22);
+      --bg-primary: #0c0b0a;
+      --bg-secondary: #141311;
+      --bg-card: #1a1916;
+      --bg-hover: #24221e;
+      --bg-elevated: #1f1d1a;
+      --accent-primary: #e0c48a;
+      --accent-secondary: #f0ddb4;
+      --accent-solid: #c8a46a;
+      --accent-ink: #1a1408;
+      --accent-soft: rgba(200, 164, 106, 0.16);
       --accent-gradient: none;
-      --success: #34d399;
-      --success-ink: #052e1f;
-      --success-soft: rgba(52, 211, 153, 0.18);
-      --warning: #fbbf24;
-      --warning-ink: #422006;
-      --warning-soft: rgba(251, 191, 36, 0.18);
-      --danger: #f87171;
-      --danger-ink: #450a0a;
-      --danger-soft: rgba(248, 113, 113, 0.18);
-      --info: #60a5fa;
-      --info-ink: #0b1f3a;
-      --info-soft: rgba(96, 165, 250, 0.18);
-      --violet: #c4b5fd;
-      --violet-soft: rgba(167, 139, 250, 0.18);
-      --pink: #f9a8d4;
-      --pink-soft: rgba(244, 114, 182, 0.16);
-      --orange: #fb923c;
-      --orange-soft: rgba(251, 146, 60, 0.16);
-      --sky: #38bdf8;
-      --sky-soft: rgba(56, 189, 248, 0.16);
-      --text-primary: #f3faf7;
-      --text-secondary: #9dbeb6;
-      --text-tertiary: #6e9088;
-      --border: rgba(46, 230, 197, 0.16);
-      --border-hover: rgba(46, 230, 197, 0.42);
+      --success: #8fbfa5;
+      --success-ink: #0e1f18;
+      --success-soft: rgba(143, 191, 165, 0.16);
+      --warning: #d4a054;
+      --warning-ink: #2a1c08;
+      --warning-soft: rgba(212, 160, 84, 0.16);
+      --danger: #c98980;
+      --danger-ink: #2a1412;
+      --danger-soft: rgba(201, 137, 128, 0.16);
+      --info: #8fa3b8;
+      --info-ink: #121820;
+      --info-soft: rgba(143, 163, 184, 0.16);
+      --text-primary: #f3eee6;
+      --text-secondary: #b1a89c;
+      --text-tertiary: #7d766c;
+      --border: rgba(224, 196, 138, 0.12);
+      --border-hover: rgba(224, 196, 138, 0.34);
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
       --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
@@ -130,7 +122,7 @@
     .stealth-pack-meta { font-size: 12px; color: var(--text-secondary); }
     .stealth-pack-new-tag {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--accent-primary); background: var(--accent-soft); border: 1px solid rgba(18, 196, 168, 0.35); padding: 4px 10px; border-radius: 999px;
+      color: var(--accent-primary); background: var(--accent-soft); border: 1px solid rgba(200, 164, 106, 0.35); padding: 4px 10px; border-radius: 999px;
     }
     .stealth-pack-grid {
       display: grid;
@@ -182,7 +174,7 @@
       padding: 16px 18px;
       margin-bottom: 20px;
       border-radius: 14px;
-      border: 1px solid rgba(18, 196, 168, 0.28);
+      border: 1px solid rgba(200, 164, 106, 0.28);
       background: var(--accent-soft);
     }
     .panel-tip-banner > i { font-size: 26px; color: var(--accent-primary); flex-shrink: 0; margin-top: 2px; }
@@ -452,7 +444,7 @@
       color: var(--accent-ink); 
       border: 1px solid var(--accent-solid);
     }
-    .btn-primary:hover { background: #0ea894; border-color: #0ea894; }
+    .btn-primary:hover { background: #b08d52; border-color: #b08d52; }
     .btn-secondary { 
       background: transparent; 
       color: var(--text-primary); 
@@ -662,7 +654,7 @@
       font-family: inherit;
       box-shadow: none;
     }
-    .copy-btn:hover { background: #0ea894; border-color: #0ea894; }
+    .copy-btn:hover { background: #b08d52; border-color: #b08d52; }
     .copy-btn.copied { background: var(--success); color: var(--success-ink); }
     .code-block:has(.copy-btn) { display: flex; flex-direction: column; align-items: stretch; }
     #toastCopy { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 9999; opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; display: flex; align-items: center; gap: 8px; }
@@ -1131,10 +1123,10 @@
         </span>
       </a>
       <div class="os-context">
-        <p class="page-kicker" id="pageTopBarKicker">Operação</p>
+        <p class="page-kicker" id="pageTopBarKicker">Dashboard</p>
         <h1 class="os-title">
           <i id="pageTopBarIcon" class="ri-dashboard-3-line" aria-hidden="true"></i>
-          <span id="pageTopBarTitle">Mesa</span>
+          <span id="pageTopBarTitle">Dashboard</span>
         </h1>
         <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
       </div>
@@ -1150,21 +1142,22 @@
           <span class="nav-brand-text"><strong>Cloaker</strong><small>Precision OS</small></span>
         </div>
         <ul class="nav-menu">
-          <li class="nav-group-title">Operação</li>
-          <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" data-dock="1" title="Mesa" aria-current="page"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Mesa</span></a></li>
+          <li class="nav-group-title">Dashboard</li>
+          <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" data-dock="1" title="Dashboard" aria-current="page"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Dashboard</span></a></li>
+          <li class="nav-group-title">Campanhas</li>
           <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" data-dock="1" title="Campanhas"><i class="ri-stack-line"></i><span class="nav-link-text">Campanhas</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" data-dock="1" title="Ao vivo"><i class="ri-live-line"></i><span class="nav-link-text">Ao vivo</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" data-dock="1" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Ao vivo"><i class="ri-live-line"></i><span class="nav-link-text">Ao vivo</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
           <li class="nav-group-title">Links</li>
-          <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#script" data-section="script" title="Link de anúncio"><i class="ri-link"></i><span class="nav-link-text">Link de anúncio</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#script" data-section="script" data-dock="1" title="Links"><i class="ri-link"></i><span class="nav-link-text">Links</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Contingência"><i class="ri-shield-flash-line"></i><span class="nav-link-text">Contingência</span></a></li>
-          <li class="nav-group-title">Conteúdo</li>
+          <li class="nav-group-title">Sites</li>
+          <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" data-dock="1" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-article-line"></i><span class="nav-link-text">Páginas</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convites"><i class="ri-user-star-line"></i><span class="nav-link-text">Convites</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
-          <li class="nav-group-title">Conta</li>
-          <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
+          <li class="nav-group-title">Configurações</li>
+          <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Geral</span></a></li>
           <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
           <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-heart-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
           <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-user-settings-line"></i><span class="nav-link-text">Usuários</span></a></li>
@@ -1185,7 +1178,7 @@
         <label class="ops-field">
           <span>Escopo</span>
           <select class="form-select site-selector" id="dashboardSiteFilter" onchange="refreshStats()">
-            <option value="all">Todos os sites</option>
+            <option value="all">Todas as campanhas</option>
           </select>
         </label>
         <div class="period-selector" role="tablist" aria-label="Período">
@@ -1341,7 +1334,7 @@
         </label>
         <div class="ops-toolbar-end">
           <p class="last-update" id="sitesListMeta">Carregando...</p>
-          <button class="btn btn-primary" onclick="openNewSiteModal()"><i class="ri-add-line"></i> Novo Site</button>
+          <button class="btn btn-primary" onclick="openNewSiteModal()"><i class="ri-add-line"></i> Nova campanha</button>
         </div>
       </div>
       <div class="os-page">
@@ -1429,7 +1422,7 @@
         <label class="ops-field">
           <span>Escopo</span>
           <select class="form-select site-selector" id="visitorsSiteFilter" onchange="loadVisitors()">
-            <option value="all">Todos os Sites</option>
+            <option value="all">Todas as campanhas</option>
           </select>
         </label>
         <div class="filters" role="tablist" aria-label="Filtro de visitantes">
@@ -1467,7 +1460,7 @@
         <label class="ops-field">
           <span>Escopo</span>
           <select class="form-select site-selector" id="reportsSiteFilter" onchange="loadReports()">
-            <option value="all">Todos os Sites</option>
+            <option value="all">Todas as campanhas</option>
           </select>
         </label>
         <label class="ops-field" style="min-width:140px;">
@@ -1573,7 +1566,7 @@
     <!-- Script/Integração -->
     <section id="script" class="section">
       <div class="ops-toolbar">
-        <p class="last-update">Gerar e copiar o destino dos anúncios</p>
+        <p class="last-update">Gerar, copiar e validar os links dos anúncios</p>
       </div>
       <div class="os-page">
         <div class="panel-tip-banner">
@@ -1736,9 +1729,10 @@
     <!-- Configurações (domínio do cloaker – por usuário) -->
     <section id="settings" class="section">
       <div class="ops-toolbar">
-        <p class="last-update">Conta, domínio, UTMs e administração</p>
+        <p class="last-update">Conta, sites, links e administração</p>
       </div>
       <div class="os-page os-settings">
+      <p class="os-chapter">Conta</p>
       <div class="os-pair">
       <section class="os-block">
         <header class="os-block-head"><h3>Alterar usuário</h3></header>
@@ -1769,6 +1763,7 @@
         <span id="passwordMsg" style="margin-left: 15px; font-size: 13px;"></span>
       </section>
       </div>
+      <p class="os-chapter">Sites</p>
       <div class="os-pair">
       <section class="os-block">
         <header class="os-block-head"><h3>Meu domínio do Cloaker</h3></header>
@@ -1796,9 +1791,11 @@
           <div id="propagationDetails" style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);"></div>
         </div>
       </section>
+      </div>
+      <p class="os-chapter">Links</p>
       <section class="os-block">
         <header class="os-block-head"><h3>UTMs padrão para Ads</h3></header>
-        <p class="os-note">Parâmetros usados em Link para Ads e como base para novos sites.</p>
+        <p class="os-note">Parâmetros usados em Links e como base para novas campanhas.</p>
         <div class="form-group">
           <label class="form-label">UTMs globais (Meta Ads)</label>
           <input type="text" class="form-input" id="settingsAdsMetaParams" placeholder="utm_source=meta&utm_medium=cpc&utm_campaign=minha_campanha_meta">
@@ -1810,7 +1807,7 @@
         <button class="btn btn-primary" onclick="saveAdsGlobalSettings()"><i class="ri-save-line"></i> Salvar UTMs padrão</button>
         <span id="adsGlobalSettingsMsg" style="margin-left: 15px; font-size: 13px;"></span>
       </section>
-      </div>
+      <p class="os-chapter" id="osChapterAdmin">Administração</p>
       <section class="os-block" id="pathPoolCard" style="display: none;">
         <header class="os-block-head"><h3>Pool de prefixos de link (admin)</h3></header>
         <p class="os-note">Cada novo site recebe um prefixo aleatório desta lista. Assim os links não seguem um padrão único (ex: só /go/). Use prefixos com mais caracteres (ex: <code>visit</code>, <code>x7k2m</code>).</p>
@@ -1836,7 +1833,7 @@
             <li><strong>Aguarde a propagação do DNS</strong> (pode levar de alguns minutos a 48 horas). Você pode testar com <code>nslookup cloaker.seudominio.com</code> no terminal.</li>
             <li><strong>Use HTTPS:</strong> se seu provedor oferecer SSL (ex: Cloudflare “Flexible” ou “Full”), ative. A URL final deve ser <code>https://cloaker.seudominio.com</code>.</li>
             <li><strong>No painel, em Configurações</strong>, preencha o campo acima com a URL completa, por exemplo: <code>https://cloaker.seudominio.com</code> (sem barra no final). Clique em <strong>Salvar</strong>.</li>
-            <li>Pronto. Ao gerar links em <strong>Campanhas</strong> ou <strong>Link de anúncio</strong>, os links usarão o prefixo escolhido acima (ex: <code>https://cloaker.seudominio.com/r/XXXXX</code> ou <code>/l/XXXXX</code>).</li>
+            <li>Pronto. Ao gerar links em <strong>Campanhas</strong> ou <strong>Links</strong>, os endereços usarão o prefixo escolhido acima (ex: <code>https://cloaker.seudominio.com/r/XXXXX</code> ou <code>/l/XXXXX</code>).</li>
           </ol>
           <p class="os-note">Cadastre em <strong>Domínios</strong>, use o destino CNAME no DNS e escolha o domínio ao gerar o link em Campanhas.</p>
       </section>
@@ -1979,7 +1976,7 @@
         <label class="ops-field">
           <span>Escopo</span>
           <select class="form-select site-selector" id="analyticsSiteFilter" onchange="loadAnalytics()">
-            <option value="all">Todos os Sites</option>
+            <option value="all">Todas as campanhas</option>
           </select>
         </label>
         <div class="period-selector" id="analyticsPeriodSelector">
@@ -2438,7 +2435,7 @@
   <div class="modal" id="siteModal">
     <div class="modal-content" style="max-width: 720px;">
       <div class="modal-header">
-        <h3 id="siteModalTitle">Novo Site</h3>
+        <h3 id="siteModalTitle">Nova campanha</h3>
         <button class="modal-close" onclick="closeSiteModal()">&times;</button>
       </div>
       <div class="modal-body">
@@ -2930,9 +2927,9 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Mesa', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Ao vivo', reports: 'Relatórios', script: 'Link de anúncio', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
-    var sectionKickers = { dashboard: 'Operação', sites: 'Links', fallbackstatus: 'Links', visitors: 'Audiência', reports: 'Operação', script: 'Links', analytics: 'Operação', settings: 'Conta', users: 'Administração', metaips: 'Administração', autoimprove: 'Administração', domains: 'Biblioteca', pages: 'Biblioteca', invite: 'Biblioteca', systemhealth: 'Administração' };
-    var sectionLeads = { dashboard: 'Volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Cada acesso, com origem, página entregue e motivo.', reports: 'O mesmo recorte da mesa, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, integrações e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
+    var sectionTitles = { dashboard: 'Dashboard', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Ao vivo', reports: 'Relatórios', script: 'Links', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
+    var sectionKickers = { dashboard: 'Dashboard', sites: 'Campanhas', fallbackstatus: 'Links', visitors: 'Campanhas', reports: 'Campanhas', script: 'Links', analytics: 'Campanhas', settings: 'Configurações', users: 'Configurações', metaips: 'Configurações', autoimprove: 'Configurações', domains: 'Sites', pages: 'Sites', invite: 'Sites', systemhealth: 'Configurações' };
+    var sectionLeads = { dashboard: 'Volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Cada acesso, com origem, página entregue e motivo.', reports: 'O mesmo recorte do dashboard, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, sites, links e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
     var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
@@ -3058,7 +3055,7 @@
         if (id === 'scriptSiteSelector') {
           el.innerHTML = '<option value="">Selecione um site...</option>' + sites.map(s => `<option value="${s.site_id}">${s.name}</option>`).join('');
         } else {
-          el.innerHTML = '<option value="all">Todos os Sites</option>' + sites.map(s => `<option value="${s.site_id}">${s.name}</option>`).join('');
+          el.innerHTML = '<option value="all">Todas as campanhas</option>' + sites.map(s => `<option value="${s.site_id}">${s.name}</option>`).join('');
         }
         el.value = currentVal || (id === 'scriptSiteSelector' ? '' : 'all');
       });
@@ -3125,7 +3122,7 @@
       if (selectAll) selectAll.checked = filtered.length > 0 && filtered.every(s => selectedSiteIds.has(s.site_id));
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state"><i class="ri-global-line"></i><h3>Nenhum site encontrado</h3><p>Ajuste o filtro ou clique em "Novo Site"</p></div>`;
+        container.innerHTML = `<div class="empty-state"><i class="ri-global-line"></i><h3>Nenhuma campanha encontrada</h3><p>Ajuste o filtro ou clique em "Nova campanha"</p></div>`;
         updateSitesSelectedCountUI();
         return;
       }
@@ -3271,7 +3268,7 @@
     }
 
     async function openNewSiteModal() {
-      document.getElementById('siteModalTitle').textContent = 'Novo Site';
+      document.getElementById('siteModalTitle').textContent = 'Nova campanha';
       document.getElementById('editSiteId').value = '';
       document.getElementById('siteName').value = '';
       document.getElementById('siteDomain').value = '';
@@ -4575,7 +4572,7 @@
     function updateCharts(stats, period) {
       if (!stats || typeof stats !== 'object') return;
       period = period || currentPeriod || 'today';
-      const colors = { line: ['#12c4a8', '#f87171'], pie: ['#12c4a8', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa', '#fb7185', '#34d399', '#38bdf8'] };
+      const colors = { line: ['#c8a46a', '#c98980'], pie: ['#c8a46a', '#8fa3b8', '#d4a054', '#c98980', '#a89880', '#8fbfa5', '#b8a078', '#9a8f7d'] };
       const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9dbeb6' } } } };
       const arr = (x) => Array.isArray(x) ? x : [];
       const daily = useDailyChart(period);
@@ -4591,7 +4588,7 @@
         data: {
           labels: trendLabels,
           datasets: [
-            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(18,196,168,0.75)' : 'rgba(18,196,168,0.14)', fill: !daily, tension: 0.4 },
+            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(200,164,106),0.75)' : 'rgba(200,164,106),0.14)', fill: !daily, tension: 0.4 },
             { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(248,113,113,0.75)' : 'rgba(248,113,113,0.16)', fill: !daily, tension: 0.4 }
           ]
         },
@@ -4629,7 +4626,7 @@
               const u = (r.referrer || 'Direto').replace(/^https?:\/\//, '').slice(0, 28);
               return u.length >= 28 ? u + '…' : u;
             }),
-            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#12c4a8' }]
+            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#c8a46a' }]
           },
           options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6', font: { size: 10 } }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
         });
@@ -4639,7 +4636,7 @@
       if (charts.country) charts.country.destroy();
       charts.country = new Chart(document.getElementById('chartCountry'), {
         type: 'bar',
-        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#60a5fa' }] },
+        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#8fa3b8' }] },
         options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
       });
 
@@ -4813,8 +4810,8 @@
               data: {
                 labels: trendLabels,
                 datasets: [
-                  { label: 'Aceitas', data: trendData.map(h => h.allowed || 0), borderColor: '#12c4a8', backgroundColor: daily ? 'rgba(18,196,168,0.7)' : 'rgba(18,196,168,0.12)', fill: !daily, tension: 0.3 },
-                  { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: '#f87171', backgroundColor: daily ? 'rgba(248,113,113,0.7)' : 'rgba(248,113,113,0.16)', fill: !daily, tension: 0.3 }
+                  { label: 'Aceitas', data: trendData.map(h => h.allowed || 0), borderColor: '#c8a46a', backgroundColor: daily ? 'rgba(200,164,106),0.7)' : 'rgba(200,164,106),0.12)', fill: !daily, tension: 0.3 },
+                  { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: '#c98980', backgroundColor: daily ? 'rgba(248,113,113,0.7)' : 'rgba(248,113,113,0.16)', fill: !daily, tension: 0.3 }
                 ]
               },
               options: { ...opts, scales: { x: { ticks: { color: '#9dbeb6', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
@@ -5716,9 +5713,9 @@
             data: {
               labels,
               datasets: [
-                { label: 'Total', data: timeline.map(t => t.total), borderColor: '#12c4a8', backgroundColor: 'rgba(18,196,168,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
-                { label: 'Bloqueados', data: timeline.map(t => t.blocked), borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
-                { label: 'Revisores', data: timeline.map(t => t.reviewers), borderColor: '#fbbf24', borderDash: [4, 4], fill: false, tension: 0.3, yAxisID: 'y1' }
+                { label: 'Total', data: timeline.map(t => t.total), borderColor: '#c8a46a', backgroundColor: 'rgba(200,164,106),0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Bloqueados', data: timeline.map(t => t.blocked), borderColor: '#c98980', backgroundColor: 'rgba(248,113,113,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Revisores', data: timeline.map(t => t.reviewers), borderColor: '#d4a054', borderDash: [4, 4], fill: false, tension: 0.3, yAxisID: 'y1' }
               ]
             },
             options: {
