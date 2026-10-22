@@ -1,36 +1,36 @@
-/* Precision OS — composição do painel. Carrega depois do CSS embutido. */
+/* Orbital OS — composição do painel. Carrega depois do CSS embutido. */
 :root {
-  --bg-primary: #0c0b0a;
-  --bg-secondary: #141311;
-  --bg-card: #1a1916;
-  --bg-hover: #24221e;
-  --bg-elevated: #1f1d1a;
-  --accent-primary: #e0c48a;
-  --accent-secondary: #f0ddb4;
-  --accent-solid: #c8a46a;
-  --accent-ink: #1a1408;
-  --accent-soft: rgba(200, 164, 106, 0.16);
+  --bg-primary: #03060c;
+  --bg-secondary: #070b14;
+  --bg-card: #0c1220;
+  --bg-hover: #121a2c;
+  --bg-elevated: #0e1626;
+  --accent-primary: #7df9ff;
+  --accent-secondary: #c8f7ff;
+  --accent-solid: #00d4ff;
+  --accent-ink: #021018;
+  --accent-soft: rgba(0, 212, 255, 0.14);
   --accent-gradient: none;
-  --success: #8fbfa5;
-  --success-ink: #0e1f18;
-  --success-soft: rgba(143, 191, 165, 0.16);
-  --warning: #d4a054;
-  --warning-ink: #2a1c08;
-  --warning-soft: rgba(212, 160, 84, 0.16);
-  --danger: #c98980;
-  --danger-ink: #2a1412;
-  --danger-soft: rgba(201, 137, 128, 0.16);
-  --info: #8fa3b8;
-  --info-ink: #121820;
-  --info-soft: rgba(143, 163, 184, 0.16);
-  --text-primary: #f3eee6;
-  --text-secondary: #b1a89c;
-  --text-tertiary: #7d766c;
-  --border: rgba(224, 196, 138, 0.12);
-  --border-hover: rgba(224, 196, 138, 0.34);
-  --shadow-sm: none;
-  --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.4);
+  --success: #3dff9a;
+  --success-ink: #03140c;
+  --success-soft: rgba(61, 255, 154, 0.14);
+  --warning: #ffb020;
+  --warning-ink: #1f1400;
+  --warning-soft: rgba(255, 176, 32, 0.14);
+  --danger: #ff4d4d;
+  --danger-ink: #1a0505;
+  --danger-soft: rgba(255, 77, 77, 0.14);
+  --info: #7aa2ff;
+  --info-ink: #081022;
+  --info-soft: rgba(122, 162, 255, 0.14);
+  --text-primary: #f4f7fb;
+  --text-secondary: #8b97ab;
+  --text-tertiary: #5c677a;
+  --border: rgba(125, 249, 255, 0.12);
+  --border-hover: rgba(125, 249, 255, 0.36);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
   --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.4);
   --space-2: 8px;
   --space-3: 12px;
@@ -40,9 +40,9 @@
   --radius: 8px;
   --os-command: 56px;
   --os-rail: 248px;
-  --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: "Source Serif 4", "IBM Plex Serif", Georgia, serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-ui: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Oxanium", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 html {
@@ -223,7 +223,8 @@ body.precision-os .os-body {
 body.precision-os .os-stage {
   min-width: 0;
   background:
-    radial-gradient(900px 380px at 8% -20%, rgba(200, 164, 106, 0.08), transparent 55%),
+    radial-gradient(1100px 520px at 12% -18%, rgba(0, 212, 255, 0.14), transparent 58%),
+    radial-gradient(700px 420px at 100% 0%, rgba(122, 162, 255, 0.08), transparent 50%),
     var(--bg-primary);
 }
 
@@ -1688,7 +1689,7 @@ body.precision-os .stealth-sim-badge.redirect {
 body.precision-os .stealth-pack-new-tag {
   color: var(--accent-primary);
   background: var(--accent-soft);
-  border-color: rgba(200, 164, 106, 0.35);
+  border-color: rgba(0, 212, 255, 0.35);
 }
 body.precision-os .behavior-card {
   border-radius: 8px;
@@ -1830,7 +1831,7 @@ body.precision-os .btn-pause {
   box-shadow: none;
 }
 
-/* ——— Tema Premium ——— */
+/* ——— Tema Orbital ——— */
 body.precision-os {
   background: var(--bg-primary);
 }
@@ -1847,16 +1848,16 @@ body.precision-os .btn-pause {
   background: var(--warning-soft);
   background-image: none;
   color: var(--warning);
-  border: 1px solid rgba(212, 160, 84, 0.4);
+  border: 1px solid rgba(255, 176, 32, 0.4);
 }
 body.precision-os .btn-activate {
   background: var(--success-soft);
   background-image: none;
   color: var(--success);
-  border: 1px solid rgba(143, 191, 165, 0.4);
+  border: 1px solid rgba(61, 255, 154, 0.4);
 }
 body.precision-os .btn-activate:hover {
-  background: rgba(143, 191, 165, 0.28);
+  background: rgba(61, 255, 154, 0.28);
   color: var(--success);
 }
 body.precision-os .ops-signals h2 { color: var(--accent-primary); }
@@ -1909,7 +1910,7 @@ body.precision-os .period-selector {
 body.precision-os .empty-state i { color: var(--accent-primary); }
 body.precision-os .os-swatch-total { background: var(--accent-solid); }
 body.precision-os .campaign-table th { color: var(--accent-secondary); }
-body.precision-os .ops-command-strip { background: rgba(200, 164, 106, 0.06); }
+body.precision-os .ops-command-strip { background: rgba(0, 212, 255, 0.06); }
 body.precision-os .stealth-guide-panel,
 body.precision-os .legacy-notice,
 body.precision-os .stealth-sim-panel,
@@ -1918,7 +1919,7 @@ body.precision-os .behavior-card {
 }
 body.precision-os .panel-tip-banner {
   background: var(--accent-soft);
-  border-color: rgba(200, 164, 106, 0.28);
+  border-color: rgba(0, 212, 255, 0.28);
 }
 @media (max-width: 900px) {
   body.precision-os #sidebar.os-rail.app-nav,
@@ -1927,4 +1928,122 @@ body.precision-os .panel-tip-banner {
     border-top: 1px solid var(--border);
   }
   body.precision-os .os-chapter { margin-left: 14px; margin-right: 14px; }
+}
+
+/* ——— Orbital motion & shell polish ——— */
+@keyframes orbital-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+}
+@keyframes orbital-scan {
+  0% { transform: translateX(-120%); opacity: 0; }
+  20% { opacity: 0.55; }
+  100% { transform: translateX(220%); opacity: 0; }
+}
+@keyframes orbital-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+body.precision-os .os-mark,
+body.precision-os .nav-logo {
+  animation: orbital-pulse 3.6s ease-in-out infinite;
+  letter-spacing: -0.02em;
+}
+body.precision-os .os-command {
+  backdrop-filter: blur(12px);
+  background: rgba(7, 11, 20, 0.92);
+  border-bottom-color: rgba(0, 212, 255, 0.16);
+}
+body.precision-os .os-command::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.55), transparent);
+  pointer-events: none;
+}
+body.precision-os .os-brand-copy strong,
+body.precision-os .nav-brand-text strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+body.precision-os .os-brand-copy small,
+body.precision-os .nav-brand-text small {
+  color: var(--accent-primary);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 9px;
+}
+body.precision-os .os-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+body.precision-os .ops-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  background:
+    linear-gradient(145deg, rgba(0, 212, 255, 0.08), transparent 42%),
+    var(--bg-card);
+  animation: orbital-rise 0.55s ease-out both;
+}
+body.precision-os .ops-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(125, 249, 255, 0.12), transparent);
+  animation: orbital-scan 4.8s linear infinite;
+  pointer-events: none;
+}
+body.precision-os .ops-signals,
+body.precision-os .ops-ledger,
+body.precision-os .ops-inspect {
+  animation: orbital-rise 0.65s ease-out both;
+}
+body.precision-os .ops-signals { animation-delay: 0.06s; }
+body.precision-os .ops-ledger { animation-delay: 0.12s; }
+body.precision-os .ops-inspect { animation-delay: 0.18s; }
+body.precision-os .ops-kicker,
+body.precision-os .page-kicker,
+body.precision-os .os-chapter {
+  font-family: var(--font-mono);
+  letter-spacing: 0.2em;
+}
+body.precision-os #sidebar.os-rail.app-nav {
+  background:
+    linear-gradient(180deg, rgba(0, 212, 255, 0.05), transparent 28%),
+    var(--bg-secondary);
+  border-right: 1px solid rgba(0, 212, 255, 0.14);
+}
+body.precision-os #sidebar .nav-link.active {
+  background: rgba(0, 212, 255, 0.12);
+  box-shadow: inset 2px 0 0 var(--accent-solid), 0 0 24px rgba(0, 212, 255, 0.08);
+}
+body.precision-os .btn-primary,
+body.precision-os .btn.btn-primary {
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.22);
+}
+body.precision-os .metric-label,
+body.precision-os .ops-hint,
+body.precision-os .last-update {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.precision-os .os-mark,
+  body.precision-os .nav-logo,
+  body.precision-os .ops-hero::before,
+  body.precision-os .ops-hero,
+  body.precision-os .ops-signals,
+  body.precision-os .ops-ledger,
+  body.precision-os .ops-inspect {
+    animation: none !important;
+  }
 }

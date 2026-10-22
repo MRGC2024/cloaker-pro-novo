@@ -3,27 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Entrar — Cloaker Precision OS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1408'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23e0c48a'/%3E%3C/svg%3E" type="image/svg+xml">
+  <title>Uplink — Cloaker Orbital OS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2303060c'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%2300d4ff'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Oxanium:wght@500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #0c0b0a;
-      --panel: #141311;
-      --line: rgba(224, 196, 138, 0.14);
-      --text: #f3eee6;
-      --muted: #b1a89c;
-      --dim: #7d766c;
-      --accent: #c8a46a;
-      --accent-bright: #e0c48a;
-      --accent-ink: #1a1408;
-      --danger: #c98980;
-      --success: #8fbfa5;
-      --info: #8fa3b8;
+      --bg: #03060c;
+      --panel: #070b14;
+      --line: rgba(125, 249, 255, 0.14);
+      --text: #f4f7fb;
+      --muted: #8b97ab;
+      --dim: #5c677a;
+      --accent: #00d4ff;
+      --accent-bright: #7df9ff;
+      --accent-ink: #021018;
+      --danger: #ff4d4d;
+      --success: #3dff9a;
+      --info: #7aa2ff;
     }
     html { color-scheme: dark; }
     i[class^="ri-"], i[class*=" ri-"] {
@@ -32,8 +32,21 @@
       -webkit-text-stroke: 0;
       text-shadow: none;
     }
+    @keyframes gate-scan {
+      0% { transform: translateY(-40%); opacity: 0; }
+      30% { opacity: 0.45; }
+      100% { transform: translateY(140%); opacity: 0; }
+    }
+    @keyframes mark-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     body {
-      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-family: "Space Grotesk", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -43,57 +56,77 @@
       min-height: 100vh;
       min-height: 100dvh;
       display: grid;
-      grid-template-columns: minmax(280px, 0.92fr) minmax(320px, 1.08fr);
+      grid-template-columns: minmax(280px, 0.96fr) minmax(320px, 1.04fr);
     }
     .os-gate-brand {
+      position: relative;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       padding: 40px 48px;
       border-right: 1px solid var(--line);
       background:
-        radial-gradient(720px 480px at 0% 0%, rgba(200, 164, 106, 0.22), transparent 58%),
-        radial-gradient(520px 360px at 90% 110%, rgba(143, 163, 184, 0.08), transparent 50%),
-        #0c0b0a;
+        radial-gradient(820px 520px at 0% 0%, rgba(0, 212, 255, 0.22), transparent 58%),
+        radial-gradient(560px 380px at 100% 100%, rgba(122, 162, 255, 0.12), transparent 52%),
+        linear-gradient(160deg, #03060c 0%, #070b14 55%, #03060c 100%);
+    }
+    .os-gate-brand::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 38%;
+      background: linear-gradient(180deg, transparent, rgba(125, 249, 255, 0.08), transparent);
+      animation: gate-scan 5.5s linear infinite;
+      pointer-events: none;
     }
     .os-mark {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 8px;
       display: grid;
       place-items: center;
       background: var(--accent);
       color: var(--accent-ink);
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: -0.04em;
+      font-family: "Oxanium", sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      animation: mark-pulse 3.4s ease-in-out infinite;
     }
     .os-kicker {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
       font-size: 11px;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       color: var(--accent-bright);
       margin: 28px 0 12px;
+      animation: rise 0.55s ease-out both;
     }
     .os-gate-brand h1 {
-      font-family: "Source Serif 4", Georgia, serif;
-      font-size: clamp(36px, 5vw, 56px);
-      font-weight: 500;
-      letter-spacing: -0.04em;
+      font-family: "Oxanium", "Space Grotesk", sans-serif;
+      font-size: clamp(34px, 5vw, 54px);
+      font-weight: 600;
+      letter-spacing: 0.01em;
       line-height: 1.05;
-      max-width: 9ch;
+      max-width: 11ch;
+      animation: rise 0.65s ease-out both;
     }
     .os-gate-brand p {
       margin-top: 18px;
-      max-width: 36ch;
+      max-width: 38ch;
       color: var(--muted);
       font-size: 15px;
       line-height: 1.55;
+      animation: rise 0.75s ease-out both;
     }
     .os-gate-foot {
-      font-size: 12px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
       color: var(--dim);
-      letter-spacing: 0.04em;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
     .os-gate-form {
       display: flex;
@@ -101,17 +134,19 @@
       justify-content: center;
       padding: 40px 28px;
       background:
-        radial-gradient(640px 320px at 100% 0%, rgba(200, 164, 106, 0.08), transparent 55%),
+        radial-gradient(640px 320px at 100% 0%, rgba(0, 212, 255, 0.08), transparent 55%),
         var(--panel);
     }
     .os-form {
       width: 100%;
       max-width: 380px;
+      animation: rise 0.6s ease-out both;
     }
     .os-form h2 {
+      font-family: "Oxanium", sans-serif;
       font-size: 22px;
       font-weight: 600;
-      letter-spacing: -0.03em;
+      letter-spacing: 0.02em;
       margin-bottom: 6px;
     }
     .os-form > .lead {
@@ -124,24 +159,27 @@
       display: block;
       margin-bottom: 8px;
       color: var(--muted);
-      font-size: 12px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
       font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     .form-input {
       width: 100%;
       padding: 13px 14px;
       border-radius: 8px;
       border: 1px solid var(--line);
-      background: #1f1d1a;
+      background: #0e1626;
       color: var(--text);
       font-size: 16px;
       font-family: inherit;
     }
-    .form-input::placeholder { color: #525252; }
+    .form-input::placeholder { color: #5c677a; }
     .form-input:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(200, 164, 106, 0.18);
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.18);
     }
     .btn-login {
       width: 100%;
@@ -151,18 +189,16 @@
       border-radius: 8px;
       border: 1px solid var(--accent);
       background: var(--accent);
-      background-image: none;
       color: var(--accent-ink);
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: none;
-      text-shadow: none;
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.28);
     }
     .btn-login i {
       font-weight: 400;
@@ -170,7 +206,7 @@
       -webkit-text-stroke: 0;
       text-shadow: none;
     }
-    .btn-login:hover { background: #b08d52; border-color: #b08d52; }
+    .btn-login:hover { background: #33dcff; border-color: #33dcff; }
     .btn-login:disabled { opacity: 0.55; cursor: not-allowed; }
     .msg {
       margin-top: 16px;
@@ -184,14 +220,14 @@
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      background: rgba(248, 113, 113, 0.12);
-      border: 1px solid rgba(248, 113, 113, 0.4);
+      background: rgba(255, 77, 77, 0.12);
+      border: 1px solid rgba(255, 77, 77, 0.4);
       color: var(--danger);
     }
     .msg.success {
       display: block;
-      background: rgba(52, 211, 153, 0.12);
-      border: 1px solid rgba(52, 211, 153, 0.4);
+      background: rgba(61, 255, 154, 0.12);
+      border: 1px solid rgba(61, 255, 154, 0.4);
       color: var(--success);
     }
     #setupBox {
@@ -202,13 +238,14 @@
     }
     .setup-badge {
       display: inline-block;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
       font-size: 10px;
       font-weight: 600;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--accent-bright);
-      background: rgba(200, 164, 106, 0.16);
-      border: 1px solid rgba(200, 164, 106, 0.35);
+      background: rgba(0, 212, 255, 0.14);
+      border: 1px solid rgba(0, 212, 255, 0.35);
       padding: 5px 10px;
       border-radius: 8px;
       margin-bottom: 12px;
@@ -243,16 +280,16 @@
     <aside class="os-gate-brand">
       <div>
         <span class="os-mark" aria-hidden="true">C</span>
-        <p class="os-kicker">Precision OS · Premium</p>
-        <h1>Operação de tráfego</h1>
-        <p>Dashboard, campanhas, links e sites no mesmo painel. Horário de Brasília.</p>
+        <p class="os-kicker">Orbital OS · Uplink</p>
+        <h1>Cloaker</h1>
+        <p>Telemetria de missão, campanhas e bloqueio no mesmo console. Horário de Brasília.</p>
       </div>
-      <p class="os-gate-foot">Cloaker · acesso restrito</p>
+      <p class="os-gate-foot">Canal seguro · acesso restrito</p>
     </aside>
     <main class="os-gate-form">
       <div class="os-form">
-        <h2>Entrar</h2>
-        <p class="lead">Identifique-se para abrir o painel.</p>
+        <h2>Autenticar</h2>
+        <p class="lead">Identifique-se para abrir a central de voo.</p>
         <form id="loginForm">
           <div class="form-group">
             <label class="form-label" for="username">Usuário</label>
@@ -263,8 +300,8 @@
             <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password" placeholder="Senha">
           </div>
           <button type="submit" class="btn-login" id="loginBtn">
-            <i class="ri-login-circle-line"></i>
-            <span>Iniciar sessão</span>
+            <i class="ri-rocket-2-line"></i>
+            <span>Iniciar uplink</span>
           </button>
           <div id="loginMsg" class="msg"></div>
         </form>

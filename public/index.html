@@ -3,44 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Cloaker — Precision OS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1408'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%23e0c48a'/%3E%3C/svg%3E" type="image/svg+xml">
+  <title>Cloaker — Orbital OS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2303060c'/%3E%3Cpath d='M8 22V10h6.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h2.6c1.6 0 2.5-.9 2.5-2.2S15.6 12.3 14 12.3h-2.6v4.4z' fill='%2300d4ff'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Oxanium:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-primary: #0c0b0a;
-      --bg-secondary: #141311;
-      --bg-card: #1a1916;
-      --bg-hover: #24221e;
-      --bg-elevated: #1f1d1a;
-      --accent-primary: #e0c48a;
-      --accent-secondary: #f0ddb4;
-      --accent-solid: #c8a46a;
-      --accent-ink: #1a1408;
-      --accent-soft: rgba(200, 164, 106, 0.16);
+      --bg-primary: #03060c;
+      --bg-secondary: #070b14;
+      --bg-card: #0c1220;
+      --bg-hover: #121a2c;
+      --bg-elevated: #0e1626;
+      --accent-primary: #7df9ff;
+      --accent-secondary: #c8f7ff;
+      --accent-solid: #00d4ff;
+      --accent-ink: #021018;
+      --accent-soft: rgba(0, 212, 255, 0.14);
       --accent-gradient: none;
-      --success: #8fbfa5;
-      --success-ink: #0e1f18;
-      --success-soft: rgba(143, 191, 165, 0.16);
-      --warning: #d4a054;
-      --warning-ink: #2a1c08;
-      --warning-soft: rgba(212, 160, 84, 0.16);
-      --danger: #c98980;
-      --danger-ink: #2a1412;
-      --danger-soft: rgba(201, 137, 128, 0.16);
-      --info: #8fa3b8;
-      --info-ink: #121820;
-      --info-soft: rgba(143, 163, 184, 0.16);
-      --text-primary: #f3eee6;
-      --text-secondary: #b1a89c;
-      --text-tertiary: #7d766c;
-      --border: rgba(224, 196, 138, 0.12);
-      --border-hover: rgba(224, 196, 138, 0.34);
+      --success: #3dff9a;
+      --success-ink: #03140c;
+      --success-soft: rgba(61, 255, 154, 0.14);
+      --warning: #ffb020;
+      --warning-ink: #1f1400;
+      --warning-soft: rgba(255, 176, 32, 0.14);
+      --danger: #ff4d4d;
+      --danger-ink: #1a0505;
+      --danger-soft: rgba(255, 77, 77, 0.14);
+      --info: #7aa2ff;
+      --info-ink: #081022;
+      --info-soft: rgba(122, 162, 255, 0.14);
+      --text-primary: #f4f7fb;
+      --text-secondary: #8b97ab;
+      --text-tertiary: #5c677a;
+      --border: rgba(125, 249, 255, 0.12);
+      --border-hover: rgba(125, 249, 255, 0.36);
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
       --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.35);
@@ -122,7 +122,7 @@
     .stealth-pack-meta { font-size: 12px; color: var(--text-secondary); }
     .stealth-pack-new-tag {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--accent-primary); background: var(--accent-soft); border: 1px solid rgba(200, 164, 106, 0.35); padding: 4px 10px; border-radius: 999px;
+      color: var(--accent-primary); background: var(--accent-soft); border: 1px solid rgba(0, 212, 255, 0.35); padding: 4px 10px; border-radius: 6px;
     }
     .stealth-pack-grid {
       display: grid;
@@ -174,7 +174,7 @@
       padding: 16px 18px;
       margin-bottom: 20px;
       border-radius: 14px;
-      border: 1px solid rgba(200, 164, 106, 0.28);
+      border: 1px solid rgba(0, 212, 255, 0.28);
       background: var(--accent-soft);
     }
     .panel-tip-banner > i { font-size: 26px; color: var(--accent-primary); flex-shrink: 0; margin-top: 2px; }
@@ -184,7 +184,7 @@
     .badge-redirect { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--info-soft); color: var(--info); margin-left: 6px; vertical-align: middle; }
 
     body {
-      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
@@ -444,7 +444,7 @@
       color: var(--accent-ink); 
       border: 1px solid var(--accent-solid);
     }
-    .btn-primary:hover { background: #b08d52; border-color: #b08d52; }
+    .btn-primary:hover { background: #00b8e0; border-color: #00b8e0; }
     .btn-secondary { 
       background: transparent; 
       color: var(--text-primary); 
@@ -654,7 +654,7 @@
       font-family: inherit;
       box-shadow: none;
     }
-    .copy-btn:hover { background: #b08d52; border-color: #b08d52; }
+    .copy-btn:hover { background: #00b8e0; border-color: #00b8e0; }
     .copy-btn.copied { background: var(--success); color: var(--success-ink); }
     .code-block:has(.copy-btn) { display: flex; flex-direction: column; align-items: stretch; }
     #toastCopy { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 9999; opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; display: flex; align-items: center; gap: 8px; }
@@ -1119,16 +1119,16 @@
         <span class="os-mark" aria-hidden="true">C</span>
         <span class="os-brand-copy">
           <strong>Cloaker</strong>
-          <small>Precision OS</small>
+          <small>Orbital OS</small>
         </span>
       </a>
       <div class="os-context">
-        <p class="page-kicker" id="pageTopBarKicker">Dashboard</p>
+        <p class="page-kicker" id="pageTopBarKicker">Central</p>
         <h1 class="os-title">
-          <i id="pageTopBarIcon" class="ri-dashboard-3-line" aria-hidden="true"></i>
-          <span id="pageTopBarTitle">Dashboard</span>
+          <i id="pageTopBarIcon" class="ri-rocket-2-line" aria-hidden="true"></i>
+          <span id="pageTopBarTitle">Central de voo</span>
         </h1>
-        <p class="page-lead" id="pageTopBarLead">Volume, bloqueio e tráfego de anúncio no horário de Brasília.</p>
+        <p class="page-lead" id="pageTopBarLead">Telemetria de tráfego, bloqueio e missão no horário de Brasília.</p>
       </div>
       <div class="os-account">
         <span class="os-user" id="osUserChip">Conta</span>
@@ -1139,26 +1139,26 @@
       <nav class="os-rail sidebar app-nav" id="sidebar" aria-label="Navegação">
         <div class="nav-brand os-rail-brand" aria-hidden="true">
           <span class="nav-logo os-mark">C</span>
-          <span class="nav-brand-text"><strong>Cloaker</strong><small>Precision OS</small></span>
+          <span class="nav-brand-text"><strong>Cloaker</strong><small>Orbital OS</small></span>
         </div>
         <ul class="nav-menu">
-          <li class="nav-group-title">Dashboard</li>
-          <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" data-dock="1" title="Dashboard" aria-current="page"><i class="ri-dashboard-3-line"></i><span class="nav-link-text">Dashboard</span></a></li>
-          <li class="nav-group-title">Campanhas</li>
+          <li class="nav-group-title">Central</li>
+          <li class="nav-item"><a class="nav-link active" href="#dashboard" data-section="dashboard" data-dock="1" title="Central de voo" aria-current="page"><i class="ri-rocket-2-line"></i><span class="nav-link-text">Central de voo</span></a></li>
+          <li class="nav-group-title">Missão</li>
           <li class="nav-item"><a class="nav-link" href="#sites" data-section="sites" data-dock="1" title="Campanhas"><i class="ri-stack-line"></i><span class="nav-link-text">Campanhas</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Ao vivo"><i class="ri-live-line"></i><span class="nav-link-text">Ao vivo</span></a></li>
-          <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-file-chart-line"></i><span class="nav-link-text">Relatórios</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#visitors" data-section="visitors" title="Ao vivo"><i class="ri-radar-line"></i><span class="nav-link-text">Ao vivo</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#reports" data-section="reports" title="Relatórios"><i class="ri-bar-chart-boxed-line"></i><span class="nav-link-text">Relatórios</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#analytics" data-section="analytics" title="Análise"><i class="ri-line-chart-line"></i><span class="nav-link-text">Análise</span></a></li>
-          <li class="nav-group-title">Links</li>
-          <li class="nav-item"><a class="nav-link" href="#script" data-section="script" data-dock="1" title="Links"><i class="ri-link"></i><span class="nav-link-text">Links</span></a></li>
+          <li class="nav-group-title">Rede</li>
+          <li class="nav-item"><a class="nav-link" href="#script" data-section="script" data-dock="1" title="Links"><i class="ri-links-line"></i><span class="nav-link-text">Links</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#fallbackstatus" data-section="fallbackstatus" title="Contingência"><i class="ri-shield-flash-line"></i><span class="nav-link-text">Contingência</span></a></li>
-          <li class="nav-group-title">Sites</li>
+          <li class="nav-group-title">Infra</li>
           <li class="nav-item"><a class="nav-link" href="#domains" data-section="domains" data-dock="1" title="Domínios"><i class="ri-global-line"></i><span class="nav-link-text">Domínios</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#pages" data-section="pages" title="Páginas"><i class="ri-article-line"></i><span class="nav-link-text">Páginas</span></a></li>
           <li class="nav-item"><a class="nav-link" href="#invite" data-section="invite" title="Convites"><i class="ri-user-star-line"></i><span class="nav-link-text">Convites</span></a></li>
-          <li class="nav-group-title">Configurações</li>
+          <li class="nav-group-title">Sistema</li>
           <li class="nav-item"><a class="nav-link" href="#settings" data-section="settings" title="Configurações"><i class="ri-settings-3-line"></i><span class="nav-link-text">Configurações</span></a></li>
-          <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Administração</li>
+          <li class="nav-group-title nav-admin" id="navGroupAdmin" style="display:none">Controle</li>
           <li class="nav-item" id="navSystemHealth" style="display:none"><a class="nav-link" href="#systemhealth" data-section="systemhealth" title="Saúde do Sistema"><i class="ri-heart-pulse-line"></i><span class="nav-link-text">Saúde do Sistema</span></a></li>
           <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" href="#users" data-section="users" title="Usuários"><i class="ri-user-settings-line"></i><span class="nav-link-text">Usuários</span></a></li>
           <li class="nav-item" id="navMetaIPs" style="display:none"><a class="nav-link" href="#metaips" data-section="metaips" title="IPs Meta"><i class="ri-shield-keyhole-line"></i><span class="nav-link-text">IPs Meta</span></a></li>
@@ -1197,8 +1197,8 @@
       <div class="ops-workspace">
         <article class="ops-hero" aria-label="Resumo do período">
           <header class="ops-hero-head">
-            <span class="ops-kicker">Volume no recorte</span>
-            <span class="ops-hint">Horário de Brasília</span>
+            <span class="ops-kicker">Telemetria da missão</span>
+            <span class="ops-hint">UTC−3 · Brasília</span>
           </header>
           <div class="ops-hero-metric">
             <span class="metric-label">Visitas</span>
@@ -1222,7 +1222,7 @@
         </article>
 
         <aside class="ops-signals" aria-label="Composição do tráfego">
-          <h2>Composição</h2>
+          <h2>Composição do sinal</h2>
           <ul class="ops-signal-list">
             <li class="ops-signal-bots">
               <span>Bots <em id="statBotsPct">—</em></span>
@@ -1237,7 +1237,7 @@
               <strong id="statDesktop">-</strong>
             </li>
           </ul>
-          <h2>Sinais de anúncio</h2>
+          <h2>Sinais de uplink</h2>
           <ul class="ops-signal-list ops-signal-meta">
             <li><span>fbclid</span><strong id="metaFbclid">-</strong></li>
             <li><span>Referrer</span><strong id="metaFbReferrer">-</strong></li>
@@ -1501,7 +1501,7 @@
           <p class="os-note" style="margin-top:16px;">Bots <strong id="reportStatBots">-</strong> <span id="reportStatBotsPct">—</span></p>
         </article>
         <aside class="ops-signals">
-          <h2>Sinais de anúncio</h2>
+          <h2>Sinais de uplink</h2>
           <ul class="ops-signal-list ops-signal-meta">
             <li><span>fbclid</span><strong id="reportMetaFbclid">-</strong></li>
             <li><span>Referrer</span><strong id="reportMetaReferrer">-</strong></li>
@@ -2003,7 +2003,7 @@
             </p>
           </div>
           <aside class="ops-signals">
-            <h2>Sinais de anúncio</h2>
+            <h2>Sinais de uplink</h2>
             <ul class="ops-signal-list ops-signal-meta">
               <li><span>fbclid</span><strong id="analyticsMetaFbclid">-</strong></li>
               <li><span>Referrer</span><strong id="analyticsMetaReferrer">-</strong></li>
@@ -2927,10 +2927,10 @@
     }
 
     // Navegação com persistência no F5 (hash na URL)
-    var sectionTitles = { dashboard: 'Dashboard', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Ao vivo', reports: 'Relatórios', script: 'Links', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
-    var sectionKickers = { dashboard: 'Dashboard', sites: 'Campanhas', fallbackstatus: 'Links', visitors: 'Campanhas', reports: 'Campanhas', script: 'Links', analytics: 'Campanhas', settings: 'Configurações', users: 'Configurações', metaips: 'Configurações', autoimprove: 'Configurações', domains: 'Sites', pages: 'Sites', invite: 'Sites', systemhealth: 'Configurações' };
-    var sectionLeads = { dashboard: 'Volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Cada acesso, com origem, página entregue e motivo.', reports: 'O mesmo recorte do dashboard, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, sites, links e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
-    var sectionIcons = { dashboard: 'ri-dashboard-3-line', sites: 'ri-stack-line', fallbackstatus: 'ri-link-m', visitors: 'ri-group-line', reports: 'ri-file-list-3-line', script: 'ri-megaphone-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-earth-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
+    var sectionTitles = { dashboard: 'Central de voo', sites: 'Campanhas', fallbackstatus: 'Contingência', visitors: 'Ao vivo', reports: 'Relatórios', script: 'Links', analytics: 'Análise', settings: 'Configurações', users: 'Usuários', metaips: 'IPs Meta', autoimprove: 'Melhorias', domains: 'Domínios', pages: 'Páginas', invite: 'Convites', systemhealth: 'Saúde' };
+    var sectionKickers = { dashboard: 'Central', sites: 'Missão', fallbackstatus: 'Rede', visitors: 'Missão', reports: 'Missão', script: 'Rede', analytics: 'Missão', settings: 'Sistema', users: 'Controle', metaips: 'Controle', autoimprove: 'Controle', domains: 'Infra', pages: 'Infra', invite: 'Infra', systemhealth: 'Controle' };
+    var sectionLeads = { dashboard: 'Telemetria de volume, bloqueio e tráfego de anúncio no horário de Brasília.', sites: 'Cada campanha com domínio, ponte e o link que vai para o anúncio.', fallbackstatus: 'URL principal, contingência e a fila de standby.', visitors: 'Radar de acessos: origem, página entregue e motivo.', reports: 'O mesmo recorte da central, limitado a uma campanha.', script: 'O endereço pronto para colar no gerenciador de anúncios.', analytics: 'User-agent, motivo de bloqueio e revisores no período.', settings: 'Conta, infra, rede e preferências do painel.', users: 'Quem entra neste painel.', metaips: 'Faixas tratadas como revisão de anúncio.', autoimprove: 'Padrões aprendidos a partir dos bloqueios.', domains: 'Hosts usados nos links públicos.', pages: 'White, gray e páginas de bloqueio.', invite: 'Pontes de convite ligadas às campanhas.', systemhealth: 'Filas, jobs e sinais do servidor.' };
+    var sectionIcons = { dashboard: 'ri-rocket-2-line', sites: 'ri-stack-line', fallbackstatus: 'ri-shield-flash-line', visitors: 'ri-radar-line', reports: 'ri-bar-chart-boxed-line', script: 'ri-links-line', analytics: 'ri-line-chart-line', settings: 'ri-settings-3-line', users: 'ri-user-settings-line', metaips: 'ri-shield-keyhole-line', autoimprove: 'ri-sparkling-line', domains: 'ri-global-line', pages: 'ri-article-line', invite: 'ri-user-star-line', systemhealth: 'ri-heart-pulse-line' };
     function goToSection(sectionId) {
       if (!sectionId || !document.getElementById(sectionId)) return;
       var titleEl = document.getElementById('pageTopBarTitle');
@@ -4572,8 +4572,8 @@
     function updateCharts(stats, period) {
       if (!stats || typeof stats !== 'object') return;
       period = period || currentPeriod || 'today';
-      const colors = { line: ['#c8a46a', '#c98980'], pie: ['#c8a46a', '#8fa3b8', '#d4a054', '#c98980', '#a89880', '#8fbfa5', '#b8a078', '#9a8f7d'] };
-      const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9dbeb6' } } } };
+      const colors = { line: ['#00d4ff', '#ff4d4d'], pie: ['#00d4ff', '#7aa2ff', '#ffb020', '#ff4d4d', '#3dff9a', '#7df9ff', '#c8f7ff', '#5c677a'] };
+      const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#8b97ab' } } } };
       const arr = (x) => Array.isArray(x) ? x : [];
       const daily = useDailyChart(period);
       const trendTitle = document.getElementById('chartTrendTitle');
@@ -4588,11 +4588,11 @@
         data: {
           labels: trendLabels,
           datasets: [
-            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(200,164,106),0.75)' : 'rgba(200,164,106),0.14)', fill: !daily, tension: 0.4 },
-            { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(248,113,113,0.75)' : 'rgba(248,113,113,0.16)', fill: !daily, tension: 0.4 }
+            { label: 'Permitidos', data: trendData.map(h => h.allowed), borderColor: colors.line[0], backgroundColor: daily ? 'rgba(0,212,255,0.75)' : 'rgba(0,212,255,0.14)', fill: !daily, tension: 0.4 },
+            { label: 'Bloqueados', data: trendData.map(h => h.blocked), borderColor: colors.line[1], backgroundColor: daily ? 'rgba(255,77,77,0.75)' : 'rgba(255,77,77,0.16)', fill: !daily, tension: 0.4 }
           ]
         },
-        options: { ...chartOpts, scales: { x: { ticks: { color: '#9dbeb6', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
+        options: { ...chartOpts, scales: { x: { ticks: { color: '#8b97ab', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(0,212,255,0.08)' } }, y: { ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } } } }
       });
 
       // Browser
@@ -4600,7 +4600,7 @@
       charts.browser = new Chart(document.getElementById('chartBrowser'), {
         type: 'doughnut',
         data: { labels: arr(stats.byBrowser).map(b => b.browser || 'N/A'), datasets: [{ data: arr(stats.byBrowser).map(b => b.count), backgroundColor: colors.pie }] },
-        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#9dbeb6' } } } }
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#8b97ab' } } } }
       });
 
       // OS
@@ -4610,7 +4610,7 @@
         charts.os = new Chart(osEl, {
           type: 'doughnut',
           data: { labels: arr(stats.byOS).map(o => o.os || 'N/A'), datasets: [{ data: arr(stats.byOS).map(o => o.count), backgroundColor: colors.pie }] },
-          options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#9dbeb6' } } } }
+          options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#8b97ab' } } } }
         });
       }
 
@@ -4626,9 +4626,9 @@
               const u = (r.referrer || 'Direto').replace(/^https?:\/\//, '').slice(0, 28);
               return u.length >= 28 ? u + '…' : u;
             }),
-            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#c8a46a' }]
+            datasets: [{ label: 'Visitas', data: refs.map(r => r.count), backgroundColor: '#00d4ff' }]
           },
-          options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6', font: { size: 10 } }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
+          options: { indexAxis: 'y', ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } }, y: { ticks: { color: '#8b97ab', font: { size: 10 } }, grid: { color: 'rgba(0,212,255,0.08)' } } } }
         });
       }
 
@@ -4636,8 +4636,8 @@
       if (charts.country) charts.country.destroy();
       charts.country = new Chart(document.getElementById('chartCountry'), {
         type: 'bar',
-        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#8fa3b8' }] },
-        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
+        data: { labels: arr(stats.byCountry).map(c => c.country || 'N/A'), datasets: [{ label: 'Visitas', data: arr(stats.byCountry).map(c => c.count), backgroundColor: '#7aa2ff' }] },
+        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } }, y: { ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } } } }
       });
 
       // Block Reasons
@@ -4645,7 +4645,7 @@
       charts.blockReasons = new Chart(document.getElementById('chartBlockReasons'), {
         type: 'pie',
         data: { labels: arr(stats.blockReasons).map(r => r.block_reason || 'Outro'), datasets: [{ data: arr(stats.blockReasons).map(r => r.count), backgroundColor: colors.pie }] },
-        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#9dbeb6' } } } }
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { color: '#8b97ab' } } } }
       });
     }
 
@@ -4804,17 +4804,17 @@
           if (reportsChart) reportsChart.destroy();
           const ctx = document.getElementById('reportChartHourly');
           if (ctx) {
-            const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9dbeb6' } } } };
+            const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#8b97ab' } } } };
             reportsChart = new Chart(ctx, {
               type: daily ? 'bar' : 'line',
               data: {
                 labels: trendLabels,
                 datasets: [
-                  { label: 'Aceitas', data: trendData.map(h => h.allowed || 0), borderColor: '#c8a46a', backgroundColor: daily ? 'rgba(200,164,106),0.7)' : 'rgba(200,164,106),0.12)', fill: !daily, tension: 0.3 },
-                  { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: '#c98980', backgroundColor: daily ? 'rgba(248,113,113,0.7)' : 'rgba(248,113,113,0.16)', fill: !daily, tension: 0.3 }
+                  { label: 'Aceitas', data: trendData.map(h => h.allowed || 0), borderColor: '#00d4ff', backgroundColor: daily ? 'rgba(0,212,255,0.7)' : 'rgba(0,212,255,0.12)', fill: !daily, tension: 0.3 },
+                  { label: 'Bloqueadas', data: trendData.map(h => h.blocked || 0), borderColor: '#ff4d4d', backgroundColor: daily ? 'rgba(255,77,77,0.7)' : 'rgba(255,77,77,0.16)', fill: !daily, tension: 0.3 }
                 ]
               },
-              options: { ...opts, scales: { x: { ticks: { color: '#9dbeb6', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(46,230,197,0.08)' } }, y: { ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } } } }
+              options: { ...opts, scales: { x: { ticks: { color: '#8b97ab', maxRotation: daily ? 0 : 45 }, grid: { color: 'rgba(0,212,255,0.08)' } }, y: { ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } } } }
             });
           }
 
@@ -5713,20 +5713,20 @@
             data: {
               labels,
               datasets: [
-                { label: 'Total', data: timeline.map(t => t.total), borderColor: '#c8a46a', backgroundColor: 'rgba(200,164,106),0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
-                { label: 'Bloqueados', data: timeline.map(t => t.blocked), borderColor: '#c98980', backgroundColor: 'rgba(248,113,113,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
-                { label: 'Revisores', data: timeline.map(t => t.reviewers), borderColor: '#d4a054', borderDash: [4, 4], fill: false, tension: 0.3, yAxisID: 'y1' }
+                { label: 'Total', data: timeline.map(t => t.total), borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Bloqueados', data: timeline.map(t => t.blocked), borderColor: '#ff4d4d', backgroundColor: 'rgba(255,77,77,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Revisores', data: timeline.map(t => t.reviewers), borderColor: '#ffb020', borderDash: [4, 4], fill: false, tension: 0.3, yAxisID: 'y1' }
               ]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
               interaction: { mode: 'index', intersect: false },
-              plugins: { legend: { labels: { color: '#9dbeb6' } } },
+              plugins: { legend: { labels: { color: '#8b97ab' } } },
               scales: {
-                x: { ticks: { color: '#9dbeb6', maxRotation: d.timelineGranularity === 'day' ? 0 : 45 }, grid: { color: 'rgba(46,230,197,0.08)' } },
-                y: { position: 'left', ticks: { color: '#9dbeb6' }, grid: { color: 'rgba(46,230,197,0.08)' } },
-                y1: { position: 'right', ticks: { color: '#9dbeb6', stepSize: 1 }, grid: { drawOnChartArea: false } }
+                x: { ticks: { color: '#8b97ab', maxRotation: d.timelineGranularity === 'day' ? 0 : 45 }, grid: { color: 'rgba(0,212,255,0.08)' } },
+                y: { position: 'left', ticks: { color: '#8b97ab' }, grid: { color: 'rgba(0,212,255,0.08)' } },
+                y1: { position: 'right', ticks: { color: '#8b97ab', stepSize: 1 }, grid: { drawOnChartArea: false } }
               }
             }
           });
