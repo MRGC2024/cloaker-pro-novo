@@ -2074,8 +2074,15 @@ async function runAutoImprovementJob() {
           console.log('[AutoImprovement] Novo padrão:', (pattern + '').substring(0, 60));
         } catch (e) {}
       } else {
-        await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_bot', ?, 'pending')", [JSON.stringify({ pattern, count, uniqueIps: ips.size })]);
-        addedBots++;
+        const dataStr = JSON.stringify({ pattern, count, uniqueIps: ips.size });
+        const already = await db.get(
+          "SELECT id FROM suggested_improvements WHERE status = 'pending' AND type = 'new_bot' AND data LIKE ? LIMIT 1",
+          ['%"pattern":"' + pattern.replace(/"/g, '') + '"%']
+        );
+        if (!already) {
+          await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_bot', ?, 'pending')", [dataStr]);
+          addedBots++;
+        }
       }
     }
 
@@ -2103,6 +2110,11 @@ async function runAutoImprovementJob() {
       const ip = row.ip;
       if (!ip || metaSet.has(ip)) continue;
       const dataStr = JSON.stringify({ ip, reason: 'Bloqueado com referrer Facebook' });
+      const already = await db.get(
+        "SELECT id FROM suggested_improvements WHERE status = 'pending' AND type = 'new_reviewer_ip' AND data = ? LIMIT 1",
+        [dataStr]
+      );
+      if (already) continue;
       await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('new_reviewer_ip', ?, 'pending')", [dataStr]);
     }
 
@@ -2110,8 +2122,29 @@ async function runAutoImprovementJob() {
     for (const row of countryBlocks || []) {
       if (!row.country || row.c < 10) continue;
       const dataStr = JSON.stringify({ country: row.country, blockCount: row.c, suggestion: 'País com muitos bloqueios – considere adicionar à whitelist se for tráfego desejado' });
+      const already = await db.get(
+        "SELECT id FROM suggested_improvements WHERE status = 'pending' AND type = 'country_suggest' AND data LIKE ? LIMIT 1",
+        ['%"country":"' + row.country + '"%']
+      );
+      if (already) continue;
       await db.run("INSERT INTO suggested_improvements (type, data, status) VALUES ('country_suggest', ?, 'pending')", [dataStr]);
     }
+
+    // Evita acúmulo: mantém só as 100 sugestões pendentes mais recentes
+    try {
+      if (db.usePg) {
+        await db.run(`
+          DELETE FROM suggested_improvements
+          WHERE status = 'pending'
+            AND id NOT IN (
+              SELECT id FROM suggested_improvements
+              WHERE status = 'pending'
+              ORDER BY created_at DESC
+              LIMIT 100
+            )
+        `);
+      }
+    } catch (e) {}
   } catch (e) {
     console.error('[AutoImprovement] Erro:', e.message);
   }
@@ -4285,7 +4318,7 @@ app.use((err, req, res, next) => {
 });
 
 // Limpeza de visitantes antigos (reduz uso no Supabase: storage + bandwidth)
-const VISITOR_RETENTION_DAYS = parseInt(process.env.VISITOR_RETENTION_DAYS, 10) || 90;
+const VISITOR_RETENTION_DAYS = parseInt(process.env.VISITOR_RETENTION_DAYS, 10) || 14;
 async function cleanupOldVisitors() {
   if (!db.usePg || VISITOR_RETENTION_DAYS <= 0) return;
   try {

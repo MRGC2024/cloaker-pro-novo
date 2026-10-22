@@ -98,6 +98,7 @@ Tudo pode ser feito por você, sem precisar dar acesso a terceiros; os únicos "
 
 Se o Supabase avisar que você passou da cota (ex.: bandwidth > 5 GB), dá para reduzir consumo **sem upgrade**:
 
-1. **Retenção de visitantes** — O app apaga automaticamente visitantes com mais de **90 dias** (padrão). No Railway → Variables: `VISITOR_RETENTION_DAYS` = `90` (ou `60`, `30`; use `0` para desativar).
+1. **Retenção de visitantes** — O app apaga automaticamente visitantes com mais de **14 dias** (padrão no plano Nano). No Railway → Variables: `VISITOR_RETENTION_DAYS` = `14` (ou `7`, `30`; use `0` para desativar).
 2. **Limpeza manual (admin)** — `POST /api/admin/cleanup-visitors` com sessão de admin executa a limpeza na hora.
-3. **Painel do Supabase** — Em Usage/Dashboard veja o que mais consome e ajuste a retenção ou limpe dados antigos pelo painel do app.
+3. **Sugestões automáticas** — O job de melhorias não recria mais milhares de linhas duplicadas; mantém no máximo 100 pendentes.
+4. **Painel do Supabase** — Em Usage/Dashboard veja o que mais consome e ajuste a retenção ou limpe dados antigos pelo painel do app.
